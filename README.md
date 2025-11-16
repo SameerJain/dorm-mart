@@ -25,7 +25,9 @@ experience.
 ## Development Team
 - Sooseok Kim 
 - Sameer Jain  
-- Anish Banerjee  
+- Anish Banerjee
+
+<!-- Branch maintained for rubric compliance: PR required to dev -->  
 
 
 **Key folders:**
