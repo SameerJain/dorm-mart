@@ -15,6 +15,12 @@ reduce waste, and find what they need fast—all
 within a familiar, school-centered community 
 experience.
 
+With instant messaging and a review system, students can communicate 
+safely and build trust within their campus network. The platform 
+supports everything from wishlists to scheduled purchases, 
+making it easy to coordinate pickups and manage your entire selling 
+workflow in one place!
+
 ## Key Features
 - **Product Listings** - Create, edit, and view detailed product listings with images
 - **Advanced Search** - Search with filters to find exactly what you're looking for
@@ -27,12 +33,9 @@ experience.
 - Sameer Jain  
 - Anish Banerjee
 
-### Thank you to 
-
 ### Special Thank You To The CSE442 Course Staff:
--Matt Hertz
-
--Alan Hunt
+- Matt Hertz
+- Alan Hunt
 
 **Key folders:**
 - `dorm-mart/` — React app and PHP API
