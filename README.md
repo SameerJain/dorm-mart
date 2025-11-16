@@ -19,7 +19,7 @@ With instant messaging and a review system, students can communicate
 safely and build trust within their campus network. The platform 
 supports everything from wishlists to scheduled purchases, 
 making it easy to coordinate pickups and manage your entire selling 
-workflow in one place.
+workflow in one place!
 
 ## Key Features
 - **Product Listings** - Create, edit, and view detailed product listings with images
