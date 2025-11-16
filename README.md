@@ -36,6 +36,7 @@ workflow in one place!
 ### Special Thank You To The CSE442 Course Staff:
 - Matt Hertz
 - Alan Hunt
+- And the wonderful TAs!
 
 **Key folders:**
 - `dorm-mart/` — React app and PHP API
