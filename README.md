@@ -25,8 +25,11 @@ experience.
 ## Development Team
 - Sooseok Kim 
 - Sameer Jain  
-- Anish Banerjee  
+- Anish Banerjee
 
+Special Thank You To The CSE442 Course Staff:
+-Matt Hertz
+-Alan Hunt
 
 **Key folders:**
 - `dorm-mart/` — React app and PHP API
