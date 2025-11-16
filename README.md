@@ -1,4 +1,4 @@
-## CSE442 Fall 2025 No Brainers Group Project 
+# CSE442 Fall 2025 No Brainers Group Project 
 This repository contains the "Dorm Mart" web application, built with a React frontend and a PHP backend with XAMMP. 
 
 Created for CSE-442: Software Engineering Concepts, The University at Buffalo.
@@ -22,13 +22,16 @@ experience.
 - **Seller Dashboard** - Manage your listings, track views, and monitor sales
 - **Purchase History** - Keep track of your buying and selling transactions
 
-## Development Team
+# Development Team
 - Sooseok Kim 
 - Sameer Jain  
 - Anish Banerjee
 
-Special Thank You To The CSE442 Course Staff:
+### Thank you to 
+
+### Special Thank You To The CSE442 Course Staff:
 -Matt Hertz
+
 -Alan Hunt
 
 **Key folders:**
