@@ -27,8 +27,9 @@ experience.
 - Sameer Jain  
 - Anish Banerjee
 
-<!-- Branch maintained for rubric compliance: PR required to dev -->  
-
+Special Thank You To The CSE442 Course Staff:
+-Matt Hertz
+-Alan Hunt
 
 **Key folders:**
 - `dorm-mart/` — React app and PHP API
