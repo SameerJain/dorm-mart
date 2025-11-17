@@ -16,6 +16,7 @@ import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout
 import ProductListingPage from "./pages/ItemForms/ProductListingPage.jsx";
 import CreateAccount from "./pages/AccountCreation/index.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
+import MyProfilePage from "./pages/Settings/MyProfile.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
@@ -131,7 +132,8 @@ export const router = createHashRouter([
       {
         path: "setting",
         children: [
-          { index: true, element: <Navigate to="/app/setting/change-password" replace /> },
+          { index: true, element: <Navigate to="/app/setting/my-profile" replace /> },
+          { path: "my-profile", element: <MyProfilePage /> },
           { path: "change-password", element: <ChangePasswordPage /> },
           // User Preferences
           { path: "user-preferences", element: <UserPreferences /> },

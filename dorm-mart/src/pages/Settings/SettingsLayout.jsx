@@ -8,9 +8,9 @@ function SettingsLayout({ children }) {
   const linkBase = "/app/setting";
 
   const links = [
-    { label: "Personal Information", to: `${linkBase}/personal-information` },
+    { label: "My Profile", to: `${linkBase}/my-profile` },
     { label: "User Preferences", to: `${linkBase}/user-preferences` },
-    { label: "Security Options", to: `${linkBase}/security-options` },
+    //{ label: "Security Options", to: `${linkBase}/security-options` },
     { label: "Change Password", to: `${linkBase}/change-password` },
   ];
 
