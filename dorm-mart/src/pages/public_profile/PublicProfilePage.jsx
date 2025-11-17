@@ -203,6 +203,15 @@ function PublicProfilePage() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 py-6 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-blue-600 shadow-sm transition hover:bg-blue-50"
+          >
+            ← Back
+          </button>
+        </div>
         <header className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
             <div className="flex flex-col items-center gap-4 md:flex-row">
