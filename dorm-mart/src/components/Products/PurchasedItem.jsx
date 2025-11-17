@@ -150,6 +150,7 @@ function PurchasedItem({ id, title, seller, date, image }) {
         productTitle={title}
         existingReview={existingReview}
         onReviewSubmitted={handleReviewSubmitted}
+        viewMode="buyer"
       />
     </>
   );

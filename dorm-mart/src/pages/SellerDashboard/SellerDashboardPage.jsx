@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { withFallbackImage } from '../../utils/imageFallback';
 import ReviewModal from '../Reviews/ReviewModal';
 import StarRating from '../Reviews/StarRating';
+import BuyerRatingModal from './BuyerRatingModal';
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -18,16 +19,14 @@ function SellerDashboardPage() {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
-    // Set Status modal state
-    const [statusOpen, setStatusOpen] = useState(false);
-    const [pendingStatusId, setPendingStatusId] = useState(null);
-    const [pendingStatusValue, setPendingStatusValue] = useState('Active');
-
     // Review modal state
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedReview, setSelectedReview] = useState(null);
     const [selectedReviewProduct, setSelectedReviewProduct] = useState(null);
     const [productReviews, setProductReviews] = useState({}); // Map of productId -> review data
+    const [buyerRatings, setBuyerRatings] = useState({}); // Map of productId -> buyer rating data
+    const [buyerRatingModalOpen, setBuyerRatingModalOpen] = useState(false);
+    const [selectedBuyerRatingProduct, setSelectedBuyerRatingProduct] = useState(null);
 
     // Summary metrics state - will be calculated from listings data
     const [summaryMetrics, setSummaryMetrics] = useState({
@@ -205,6 +204,41 @@ function SellerDashboardPage() {
         }
     }, [listings]);
 
+    // Fetch buyer ratings for sold items
+    useEffect(() => {
+        const fetchBuyerRatings = async () => {
+            const soldListings = listings.filter(l => String(l.status || '').toLowerCase() === 'sold' && l.buyer_user_id);
+            const ratingMap = {};
+
+            for (const listing of soldListings) {
+                try {
+                    const response = await fetch(
+                        `${API_BASE}/reviews/get_buyer_rating.php?product_id=${listing.id}`,
+                        {
+                            method: 'GET',
+                            credentials: 'include',
+                        }
+                    );
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.has_rating) {
+                            ratingMap[listing.id] = result.rating;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error fetching buyer rating for product ${listing.id}:`, error);
+                }
+            }
+
+            setBuyerRatings(ratingMap);
+        };
+
+        if (listings.length > 0) {
+            fetchBuyerRatings();
+        }
+    }, [listings]);
+
     const handleViewReview = (productId, productTitle) => {
         const review = productReviews[productId];
         if (review) {
@@ -252,6 +286,12 @@ function SellerDashboardPage() {
     };
 
     const openDeleteConfirm = (id) => {
+        const listing = listings.find(l => l.id === id);
+        // Prevent deletion of sold items
+        if (listing && String(listing.status || '').toLowerCase() === 'sold') {
+            alert('Cannot delete sold items.');
+            return;
+        }
         setPendingDeleteId(id);
         setConfirmOpen(true);
     };
@@ -287,6 +327,24 @@ function SellerDashboardPage() {
                 return [...filtered].sort((a, b) => a.price - b.price);
             case 'Price: High to Low':
                 return [...filtered].sort((a, b) => b.price - a.price);
+            case 'Reviewed Items On Top':
+                return [...filtered].sort((a, b) => {
+                    const aHasReview = productReviews[a.id] ? 1 : 0;
+                    const bHasReview = productReviews[b.id] ? 1 : 0;
+                    if (aHasReview !== bHasReview) {
+                        return bHasReview - aHasReview; // Reviewed items first
+                    }
+                    return new Date(b.createdAt) - new Date(a.createdAt); // Then by date
+                });
+            case 'Reviewed Items On Bottom':
+                return [...filtered].sort((a, b) => {
+                    const aHasReview = productReviews[a.id] ? 1 : 0;
+                    const bHasReview = productReviews[b.id] ? 1 : 0;
+                    if (aHasReview !== bHasReview) {
+                        return aHasReview - bHasReview; // Unreviewed items first
+                    }
+                    return new Date(b.createdAt) - new Date(a.createdAt); // Then by date
+                });
             default:
                 return filtered;
         }
@@ -304,7 +362,14 @@ function SellerDashboardPage() {
                             <div className="relative ml-1 flex-1 sm:flex-none">
                                 <select
                                     value={selectedStatus}
-                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                    onChange={(e) => {
+                                        const newStatus = e.target.value;
+                                        setSelectedStatus(newStatus);
+                                        // Fallback to "Newest First" if status changes away from Sold while reviewed sort options are selected
+                                        if (newStatus !== 'Sold' && (selectedSort === 'Reviewed Items On Top' || selectedSort === 'Reviewed Items On Bottom')) {
+                                            setSelectedSort('Newest First');
+                                        }
+                                    }}
                                     className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
                                 >
                                     <option value="All Status">All Status</option>
@@ -354,6 +419,12 @@ function SellerDashboardPage() {
                                     <option value="Oldest First">Oldest First (Date Only)</option>
                                     <option value="Price: Low to High">Price: Low to High</option>
                                     <option value="Price: High to Low">Price: High to Low</option>
+                                    {selectedStatus === 'Sold' && (
+                                        <>
+                                            <option value="Reviewed Items On Top">Reviewed Items On Top</option>
+                                            <option value="Reviewed Items On Bottom">Reviewed Items On Bottom</option>
+                                        </>
+                                    )}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -471,19 +542,6 @@ function SellerDashboardPage() {
                                             })()}
 
                                             <button
-                                                onClick={() => { setPendingStatusId(listing.id); setPendingStatusValue(listing.status || 'Active'); setStatusOpen(true); }}
-                                                disabled={listing.has_accepted_scheduled_purchase === true}
-                                                className={`font-medium text-sm sm:text-base ${
-                                                    listing.has_accepted_scheduled_purchase === true
-                                                        ? 'text-gray-400 cursor-not-allowed'
-                                                        : 'text-gray-700 hover:text-gray-900'
-                                                }`}
-                                                title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
-                                            >
-                                                Set Status
-                                            </button>
-
-                                            <button
                                                 onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
                                                 disabled={listing.has_accepted_scheduled_purchase === true}
                                                 className={`font-medium text-sm sm:text-base ${
@@ -496,18 +554,20 @@ function SellerDashboardPage() {
                                                 Edit
                                             </button>
 
-                                            <button
-                                                onClick={() => openDeleteConfirm(listing.id)}
-                                                disabled={listing.has_accepted_scheduled_purchase === true}
-                                                className={`font-medium text-sm sm:text-base ${
-                                                    listing.has_accepted_scheduled_purchase === true
-                                                        ? 'text-gray-400 cursor-not-allowed'
-                                                        : 'text-red-600 hover:text-red-800'
-                                                }`}
-                                                title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
-                                            >
-                                                Delete
-                                            </button>
+                                            {String(listing.status || '').toLowerCase() !== 'sold' && (
+                                                <button
+                                                    onClick={() => openDeleteConfirm(listing.id)}
+                                                    disabled={listing.has_accepted_scheduled_purchase === true}
+                                                    className={`font-medium text-sm sm:text-base ${
+                                                        listing.has_accepted_scheduled_purchase === true
+                                                            ? 'text-gray-400 cursor-not-allowed'
+                                                            : 'text-red-600 hover:text-red-800'
+                                                    }`}
+                                                    title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
 
                                             {/* View Review Button - only show if review exists */}
                                             {productReviews[listing.id] && (
@@ -518,12 +578,29 @@ function SellerDashboardPage() {
                                                     View Review
                                                 </button>
                                             )}
+
+                                            {/* Rate Buyer Button - only show for sold items */}
+                                            {String(listing.status || '').toLowerCase() === 'sold' && listing.buyer_user_id && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedBuyerRatingProduct({ id: listing.id, title: listing.title, buyerId: listing.buyer_user_id });
+                                                        setBuyerRatingModalOpen(true);
+                                                    }}
+                                                    className={`font-medium text-sm sm:text-base ${
+                                                        buyerRatings[listing.id]
+                                                            ? 'text-gray-500 hover:text-gray-700'
+                                                            : 'text-green-600 hover:text-green-800'
+                                                    }`}
+                                                >
+                                                    {buyerRatings[listing.id] ? 'Buyer Rated' : 'Rate Buyer'}
+                                                </button>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                                                 Wishlisted: {String(listing.wishlisted)}
                                             </p>
-                                            {productReviews[listing.id] && (
+                                            {productReviews[listing.id] && productReviews[listing.id].rating && (
                                                 <div className="flex items-center gap-1">
                                                     <StarRating rating={productReviews[listing.id].rating} readOnly={true} size={16} />
                                                     <span className="text-xs text-gray-600 dark:text-gray-400">
@@ -569,67 +646,6 @@ function SellerDashboardPage() {
             </div>
         )}
 
-        {/* Set Status Modal */}
-        {statusOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
-                <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-                    <div className="px-6 pt-6">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Set Status</h2>
-                        <div className="mt-4">
-                            <select
-                                value={pendingStatusValue}
-                                onChange={(e) => setPendingStatusValue(e.target.value)}
-                                className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option>Active</option>
-                                <option>Pending</option>
-                                <option>Draft</option>
-                                <option>Sold</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="px-6 py-4 flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={() => { setStatusOpen(false); setPendingStatusId(null); }}
-                            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                try {
-                                    const BASE = (process.env.REACT_APP_API_BASE || "api");
-                                    const res = await fetch(`${BASE}/seller-dashboard/set_item_status.php`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                                        credentials: 'include',
-                                        body: JSON.stringify({ id: pendingStatusId, status: pendingStatusValue })
-                                    });
-                                    const result = await res.json();
-                                    if (!res.ok || !result.success) throw new Error(result.error || `Status update failed (${res.status})`);
-
-                                    const next = listings.map(l => l.id === pendingStatusId ? { ...l, status: pendingStatusValue } : l);
-                                    setListings(next);
-                                    const metrics = calculateSummaryMetrics(next);
-                                    setSummaryMetrics(metrics);
-                                    setStatusOpen(false);
-                                    setPendingStatusId(null);
-                                } catch (e) {
-                                    console.error('Set status error:', e);
-                                    alert('Failed to set status.');
-                                }
-                            }}
-                            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
-                        >
-                            Save
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-
         {/* Review Modal for viewing reviews */}
         {selectedReview && selectedReviewProduct && (
             <ReviewModal
@@ -639,6 +655,28 @@ function SellerDashboardPage() {
                 productId={selectedReviewProduct.id}
                 productTitle={selectedReviewProduct.title}
                 existingReview={selectedReview}
+                viewMode="seller"
+            />
+        )}
+
+        {/* Buyer Rating Modal */}
+        {selectedBuyerRatingProduct && (
+            <BuyerRatingModal
+                isOpen={buyerRatingModalOpen}
+                onClose={() => {
+                    setBuyerRatingModalOpen(false);
+                    setSelectedBuyerRatingProduct(null);
+                }}
+                productId={selectedBuyerRatingProduct.id}
+                productTitle={selectedBuyerRatingProduct.title}
+                buyerId={selectedBuyerRatingProduct.buyerId}
+                onRatingSubmitted={(result) => {
+                    // Update local state with new rating
+                    setBuyerRatings(prev => ({
+                        ...prev,
+                        [selectedBuyerRatingProduct.id]: result.rating
+                    }));
+                }}
             />
         )}
         </div>

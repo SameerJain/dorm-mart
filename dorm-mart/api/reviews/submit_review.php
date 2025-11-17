@@ -214,11 +214,24 @@ try {
     $success = $stmt->execute();
     $reviewId = $stmt->insert_id;
     $stmt->close();
-    $conn->close();
 
     if (!$success) {
         throw new RuntimeException('Failed to insert review');
     }
+
+    // Update seller's average seller_rating in user_accounts
+    $stmt = $conn->prepare(
+        'UPDATE user_accounts SET seller_rating = (
+            SELECT AVG(rating) FROM product_reviews WHERE seller_user_id = ?
+        ) WHERE user_id = ?'
+    );
+    if ($stmt) {
+        $stmt->bind_param('ii', $sellerId, $sellerId);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    $conn->close();
 
     echo json_encode([
         'success' => true,
