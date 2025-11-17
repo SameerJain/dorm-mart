@@ -41,7 +41,7 @@ try {
     // Get the user's review for this product
     $stmt = $conn->prepare(
         'SELECT pr.review_id, pr.product_id, pr.buyer_user_id, pr.seller_user_id, 
-                pr.rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
+                pr.rating, pr.product_rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
                 pr.created_at, pr.updated_at,
                 ua.first_name, ua.last_name, ua.email
          FROM product_reviews pr
@@ -75,6 +75,7 @@ try {
         'buyer_user_id' => (int)$review['buyer_user_id'],
         'seller_user_id' => (int)$review['seller_user_id'],
         'rating' => (float)$review['rating'],
+        'product_rating' => isset($review['product_rating']) ? (float)$review['product_rating'] : null,
         'review_text' => escapeHtml($review['review_text']),
         'image1_url' => $review['image1_url'] ?? null,
         'image2_url' => $review['image2_url'] ?? null,

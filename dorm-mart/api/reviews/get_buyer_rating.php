@@ -58,64 +58,55 @@ try {
     $sellerId = (int)$productRow['seller_id'];
     if ($sellerId !== $userId) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You are not authorized to view reviews for this product']);
+        echo json_encode(['success' => false, 'error' => 'You are not authorized to view buyer ratings for this product']);
         exit;
     }
 
-    // Get all reviews for this product
+    // Get the buyer rating for this product
     $stmt = $conn->prepare(
-        'SELECT pr.review_id, pr.product_id, pr.buyer_user_id, pr.seller_user_id,
-                pr.rating, pr.product_rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
-                pr.created_at, pr.updated_at,
-                ua.first_name, ua.last_name, ua.email
-         FROM product_reviews pr
-         LEFT JOIN user_accounts ua ON pr.buyer_user_id = ua.user_id
-         WHERE pr.product_id = ?
-         ORDER BY pr.created_at DESC'
+        'SELECT rating_id, product_id, seller_user_id, buyer_user_id, rating, created_at, updated_at
+         FROM buyer_ratings 
+         WHERE seller_user_id = ? AND product_id = ?
+         LIMIT 1'
     );
     if (!$stmt) {
-        throw new RuntimeException('Failed to prepare reviews lookup');
+        throw new RuntimeException('Failed to prepare buyer rating lookup');
     }
-    $stmt->bind_param('i', $productId);
+    $stmt->bind_param('ii', $userId, $productId);
     $stmt->execute();
     $result = $stmt->get_result();
-    
-    $reviews = [];
-    while ($row = $result->fetch_assoc()) {
-        $buyerName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
-        if ($buyerName === '') {
-            $buyerName = 'Buyer #' . $row['buyer_user_id'];
-        }
-
-        $reviews[] = [
-            'review_id' => (int)$row['review_id'],
-            'product_id' => (int)$row['product_id'],
-            'buyer_user_id' => (int)$row['buyer_user_id'],
-            'seller_user_id' => (int)$row['seller_user_id'],
-            'rating' => (float)$row['rating'],
-            'product_rating' => isset($row['product_rating']) ? (float)$row['product_rating'] : null,
-            'review_text' => escapeHtml($row['review_text']),
-            'image1_url' => $row['image1_url'] ?? null,
-            'image2_url' => $row['image2_url'] ?? null,
-            'image3_url' => $row['image3_url'] ?? null,
-            'created_at' => $row['created_at'],
-            'updated_at' => $row['updated_at'],
-            'buyer_name' => $buyerName,
-            'buyer_email' => $row['email'] ?? null
-        ];
-    }
-    
+    $rating = $result ? $result->fetch_assoc() : null;
     $stmt->close();
     $conn->close();
 
+    if (!$rating) {
+        echo json_encode([
+            'success' => true,
+            'has_rating' => false,
+            'rating' => null
+        ]);
+        exit;
+    }
+
+    // Format the response
+    $ratingData = [
+        'rating_id' => (int)$rating['rating_id'],
+        'product_id' => (int)$rating['product_id'],
+        'seller_user_id' => (int)$rating['seller_user_id'],
+        'buyer_user_id' => (int)$rating['buyer_user_id'],
+        'rating' => (float)$rating['rating'],
+        'created_at' => $rating['created_at'],
+        'updated_at' => $rating['updated_at']
+    ];
+
     echo json_encode([
         'success' => true,
-        'count' => count($reviews),
-        'reviews' => $reviews
+        'has_rating' => true,
+        'rating' => $ratingData
     ]);
 
 } catch (Throwable $e) {
-    error_log('get_product_reviews.php error: ' . $e->getMessage());
+    error_log('get_buyer_rating.php error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }

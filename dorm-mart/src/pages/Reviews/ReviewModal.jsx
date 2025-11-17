@@ -19,6 +19,7 @@ const API_BASE = process.env.REACT_APP_API_BASE || "/api";
  * @param {string} productTitle - Title of the product (for display)
  * @param {object} existingReview - Existing review data (for view mode)
  * @param {function} onReviewSubmitted - Callback after successful review submission
+ * @param {string} viewMode - "buyer" or "seller" - affects photo display in view mode
  */
 function ReviewModal({
   isOpen,
@@ -28,14 +29,21 @@ function ReviewModal({
   productTitle = "Product",
   existingReview = null,
   onReviewSubmitted = null,
+  viewMode = "buyer",
 }) {
   const [rating, setRating] = useState(0);
+  const [productRating, setProductRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [charCount, setCharCount] = useState(0);
   const [uploadedImages, setUploadedImages] = useState([]); // Array of {file, url, uploadedUrl}
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null); // For full-size image modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [confirmCallback, setConfirmCallback] = useState(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false); // Track if we're waiting for confirmation
   const fileInputRef = React.useRef(null);
 
   const maxChars = 1000;
@@ -45,10 +53,18 @@ function ReviewModal({
   useEffect(() => {
     if (isOpen && mode === "create") {
       setRating(0);
+      setProductRating(0);
       setReviewText("");
       setCharCount(0);
       setError(null);
       setUploadedImages([]);
+      // Don't reset confirmation modal state here - let handleSubmit control it
+    } else if (!isOpen) {
+      // Only reset confirmation modal state when modal closes
+      setShowConfirmModal(false);
+      setConfirmMessage("");
+      setConfirmCallback(null);
+      setPendingSubmit(false);
     }
   }, [isOpen, mode]);
 
@@ -56,7 +72,9 @@ function ReviewModal({
   useEffect(() => {
     if (isOpen && mode === "view" && existingReview) {
       setRating(existingReview.rating || 0);
+      setProductRating(existingReview.product_rating || 0);
       setReviewText(existingReview.review_text || "");
+      setSelectedImage(null); // Reset selected image when modal opens
       // Load images with proper API base path
       if (existingReview.image1_url || existingReview.image2_url || existingReview.image3_url) {
         const images = [];
@@ -67,6 +85,13 @@ function ReviewModal({
       }
     }
   }, [isOpen, mode, existingReview]);
+
+  // Reset selectedImage when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedImage(null);
+    }
+  }, [isOpen]);
 
   // Prevent background scroll when modal is open
   useEffect(() => {
@@ -112,14 +137,19 @@ function ReviewModal({
   // Check if there are unsaved changes
   const hasUnsavedChanges = () => {
     if (mode !== "create") return false;
-    return rating > 0 || reviewText.trim().length > 0 || uploadedImages.length > 0;
+    return rating > 0 || productRating > 0 || reviewText.trim().length > 0 || uploadedImages.length > 0;
   };
 
   // Handle close with confirmation if needed
   const handleClose = () => {
     if (hasUnsavedChanges()) {
-      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to close?");
-      if (!confirmed) return;
+      setConfirmMessage("You have unsaved changes. Are you sure you want to close?");
+      setConfirmCallback(() => {
+        setShowConfirmModal(false);
+        onClose();
+      });
+      setShowConfirmModal(true);
+      return;
     }
     onClose();
   };
@@ -174,7 +204,6 @@ function ReviewModal({
           uploadedUrl: result.image_url
         }]);
       } catch (err) {
-        console.error('Error uploading image:', err);
         setError(err.message || 'Failed to upload image');
       }
     }
@@ -196,12 +225,42 @@ function ReviewModal({
     });
   };
 
+  const handleDownloadImage = async (imageUrl, filename) => {
+    try {
+      const response = await fetch(`${API_BASE}/image.php?url=${encodeURIComponent(imageUrl)}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch image');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      alert('Failed to download image. Please try again.');
+    }
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     
     if (mode !== "create") return;
+    if (isSubmitting || pendingSubmit) return; // Prevent double submission
+    
     if (rating <= 0) {
-      setError("Please select a rating");
+      setError("Please select a seller rating");
+      return;
+    }
+    if (productRating <= 0) {
+      setError("Please select a product rating");
       return;
     }
     if (reviewText.trim().length === 0) {
@@ -209,6 +268,34 @@ function ReviewModal({
       return;
     }
 
+    // Set pending submit flag to prevent direct submission
+    setPendingSubmit(true);
+    
+    // Show confirmation dialog before submitting
+    const message = "Are you sure you are done writing your review? Changes cannot be made.";
+    setConfirmMessage(message);
+    
+    // Create callback function that will be called when user confirms
+    const callback = async () => {
+      // Close confirmation modal first
+      setShowConfirmModal(false);
+      setConfirmMessage("");
+      // Don't reset confirmCallback or pendingSubmit yet - proceedWithSubmit needs them for safety check
+      // Then proceed with submission
+      await proceedWithSubmit();
+      // Reset state after submission completes
+      setConfirmCallback(null);
+      setPendingSubmit(false);
+    };
+    // Store the callback function directly
+    setConfirmCallback(() => callback);
+    
+    // Set state to show confirmation modal
+    setShowConfirmModal(true);
+    return; // Important: stop execution here, don't proceed with submission
+  };
+
+  const proceedWithSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
 
@@ -230,14 +317,28 @@ function ReviewModal({
         body: JSON.stringify({
           product_id: productId,
           rating: rating,
+          product_rating: productRating,
           review_text: reviewText.trim(),
           ...imageUrls,
         }),
       });
 
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        let errorMessage = "Failed to submit review";
+        try {
+          const errorResult = await response.json();
+          errorMessage = errorResult.error || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, use status text
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
       const result = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.error || "Failed to submit review");
       }
 
@@ -247,29 +348,34 @@ function ReviewModal({
       }
       onClose();
     } catch (err) {
-      console.error("Error submitting review:", err);
       setError(err.message || "Failed to submit review. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const isFormValid = rating > 0 && reviewText.trim().length > 0;
+  const isFormValid = rating > 0 && productRating > 0 && reviewText.trim().length > 0;
 
   if (!isOpen) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+      onClick={(e) => {
+        // Prevent closing main modal when confirmation modal is open
+        if (!showConfirmModal && e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            {mode === "create" ? "Leave a Review" : "Your Review"}
+            {mode === "create" ? "Leave a Review" : "Review"}
           </h2>
           <button
             onClick={handleClose}
@@ -301,11 +407,15 @@ function ReviewModal({
           </div>
 
           {mode === "create" ? (
-            <form onSubmit={handleSubmit}>
-              {/* Rating Section */}
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              return false; 
+            }}>
+              {/* Seller Rating Section */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Rate This Product <span className="text-red-500">*</span>
+                  Rate your experience with this Seller <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center gap-4">
                   <StarRating
@@ -320,10 +430,28 @@ function ReviewModal({
                 </div>
               </div>
 
+              {/* Product Rating Section */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Rate this product <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-4">
+                  <StarRating
+                    rating={productRating}
+                    onRatingChange={setProductRating}
+                    readOnly={false}
+                    size={40}
+                  />
+                  <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                    {productRating.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+
               {/* Review Text Section */}
               <div className="mb-6">
                 <label htmlFor="review-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Your Review <span className="text-red-500">*</span>
+                  Review <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   id="review-text"
@@ -421,7 +549,12 @@ function ReviewModal({
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSubmit(e);
+                  }}
                   disabled={!isFormValid || isSubmitting}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -432,10 +565,10 @@ function ReviewModal({
           ) : (
             // View Mode
             <div>
-              {/* Rating Display */}
+              {/* Seller Rating Display */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Product Rating
+                  Seller Rating
                 </label>
                 <div className="flex items-center gap-3">
                   <StarRating rating={rating} readOnly={true} size={32} />
@@ -445,10 +578,23 @@ function ReviewModal({
                 </div>
               </div>
 
+              {/* Product Rating Display */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Product Rating
+                </label>
+                <div className="flex items-center gap-3">
+                  <StarRating rating={productRating} readOnly={true} size={32} />
+                  <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    {productRating.toFixed(1)} / 5.0
+                  </span>
+                </div>
+              </div>
+
               {/* Review Text Display */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Your Review
+                  Review
                 </label>
                 <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                   <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
@@ -463,28 +609,118 @@ function ReviewModal({
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Images
                   </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {existingReview.image1_url && (
-                      <img
-                        src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
-                        alt="Review image 1"
-                        className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
-                      />
-                    )}
-                    {existingReview.image2_url && (
-                      <img
-                        src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
-                        alt="Review image 2"
-                        className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
-                      />
-                    )}
-                    {existingReview.image3_url && (
-                      <img
-                        src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
-                        alt="Review image 3"
-                        className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
-                      />
-                    )}
+                  {viewMode === "seller" ? (
+                    // Seller view: Full-size images with download
+                    <div className="space-y-4">
+                      {existingReview.image1_url && (
+                        <div className="relative group">
+                          <img
+                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                            alt="Review image 1"
+                            onClick={() => setSelectedImage(existingReview.image1_url)}
+                            className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadImage(existingReview.image1_url, 'review-image-1.jpg');
+                            }}
+                            className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            Download
+                          </button>
+                        </div>
+                      )}
+                      {existingReview.image2_url && (
+                        <div className="relative group">
+                          <img
+                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                            alt="Review image 2"
+                            onClick={() => setSelectedImage(existingReview.image2_url)}
+                            className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadImage(existingReview.image2_url, 'review-image-2.jpg');
+                            }}
+                            className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            Download
+                          </button>
+                        </div>
+                      )}
+                      {existingReview.image3_url && (
+                        <div className="relative group">
+                          <img
+                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                            alt="Review image 3"
+                            onClick={() => setSelectedImage(existingReview.image3_url)}
+                            className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadImage(existingReview.image3_url, 'review-image-3.jpg');
+                            }}
+                            className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            Download
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Buyer view: Small thumbnails
+                    <div className="grid grid-cols-3 gap-3">
+                      {existingReview.image1_url && (
+                        <img
+                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                          alt="Review image 1"
+                          className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
+                        />
+                      )}
+                      {existingReview.image2_url && (
+                        <img
+                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                          alt="Review image 2"
+                          className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
+                        />
+                      )}
+                      {existingReview.image3_url && (
+                        <img
+                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                          alt="Review image 3"
+                          className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Full-size image modal for seller view */}
+              {viewMode === "seller" && selectedImage && (
+                <div
+                  className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-75 p-4"
+                  onClick={() => setSelectedImage(null)}
+                >
+                  <div className="relative max-w-7xl max-h-full">
+                    <img
+                      src={`${API_BASE}/image.php?url=${encodeURIComponent(selectedImage)}`}
+                      alt="Full size review image"
+                      className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <button
+                      onClick={() => setSelectedImage(null)}
+                      className="absolute top-4 right-4 bg-white hover:bg-gray-100 text-gray-900 rounded-full p-2 shadow-lg"
+                      aria-label="Close"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               )}
@@ -508,6 +744,74 @@ function ReviewModal({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div 
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" 
+          role="dialog" 
+          aria-modal="true"
+          onClick={(e) => {
+            // Close confirmation modal if clicking backdrop
+            if (e.target === e.currentTarget) {
+              setShowConfirmModal(false);
+              setConfirmMessage("");
+              setConfirmCallback(null);
+              setPendingSubmit(false); // Reset pending submit flag
+            }
+          }}
+        >
+          <div 
+            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+              <div className="px-6 pt-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Ready to Submit?</h2>
+                <p className="mt-2 text-gray-600 dark:text-gray-300">{confirmMessage}</p>
+              </div>
+            <div className="px-6 py-4 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setConfirmMessage("");
+                  setConfirmCallback(null);
+                  setPendingSubmit(false); // Reset pending submit flag
+                }}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirmCallback) {
+                    try {
+                      // confirmCallback is the actual callback function - call it directly
+                      await confirmCallback();
+                    } catch (err) {
+                      // Error is already handled in proceedWithSubmit
+                      // Reset confirmation modal state on error
+                      setShowConfirmModal(false);
+                      setConfirmMessage("");
+                      setConfirmCallback(null);
+                      setPendingSubmit(false);
+                    }
+                  } else {
+                    setShowConfirmModal(false);
+                    setConfirmMessage("");
+                    setConfirmCallback(null);
+                    setPendingSubmit(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
