@@ -519,15 +519,25 @@ function SellerDashboardPage() {
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 flex-wrap">
                                             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                                                 Wishlisted: {String(listing.wishlisted)}
                                             </p>
-                                            {productReviews[listing.id] && (
+                                            {productReviews[listing.id] && productReviews[listing.id].rating && (
                                                 <div className="flex items-center gap-1">
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">Seller:</span>
                                                     <StarRating rating={productReviews[listing.id].rating} readOnly={true} size={16} />
                                                     <span className="text-xs text-gray-600 dark:text-gray-400">
                                                         {productReviews[listing.id].rating.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {productReviews[listing.id] && productReviews[listing.id].product_rating && (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">Product:</span>
+                                                    <StarRating rating={productReviews[listing.id].product_rating} readOnly={true} size={16} />
+                                                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                                                        {productReviews[listing.id].product_rating.toFixed(1)}
                                                     </span>
                                                 </div>
                                             )}
