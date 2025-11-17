@@ -164,6 +164,8 @@ export default function LandingPage() {
             : [];
 
           const category = d.category || (tags.length ? tags[0] : "General");
+          const sellerEmail = d.email || d.seller_email || null;
+          const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
 
           return {
             id: d.id ?? i,
@@ -179,6 +181,8 @@ export default function LandingPage() {
                 : 0,
             // still keeping seller/location/rating in case we need later
             seller: d.seller || d.sold_by || d.seller_name || "Unknown Seller",
+            sellerUsername,
+            sellerEmail,
             rating: typeof d.rating === "number" ? d.rating : 4.7,
             location: d.location || d.campus || "North Campus",
           };
@@ -500,6 +504,8 @@ export default function LandingPage() {
                                   image={item.img || undefined}
                                   status={item.status}
                                   seller={item.seller}
+                                  sellerUsername={item.sellerUsername}
+                                  sellerEmail={item.sellerEmail}
                                   isWishlisted={wishlistedIds.has(item.id)}
                                 />
                               </div>
@@ -541,6 +547,8 @@ export default function LandingPage() {
                     image={item.img || undefined}
                     status={item.status}
                     seller={item.seller}
+                    sellerUsername={item.sellerUsername}
+                    sellerEmail={item.sellerEmail}
                     isWishlisted={wishlistedIds.has(item.id)}
                   />
                 ))}

@@ -55,6 +55,8 @@ export default function WishlistPage() {
               ? d.tags.split(",").map((t) => t.trim()).filter(Boolean)
               : [];
 
+            const sellerEmail = d.email || d.seller_email || null;
+            const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
             return {
               id: d.product_id,
               title: d.title || "Untitled",
@@ -63,6 +65,8 @@ export default function WishlistPage() {
               tags,
               status: status || "AVAILABLE",
               seller: d.seller || "Unknown Seller",
+              sellerUsername,
+              sellerEmail,
             };
           });
           setAllItems(normalized);
@@ -236,6 +240,8 @@ export default function WishlistPage() {
                     image={item.img}
                     status={item.status}
                     seller={item.seller}
+                    sellerUsername={item.sellerUsername}
+                    sellerEmail={item.sellerEmail}
                     isWishlisted={true}
                   />
                 ))}

@@ -6,6 +6,7 @@ import MessageCard from "./components/MessageCard";
 import ScheduleMessageCard from "./components/ScheduleMessageCard";
 import ImageModal from "./components/ImageModal";
 import ConfirmMessageCard from "./components/ConfirmMessageCard";
+import ProfileLink from "../../components/ProfileLink";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -375,7 +376,13 @@ export default function ChatPage() {
                 {c.productTitle || `Item #${c.productId}`}
               </span>
             )}
-            <span className="truncate text-sm">{c.receiverName}</span>
+            <ProfileLink
+              fallback={c.receiverName}
+              className="truncate text-sm font-medium"
+              hoverClass="hover:text-blue-600"
+            >
+              {c.receiverName}
+            </ProfileLink>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {c.productImageUrl && (
@@ -492,7 +499,16 @@ export default function ChatPage() {
             <div className={`relative border-4 ${headerBgColor} px-5 py-4`}>
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{activeLabel}</h2>
+                  {activeConvId ? (
+                    <ProfileLink
+                      fallback={activeLabel}
+                      className="text-lg font-semibold text-gray-900 dark:text-gray-100"
+                    >
+                      {activeLabel}
+                    </ProfileLink>
+                  ) : (
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{activeLabel}</h2>
+                  )}
                   <p className="text-xs text-gray-500 dark:text-gray-400">Direct message</p>
                 </div>
 
