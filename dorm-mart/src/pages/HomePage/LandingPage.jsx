@@ -18,6 +18,8 @@ const FALLBACK_ITEMS = [
     img: keyboard,
     tags: ["Electronics", "Accessories"],
     seller: "Ava P.",
+    sellerUsername: "ava",
+    sellerEmail: "ava@example.com",
     rating: 4.8,
     location: "North Campus",
     status: "JUST POSTED",
@@ -30,6 +32,8 @@ const FALLBACK_ITEMS = [
     img: carpetUrl,
     tags: ["Furniture", "Decor"],
     seller: "Mark D.",
+    sellerUsername: "markd",
+    sellerEmail: "mark@example.com",
     rating: 4.4,
     location: "Ellicott",
     status: "AVAILABLE",
@@ -42,6 +46,8 @@ const FALLBACK_ITEMS = [
     img: mouse,
     tags: ["Electronics", "Accessories"],
     seller: "Sara T.",
+    sellerUsername: "sarat",
+    sellerEmail: "sara@example.com",
     rating: 4.9,
     location: "South Campus",
     status: "PRICE DROP",
@@ -164,6 +170,8 @@ export default function LandingPage() {
             : [];
 
           const category = d.category || (tags.length ? tags[0] : "General");
+          const sellerEmail = d.email || d.seller_email || null;
+          const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
 
           return {
             id: d.id ?? i,
@@ -179,6 +187,8 @@ export default function LandingPage() {
                 : 0,
             // still keeping seller/location/rating in case we need later
             seller: d.seller || d.sold_by || d.seller_name || "Unknown Seller",
+            sellerUsername,
+            sellerEmail,
             rating: typeof d.rating === "number" ? d.rating : 4.7,
             location: d.location || d.campus || "North Campus",
           };
@@ -500,6 +510,8 @@ export default function LandingPage() {
                                   image={item.img || undefined}
                                   status={item.status}
                                   seller={item.seller}
+                                  sellerUsername={item.sellerUsername}
+                                  sellerEmail={item.sellerEmail}
                                   isWishlisted={wishlistedIds.has(item.id)}
                                 />
                               </div>
@@ -541,6 +553,8 @@ export default function LandingPage() {
                     image={item.img || undefined}
                     status={item.status}
                     seller={item.seller}
+                    sellerUsername={item.sellerUsername}
+                    sellerEmail={item.sellerEmail}
                     isWishlisted={wishlistedIds.has(item.id)}
                   />
                 ))}

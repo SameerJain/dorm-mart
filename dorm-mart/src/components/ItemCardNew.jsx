@@ -11,6 +11,8 @@ export default function ItemCardNew({
   image,
   status,
   seller,
+  sellerUsername,
+  sellerEmail,
   isWishlisted = false,
 }) {
   const navigate = useNavigate();

@@ -9,6 +9,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/profile_helpers.php';
 
 setSecurityHeaders();
 setSecureCORS();
@@ -220,52 +221,4 @@ function fetch_updated_fields(mysqli $conn, int $userId): array
         'bio'       => escapeHtml($row['bio'] ?? ''),
         'instagram' => $row['instagram'] ?? '',
     ];
-}
-
-function format_profile_photo_url($value): ?string
-{
-    if (!is_string($value)) {
-        return null;
-    }
-    $trimmed = trim($value);
-    if ($trimmed === '') {
-        return null;
-    }
-
-    if (preg_match('#^https?://#i', $trimmed) || strpos($trimmed, 'data:') === 0) {
-        return $trimmed;
-    }
-
-    if (strpos($trimmed, '/api/image.php') === 0) {
-        return $trimmed;
-    }
-
-    if ($trimmed[0] !== '/') {
-        $trimmed = '/' . ltrim($trimmed, '/');
-    }
-
-    return build_profile_image_proxy_url($trimmed);
-}
-
-function build_profile_image_proxy_url(string $source): string
-{
-    $apiBase = rtrim(get_profile_api_base_path(), '/');
-    if ($apiBase === '') {
-        $apiBase = '/api';
-    }
-    return $apiBase . '/image.php?url=' . rawurlencode($source);
-}
-
-function get_profile_api_base_path(): string
-{
-    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-    if ($scriptName === '') {
-        return '/api';
-    }
-    $profileDir = dirname($scriptName);
-    $apiBase = dirname($profileDir);
-    if ($apiBase === '.' || $apiBase === DIRECTORY_SEPARATOR) {
-        return '/api';
-    }
-    return $apiBase;
 }
