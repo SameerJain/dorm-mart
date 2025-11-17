@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
+import ProfileLink from "../../components/ProfileLink";
 import SettingsLayout from "./SettingsLayout";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
@@ -136,14 +137,26 @@ function StarRating({ rating = 0, size = 28, label }) {
 function ReviewRow({ review }) {
   const attachments = [review.image_1, review.image_2, review.image_3].filter(Boolean);
   const imageClass = "h-28 w-32 rounded-xl object-cover shadow flex-shrink-0";
+  const reviewerUsername = review.reviewer_username || (review.reviewer_email ? review.reviewer_email.split("@")[0] : "");
 
   return (
     <article className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-blue-200 hover:shadow">
       <div className="space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <p className="text-base font-semibold text-slate-900">{review.reviewer_name || "Anonymous"}</p>
-            <p className="text-sm text-slate-500">{review.reviewer_email || "No email provided"}</p>
+          <div className="space-y-0.5">
+            <ProfileLink
+              username={reviewerUsername}
+              email={review.reviewer_email}
+              fallback={review.reviewer_name}
+              className="text-base font-semibold text-slate-900"
+            >
+              {review.reviewer_name || "Anonymous"}
+            </ProfileLink>
+            {review.reviewer_email ? (
+              <p className="text-sm text-slate-500">{review.reviewer_email}</p>
+            ) : (
+              <p className="text-sm text-slate-400">No email provided</p>
+            )}
           </div>
           <StarRating rating={review.rating} size={18} label={`${review.reviewer_name || "Reviewer"} rating`} />
         </div>
@@ -437,11 +450,16 @@ function MyProfilePage() {
                       {avatarUploading ? "Uploading..." : "Edit"}
                     </span>
                   </button>
-                  <div className="space-y-1 text-center sm:text-left">
-                    <p className="text-2xl font-serif font-semibold text-slate-900">{profile?.name}</p>
-                    <p className="text-sm text-slate-500">@{profile?.username}</p>
-                    <p className="text-sm text-slate-500">{profile?.email}</p>
-                  </div>
+                  <ProfileLink
+                    username={profile?.username}
+                    email={profile?.email}
+                    fallback={profile?.name}
+                    className="space-y-1 text-center sm:text-left text-slate-900"
+                  >
+                    <p className="text-2xl font-serif font-semibold">{profile?.name}</p>
+                    <p className="text-sm">@{profile?.username}</p>
+                    <p className="text-sm">{profile?.email}</p>
+                  </ProfileLink>
                 </div>
                 <div className="mt-4 flex flex-col items-center gap-1 text-center text-sm text-slate-500 sm:items-start sm:text-left">
                   <StarRating rating={ratingValue} size={24} label="Average rating" />

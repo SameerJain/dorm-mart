@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChatContext } from "../context/ChatContext";
 import { FALLBACK_IMAGE_URL } from "../utils/imageFallback";
+import ProfileLink from "../components/ProfileLink";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -191,6 +192,7 @@ export default function ViewProduct() {
     const sellerId = d.seller_id ?? null;
     const sellerName = d.seller || (sellerId != null ? `Seller #${sellerId}` : "Unknown Seller");
     const sellerEmail = d.email || null;
+    const sellerUsername = d.seller_username || (sellerEmail ? sellerEmail.split("@")[0] : null);
     const soldTo = d.sold_to ?? null;
 
     const dateListedStr = d.date_listed || d.created_at || null;
@@ -212,6 +214,7 @@ export default function ViewProduct() {
       sold,
       sellerId,
       sellerName,
+      sellerUsername,
       soldTo,
       sellerEmail,
       dateListed,
@@ -491,9 +494,17 @@ export default function ViewProduct() {
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug">{normalized.title}</h2>
 
               {/* Meta row */}
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Sold by</span>
-                <span className="font-medium text-gray-800 dark:text-gray-200">{normalized.sellerName}</span>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Sold by</span>
+                  <ProfileLink
+                    username={normalized.sellerUsername}
+                    email={normalized.sellerEmail}
+                    fallback={normalized.sellerName}
+                    className="font-medium text-gray-800 dark:text-gray-200"
+                    hoverClass="hover:text-blue-600"
+                  >
+                    {normalized.sellerName}
+                  </ProfileLink>
                 {normalized.tags && normalized.tags.length ? (
                   <span className="text-gray-300 dark:text-gray-600">|</span>
                 ) : null}

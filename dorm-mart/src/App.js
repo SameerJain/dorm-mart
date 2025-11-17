@@ -29,6 +29,7 @@ import ViewProduct from "./itemDetails/viewProduct.jsx";
 import ViewReceipt from "./itemDetails/viewReceipt.jsx";
 import SearchResults from "./pages/search/searchResults.jsx";
 import WishlistPage from "./pages/Wishlist/WishlistPage.jsx";
+import PublicProfilePage from "./pages/public_profile/PublicProfilePage.jsx";
 // Chat
 import { ChatProvider } from "./context/ChatContext.js";
 import ChatPage from "./pages/Chat/ChatPage.jsx";
@@ -102,6 +103,10 @@ export const router = createHashRouter([
       {
         path: "wishlist",
         element: <WishlistPage />,
+      },
+      {
+        path: "profile",
+        element: <PublicProfilePage />,
       },
       // Seller Dashboard
       {

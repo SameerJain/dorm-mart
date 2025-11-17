@@ -160,6 +160,7 @@ SQL;
             'product_id'     => (int)$row['product_id'],
             'reviewer_name'  => $buyerName,
             'reviewer_email' => $row['buyer_email'] ?? null,
+            'reviewer_username' => derive_username((string)($row['buyer_email'] ?? '')),
             'product_title'  => escapeHtml($row['product_title'] ?? 'Untitled product'),
             'review'         => escapeHtml($row['review_text'] ?? ''),
             'image_1'        => format_review_image_url($row['image1_url'] ?? null),
