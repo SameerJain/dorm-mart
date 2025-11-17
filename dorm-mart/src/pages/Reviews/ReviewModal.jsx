@@ -30,6 +30,7 @@ function ReviewModal({
   onReviewSubmitted = null,
 }) {
   const [rating, setRating] = useState(0);
+  const [productRating, setProductRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -45,6 +46,7 @@ function ReviewModal({
   useEffect(() => {
     if (isOpen && mode === "create") {
       setRating(0);
+      setProductRating(0);
       setReviewText("");
       setCharCount(0);
       setError(null);
@@ -56,6 +58,7 @@ function ReviewModal({
   useEffect(() => {
     if (isOpen && mode === "view" && existingReview) {
       setRating(existingReview.rating || 0);
+      setProductRating(existingReview.product_rating || 0);
       setReviewText(existingReview.review_text || "");
       // Load images with proper API base path
       if (existingReview.image1_url || existingReview.image2_url || existingReview.image3_url) {
@@ -112,7 +115,7 @@ function ReviewModal({
   // Check if there are unsaved changes
   const hasUnsavedChanges = () => {
     if (mode !== "create") return false;
-    return rating > 0 || reviewText.trim().length > 0 || uploadedImages.length > 0;
+    return rating > 0 || productRating > 0 || reviewText.trim().length > 0 || uploadedImages.length > 0;
   };
 
   // Handle close with confirmation if needed
@@ -201,11 +204,21 @@ function ReviewModal({
     
     if (mode !== "create") return;
     if (rating <= 0) {
-      setError("Please select a rating");
+      setError("Please select a seller rating");
+      return;
+    }
+    if (productRating <= 0) {
+      setError("Please select a product rating");
       return;
     }
     if (reviewText.trim().length === 0) {
       setError("Please write a review");
+      return;
+    }
+
+    // Show confirmation dialog before submitting
+    const confirmed = window.confirm("Are you sure you are done writing your review? Changes cannot be made");
+    if (!confirmed) {
       return;
     }
 
@@ -230,6 +243,7 @@ function ReviewModal({
         body: JSON.stringify({
           product_id: productId,
           rating: rating,
+          product_rating: productRating,
           review_text: reviewText.trim(),
           ...imageUrls,
         }),
@@ -254,7 +268,7 @@ function ReviewModal({
     }
   };
 
-  const isFormValid = rating > 0 && reviewText.trim().length > 0;
+  const isFormValid = rating > 0 && productRating > 0 && reviewText.trim().length > 0;
 
   if (!isOpen) return null;
 
@@ -302,10 +316,10 @@ function ReviewModal({
 
           {mode === "create" ? (
             <form onSubmit={handleSubmit}>
-              {/* Rating Section */}
+              {/* Seller Rating Section */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Rate This Product <span className="text-red-500">*</span>
+                  Rate your experience with this Seller <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center gap-4">
                   <StarRating
@@ -316,6 +330,24 @@ function ReviewModal({
                   />
                   <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                     {rating.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Product Rating Section */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Rate this product <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-4">
+                  <StarRating
+                    rating={productRating}
+                    onRatingChange={setProductRating}
+                    readOnly={false}
+                    size={40}
+                  />
+                  <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                    {productRating.toFixed(1)}
                   </span>
                 </div>
               </div>
@@ -432,15 +464,28 @@ function ReviewModal({
           ) : (
             // View Mode
             <div>
-              {/* Rating Display */}
+              {/* Seller Rating Display */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Product Rating
+                  Seller Rating
                 </label>
                 <div className="flex items-center gap-3">
                   <StarRating rating={rating} readOnly={true} size={32} />
                   <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                     {rating.toFixed(1)} / 5.0
+                  </span>
+                </div>
+              </div>
+
+              {/* Product Rating Display */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Product Rating
+                </label>
+                <div className="flex items-center gap-3">
+                  <StarRating rating={productRating} readOnly={true} size={32} />
+                  <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    {productRating.toFixed(1)} / 5.0
                   </span>
                 </div>
               </div>

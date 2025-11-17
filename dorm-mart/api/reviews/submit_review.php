@@ -41,17 +41,31 @@ try {
         exit;
     }
 
-    // Validate rating (0-5 in 0.5 increments)
+    // Validate rating (seller rating, 0-5 in 0.5 increments)
     $rating = isset($payload['rating']) ? (float)$payload['rating'] : -1;
     if ($rating < 0 || $rating > 5) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Rating must be between 0 and 5']);
+        echo json_encode(['success' => false, 'error' => 'Seller rating must be between 0 and 5']);
         exit;
     }
     // Check for 0.5 increments
     if (fmod($rating * 2, 1) !== 0.0) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Rating must be in 0.5 increments']);
+        echo json_encode(['success' => false, 'error' => 'Seller rating must be in 0.5 increments']);
+        exit;
+    }
+
+    // Validate product_rating (0-5 in 0.5 increments)
+    $productRating = isset($payload['product_rating']) ? (float)$payload['product_rating'] : -1;
+    if ($productRating < 0 || $productRating > 5) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Product rating must be between 0 and 5']);
+        exit;
+    }
+    // Check for 0.5 increments
+    if (fmod($productRating * 2, 1) !== 0.0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Product rating must be in 0.5 increments']);
         exit;
     }
 
@@ -190,13 +204,13 @@ try {
 
     // Insert the review with optional images
     $stmt = $conn->prepare(
-        'INSERT INTO product_reviews (product_id, buyer_user_id, seller_user_id, rating, review_text, image1_url, image2_url, image3_url) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO product_reviews (product_id, buyer_user_id, seller_user_id, rating, product_rating, review_text, image1_url, image2_url, image3_url) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare review insert');
     }
-    $stmt->bind_param('iiidssss', $productId, $userId, $sellerId, $rating, $reviewText, $image1Url, $image2Url, $image3Url);
+    $stmt->bind_param('iiiddssss', $productId, $userId, $sellerId, $rating, $productRating, $reviewText, $image1Url, $image2Url, $image3Url);
     $success = $stmt->execute();
     $reviewId = $stmt->insert_id;
     $stmt->close();

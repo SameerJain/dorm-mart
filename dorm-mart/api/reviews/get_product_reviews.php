@@ -65,7 +65,7 @@ try {
     // Get all reviews for this product
     $stmt = $conn->prepare(
         'SELECT pr.review_id, pr.product_id, pr.buyer_user_id, pr.seller_user_id,
-                pr.rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
+                pr.rating, pr.product_rating, pr.review_text, pr.image1_url, pr.image2_url, pr.image3_url,
                 pr.created_at, pr.updated_at,
                 ua.first_name, ua.last_name, ua.email
          FROM product_reviews pr
@@ -93,6 +93,7 @@ try {
             'buyer_user_id' => (int)$row['buyer_user_id'],
             'seller_user_id' => (int)$row['seller_user_id'],
             'rating' => (float)$row['rating'],
+            'product_rating' => isset($row['product_rating']) ? (float)$row['product_rating'] : null,
             'review_text' => escapeHtml($row['review_text']),
             'image1_url' => $row['image1_url'] ?? null,
             'image2_url' => $row['image2_url'] ?? null,

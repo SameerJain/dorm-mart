@@ -132,7 +132,7 @@ function PurchasedItem({ id, title, seller, date, image }) {
               className={`text-center px-4 py-2 text-white rounded active:scale-[0.99] focus:outline-none focus:ring-2 ${
                 hasReview
                   ? "bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 focus:ring-gray-700 cursor-pointer"
-                  : "bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 focus:ring-amber-700"
+                  : "bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 focus:ring-purple-700"
               }`}
             >
               {hasReview ? "Review Completed" : "Leave a Review"}
