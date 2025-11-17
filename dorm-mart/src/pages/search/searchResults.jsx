@@ -1,7 +1,6 @@
 // src/pages/search/searchResults.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import ProfileLink from "../../components/ProfileLink";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -227,10 +226,7 @@ export default function SearchResults() {
                           <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
                             {it.itemCondition ? <><span className="font-medium">Condition:</span> {it.itemCondition} · </> : null}
                             {it.itemLocation ? <><span className="font-medium">Location:</span> {it.itemLocation} · </> : null}
-                            <span className="font-medium">Seller:</span>{" "}
-                            <ProfileLink fallback={it.seller} hoverClass="hover:text-blue-600">
-                              {it.seller}
-                            </ProfileLink>
+                            <span className="font-medium">Seller:</span> {it.seller}
                           </p>
                           <p className="text-xs text-gray-400 dark:text-gray-500">{it.createdAt ? `Posted ${formatDate(it.createdAt)}` : null}</p>
                         </div>

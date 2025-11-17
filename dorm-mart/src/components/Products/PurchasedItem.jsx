@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { withFallbackImage } from "../../utils/imageFallback";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
-import ProfileLink from "../ProfileLink";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
@@ -108,12 +107,7 @@ function PurchasedItem({ id, title, seller, date, image }) {
                 {title}
               </Link>
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Sold by{" "}
-              <ProfileLink fallback={seller} className="font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600">
-                {seller}
-              </ProfileLink>
-            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Sold by {seller}</p>
           </div>
 
           {/* Bottom: date */}

@@ -6,7 +6,6 @@ import MessageCard from "./components/MessageCard";
 import ScheduleMessageCard from "./components/ScheduleMessageCard";
 import ImageModal from "./components/ImageModal";
 import ConfirmMessageCard from "./components/ConfirmMessageCard";
-import ProfileLink from "../../components/ProfileLink";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -42,6 +41,12 @@ export default function ChatPage() {
   const [attachOpen, setAttachOpen] = useState(false);
   const [attachedImage, setAttachedImage] = useState(null);
   const [hasActiveScheduledPurchase, setHasActiveScheduledPurchase] = useState(false);
+  const [usernameMap, setUsernameMap] = useState({});
+  const usernameCacheRef = useRef({});
+  const pendingUsernameRequests = useRef(new Set());
+  useEffect(() => {
+    usernameCacheRef.current = usernameMap;
+  }, [usernameMap]);
 
   const taRef = useRef(null);
   const [confirmStatus, setConfirmStatus] = useState(null);
@@ -63,6 +68,7 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const navigationState = location.state && typeof location.state === "object" ? location.state : null;
+  const activeConversation = conversations.find((c) => c.conv_id === activeConvId);
 
   /** Compute header label for the active chat */
   const activeLabel = useMemo(() => {
@@ -72,6 +78,74 @@ export default function ChatPage() {
     if (navigationState?.receiverId) return `User ${navigationState.receiverId}`;
     return "Select a chat";
   }, [conversations, activeConvId, navigationState]);
+  const activeReceiverId = activeConversation?.receiverId ?? navigationState?.receiverId ?? null;
+  const activeReceiverUsername = activeReceiverId ? usernameMap[activeReceiverId] : null;
+  const activeProfilePath = activeReceiverUsername
+    ? `/app/profile?username=${encodeURIComponent(activeReceiverUsername)}`
+    : null;
+
+  const ensureUsername = useCallback((userId) => {
+    if (!userId || usernameCacheRef.current[userId] || pendingUsernameRequests.current.has(userId)) {
+      return;
+    }
+    pendingUsernameRequests.current.add(userId);
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/profile/get_username.php?user_id=${encodeURIComponent(userId)}`, {
+          credentials: "include",
+        });
+        const json = await res.json().catch(() => null);
+        if (res.ok && json?.success && json.username) {
+          setUsernameMap((prev) => {
+            if (prev[userId]) return prev;
+            return { ...prev, [userId]: json.username };
+          });
+        }
+      } catch (_) {
+        // ignore errors
+      } finally {
+        pendingUsernameRequests.current.delete(userId);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    conversations.forEach((c) => c?.receiverId && ensureUsername(c.receiverId));
+  }, [conversations, ensureUsername]);
+
+  useEffect(() => {
+    if (navigationState?.receiverId) {
+      ensureUsername(navigationState.receiverId);
+    }
+  }, [navigationState, ensureUsername]);
+
+  const handleProfileHeaderClick = useCallback(() => {
+    if (!activeReceiverId) return;
+    if (activeProfilePath) {
+      navigate(activeProfilePath);
+      return;
+    }
+    pendingUsernameRequests.current.add(activeReceiverId);
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/profile/get_username.php?user_id=${encodeURIComponent(activeReceiverId)}`, {
+          credentials: "include",
+        });
+        const json = await res.json().catch(() => null);
+        if (res.ok && json?.success && json.username) {
+          setUsernameMap((prev) => {
+            if (prev[activeReceiverId]) return prev;
+            return { ...prev, [activeReceiverId]: json.username };
+          });
+          navigate(`/app/profile?username=${encodeURIComponent(json.username)}`);
+        }
+      } catch (_) {
+        // ignore errors
+      } finally {
+        pendingUsernameRequests.current.delete(activeReceiverId);
+      }
+    })();
+  }, [activeReceiverId, activeProfilePath, navigate]);
 
   /** Mobile back button handler: go back or to /app as fallback */
   function goBackOrHome() {
@@ -189,9 +263,6 @@ export default function ChatPage() {
     setPendingDeleteConvId(null);
     setDeleteError('');
   }
-
-  /** Lookup for active conversation object */
-  const activeConversation = conversations.find(c => c.conv_id === activeConvId);
 
   /** Detect listing intro message and whether current user is seller */
   const hasListingIntro = messages.some(m => m.metadata?.type === "listing_intro");
@@ -356,6 +427,8 @@ export default function ChatPage() {
       }
     }
     const hoverColor = sectionType === 'buyers' ? "hover:bg-green-600" : "hover:bg-blue-600";
+    const profileUsername = usernameMap[c.receiverId] || null;
+    const profilePath = profileUsername ? `/app/profile?username=${encodeURIComponent(profileUsername)}` : null;
 
     return (
       <li key={c.conv_id} className="relative group">
@@ -376,13 +449,20 @@ export default function ChatPage() {
                 {c.productTitle || `Item #${c.productId}`}
               </span>
             )}
-            <ProfileLink
-              fallback={c.receiverName}
-              className="truncate text-sm font-medium"
-              hoverClass="hover:text-blue-600"
-            >
-              {c.receiverName}
-            </ProfileLink>
+            {profilePath ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(profilePath);
+                }}
+                className="truncate text-left text-sm font-medium text-blue-600 hover:underline"
+              >
+                {c.receiverName}
+              </button>
+            ) : (
+              <span className="truncate text-sm">{c.receiverName}</span>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {c.productImageUrl && (
@@ -499,13 +579,14 @@ export default function ChatPage() {
             <div className={`relative border-4 ${headerBgColor} px-5 py-4`}>
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  {activeConvId ? (
-                    <ProfileLink
-                      fallback={activeLabel}
-                      className="text-lg font-semibold text-gray-900 dark:text-gray-100"
+                  {activeReceiverId ? (
+                    <button
+                      type="button"
+                      onClick={handleProfileHeaderClick}
+                      className="text-left text-lg font-semibold text-blue-600 hover:underline disabled:opacity-50"
                     >
                       {activeLabel}
-                    </ProfileLink>
+                    </button>
                   ) : (
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{activeLabel}</h2>
                   )}
