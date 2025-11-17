@@ -88,6 +88,14 @@ try {
             }
         }
 
+        $createdAtIso = null;
+        if (!empty($row['created_at'])) {
+            $dtCreated = date_create($row['created_at'], new DateTimeZone('UTC'));
+            if ($dtCreated) {
+                $createdAtIso = $dtCreated->format(DateTime::ATOM);
+            }
+        }
+
         $photos = [];
         if (!empty($row['item_photos'])) {
             $decoded = json_decode((string)$row['item_photos'], true);
@@ -126,7 +134,7 @@ try {
             'description' => isset($row['description']) ? (string)$row['description'] : null,
             'status' => (string)$row['status'],
             'buyer_response_at' => $responseAtIso,
-            'created_at' => $row['created_at'],
+            'created_at' => $createdAtIso ? $createdAtIso : $row['created_at'],
             'updated_at' => $row['updated_at'],
             'negotiated_price' => $negotiatedPrice,
             'is_trade' => $isTrade,
