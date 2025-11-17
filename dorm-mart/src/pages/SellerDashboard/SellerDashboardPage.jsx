@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { withFallbackImage } from '../../utils/imageFallback';
 import ReviewModal from '../Reviews/ReviewModal';
 import StarRating from '../Reviews/StarRating';
-import ProfileLink from '../../components/ProfileLink';
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -451,21 +450,7 @@ function SellerDashboardPage() {
                                             </button>
                                             {listing.price > 0 && <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">${listing.price}</p>}
                                             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                                                {listing.sold_by ? (
-                                                    <>
-                                                        Sold by{" "}
-                                                        <ProfileLink
-                                                            fallback={listing.sold_by}
-                                                            className="font-medium text-gray-700 dark:text-gray-200"
-                                                            hoverClass="hover:text-blue-600"
-                                                        >
-                                                            {listing.sold_by}
-                                                        </ProfileLink>
-                                                    </>
-                                                ) : (
-                                                    "Posted"
-                                                )}{" "}
-                                                - {new Date(listing.createdAt).toLocaleDateString()}
+                                                {listing.sold_by ? `Sold by ${listing.sold_by}` : 'Posted'} - {new Date(listing.createdAt).toLocaleDateString()}
                                             </p>
                                         </div>
                                     </div>

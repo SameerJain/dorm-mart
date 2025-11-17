@@ -9,6 +9,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/profile_helpers.php';
 
 setSecurityHeaders();
 setSecureCORS();
@@ -175,73 +176,3 @@ SQL;
     return $reviews;
 }
 
-function derive_username(string $email): string
-{
-    $email = trim($email);
-    if ($email === '') {
-        return '';
-    }
-    $atPos = strpos($email, '@');
-    if ($atPos === false) {
-        return $email;
-    }
-    return substr($email, 0, $atPos);
-}
-
-function format_profile_photo_url($value): ?string
-{
-    return format_media_image_url($value);
-}
-
-function format_review_image_url($value): ?string
-{
-    return format_media_image_url($value);
-}
-
-function format_media_image_url($value): ?string
-{
-    if (!is_string($value)) {
-        return null;
-    }
-    $trimmed = trim($value);
-    if ($trimmed === '') {
-        return null;
-    }
-
-    if (preg_match('#^https?://#i', $trimmed) || strpos($trimmed, 'data:') === 0) {
-        return $trimmed;
-    }
-
-    if (strpos($trimmed, '/api/image.php') === 0) {
-        return $trimmed;
-    }
-
-    if ($trimmed[0] !== '/') {
-        $trimmed = '/' . ltrim($trimmed, '/');
-    }
-
-    return build_profile_image_proxy_url($trimmed);
-}
-
-function build_profile_image_proxy_url(string $source): string
-{
-    $apiBase = rtrim(get_profile_api_base_path(), '/');
-    if ($apiBase === '') {
-        $apiBase = '/api';
-    }
-    return $apiBase . '/image.php?url=' . rawurlencode($source);
-}
-
-function get_profile_api_base_path(): string
-{
-    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-    if ($scriptName === '') {
-        return '/api';
-    }
-    $profileDir = dirname($scriptName);
-    $apiBase = dirname($profileDir);
-    if ($apiBase === '.' || $apiBase === DIRECTORY_SEPARATOR) {
-        return '/api';
-    }
-    return $apiBase;
-}

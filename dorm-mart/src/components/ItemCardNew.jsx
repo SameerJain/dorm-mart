@@ -2,7 +2,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { withFallbackImage } from "../utils/imageFallback";
-import ProfileLink from "./ProfileLink";
 
 export default function ItemCardNew({
   id,
@@ -95,16 +94,10 @@ export default function ItemCardNew({
 
         {/* seller */}
         {seller ? (
-          <ProfileLink
-            username={sellerUsername}
-            email={sellerEmail}
-            fallback={seller}
-            className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1"
-            hoverClass="hover:text-blue-600"
-          >
+          <p className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             {seller}
-          </ProfileLink>
+          </p>
         ) : null}
 
         {/* price */}

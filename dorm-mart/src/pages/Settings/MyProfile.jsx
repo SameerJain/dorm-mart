@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
-import ProfileLink from "../../components/ProfileLink";
 import SettingsLayout from "./SettingsLayout";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
@@ -144,14 +143,7 @@ function ReviewRow({ review }) {
       <div className="space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="space-y-0.5">
-            <ProfileLink
-              username={reviewerUsername}
-              email={review.reviewer_email}
-              fallback={review.reviewer_name}
-              className="text-base font-semibold text-slate-900"
-            >
-              {review.reviewer_name || "Anonymous"}
-            </ProfileLink>
+            <p className="text-base font-semibold text-slate-900">{review.reviewer_name || "Anonymous"}</p>
             {review.reviewer_email ? (
               <p className="text-sm text-slate-500">{review.reviewer_email}</p>
             ) : (
@@ -450,16 +442,11 @@ function MyProfilePage() {
                       {avatarUploading ? "Uploading..." : "Edit"}
                     </span>
                   </button>
-                  <ProfileLink
-                    username={profile?.username}
-                    email={profile?.email}
-                    fallback={profile?.name}
-                    className="space-y-1 text-center sm:text-left text-slate-900"
-                  >
+                  <div className="space-y-1 text-center sm:text-left text-slate-900">
                     <p className="text-2xl font-serif font-semibold">{profile?.name}</p>
                     <p className="text-sm">@{profile?.username}</p>
                     <p className="text-sm">{profile?.email}</p>
-                  </ProfileLink>
+                  </div>
                 </div>
                 <div className="mt-4 flex flex-col items-center gap-1 text-center text-sm text-slate-500 sm:items-start sm:text-left">
                   <StarRating rating={ratingValue} size={24} label="Average rating" />
