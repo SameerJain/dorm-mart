@@ -1,58 +1,87 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
 import SettingsLayout from "./SettingsLayout";
 
-const MOCK_PROFILE_RESPONSE = {
-  image_url: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80",
-  name: "Jordan Atkinson",
-  username: "jordan.a",
-  email: "jordan.atkinson@example.com",
-  avg_rating: "4.5",
-  bio: "Third-year student reselling gently used dorm essentials. Happy to meet on North Campus!",
-  instagram: "https://instagram.com/jordan.dorm",
-  twitter: "https://twitter.com/jordan_dorm",
-  facebook: "",
-  reviews: [
-    {
-      reviewer_name: "Emily H.",
-      reviewer_email: "emilyh@example.com",
-      product_title: "Eco Ceramic Mug",
-      review:
-        "Jordan packed the mug really well and it arrived without a single scratch. Shipping updates were timely, too!",
-      image_1: "https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=400&q=80",
-      image_2: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80",
-      image_3: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80",
-      rating: "5",
-    },
-    {
-      reviewer_name: "Tyrese Q.",
-      reviewer_email: "tyrese.q@example.com",
-      product_title: "Steam Iron",
-      review:
-        "Item was gently used exactly as described. Took a little longer to meet up but communication stayed friendly.",
-      image_1: "https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=400&q=80",
-      image_2: "",
-      image_3: "",
-      rating: "4",
-    },
-    {
-      reviewer_name: "Kai Berg",
-      reviewer_email: "kaib@example.com",
-      product_title: "LED Desk Lamp",
-      review:
-        "Appreciated the extra care taken to show the lamp working before purchase. Would definitely buy again.",
-      image_1: "",
-      image_2: "",
-      image_3: "",
-      rating: "4.5",
-    },
-  ],
-};
+const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
-// Placeholder API call name to be swapped with the real backend integration later.
-async function fetchSettingsProfile() {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(MOCK_PROFILE_RESPONSE), 500);
+async function fetchSettingsProfile(apiBase = API_BASE) {
+  const response = await fetch(`${apiBase}/profile/my_profile.php`, {
+    method: "GET",
+    credentials: "include",
   });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = null;
+  }
+  console.log(data);
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.error || "Unable to load profile information.");
+  }
+
+  const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+  const profile = data.profile ?? {};
+
+  return {
+    name: profile.name || "",
+    username: profile.username || "",
+    email: profile.email || "",
+    image_url: profile.image_url || "",
+    bio: (profile.bio || "").slice(0, 200),
+    instagram: profile.instagram || "",
+    avg_rating: Number(profile.avg_rating ?? 0) || 0,
+    review_count: profile.review_count ?? reviews.length,
+    reviews,
+  };
+}
+
+async function saveProfileFields(payload, apiBase = API_BASE) {
+  const response = await fetch(`${apiBase}/profile/update_profile.php`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.error || "Unable to update profile.");
+  }
+
+  return data.profile ?? {};
+}
+
+async function uploadProfilePhoto(file, apiBase = API_BASE) {
+  const formData = new FormData();
+  formData.append("photo", file);
+
+  const response = await fetch(`${apiBase}/profile/upload_profile_photo.php`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  if (!response.ok || !data?.success || !data.image_url) {
+    throw new Error(data?.error || "Unable to upload profile photo.");
+  }
+
+  return data.image_url;
 }
 
 function StarIcon({ fillFraction, size = 28 }) {
@@ -140,7 +169,7 @@ function ReviewRow({ review }) {
   );
 }
 
-function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear }) {
+function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear, disabled = false }) {
   return (
     <div className="space-y-2 rounded-2xl border border-slate-100 bg-white/60 p-4 shadow-sm">
       <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
@@ -148,7 +177,8 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear 
         <button
           type="button"
           onClick={onClear}
-          className="text-xs font-medium text-rose-500 hover:text-rose-600"
+          disabled={disabled}
+          className={`text-xs font-medium text-rose-500 hover:text-rose-600 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           Delete
         </button>
@@ -164,9 +194,10 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear 
         <button
           type="button"
           onClick={onSave}
-          className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500"
+          disabled={disabled}
+          className={`rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
-          Save
+          {disabled ? "Saving..." : "Save"}
         </button>
       </div>
     </div>
@@ -180,12 +211,16 @@ function MyProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [bio, setBio] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [twitter, setTwitter] = useState("");
-  const [facebook, setFacebook] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] = useState({ message: "", tone: "success" });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef(null);
   const blobUrlRef = useRef(null);
   const feedbackTimerRef = useRef(null);
+
+  const updateProfileState = (partial) => {
+    setProfile((prev) => (prev ? { ...prev, ...partial } : prev));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -198,11 +233,10 @@ function MyProfilePage() {
         setAvatarPreview(data.image_url || "");
         setBio((data.bio || "").slice(0, 200));
         setInstagram(data.instagram || "");
-        setTwitter(data.twitter || "");
-        setFacebook(data.facebook || "");
       } catch (err) {
         if (!isMounted) return;
-        setError("Unable to load profile information. Please try again later.");
+        const message = err instanceof Error ? err.message : "Unable to load profile information. Please try again later.";
+        setError(message);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -220,12 +254,12 @@ function MyProfilePage() {
     };
   }, []);
 
-  const showFeedback = (message) => {
-    setFeedback(message);
+  const showFeedback = (message, tone = "success") => {
+    setFeedback({ message, tone });
     if (feedbackTimerRef.current) {
       clearTimeout(feedbackTimerRef.current);
     }
-    feedbackTimerRef.current = setTimeout(() => setFeedback(""), 2400);
+    feedbackTimerRef.current = setTimeout(() => setFeedback({ message: "", tone: "success" }), 2400);
   };
 
   const handleFieldSave = (label) => {
@@ -244,18 +278,44 @@ function MyProfilePage() {
   }, [profile]);
 
   const handleAvatarClick = () => {
+    if (avatarUploading) return;
     fileInputRef.current?.click();
   };
 
-  const handleAvatarChange = (event) => {
+  const handleAvatarChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    const fallback = profile?.image_url || "";
     const nextUrl = URL.createObjectURL(file);
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
     }
     blobUrlRef.current = nextUrl;
     setAvatarPreview(nextUrl);
+    setAvatarUploading(true);
+
+    try {
+      const uploadedUrl = await uploadProfilePhoto(file);
+      const updated = await saveProfileFields({ profile_photo: uploadedUrl });
+      const finalUrl = updated.image_url || uploadedUrl;
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      setAvatarPreview(finalUrl);
+      updateProfileState({ image_url: finalUrl });
+      showFeedback("Profile photo updated");
+    } catch (err) {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      setAvatarPreview(fallback);
+      const message = err instanceof Error ? err.message : "Unable to update profile photo.";
+      showFeedback(message, "error");
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const handleBioChange = (event) => {
@@ -263,39 +323,96 @@ function MyProfilePage() {
     setBio(next);
   };
 
+  const persistBio = async (value, successMessage) => {
+    const previousBio = bio;
+    setBio(value);
+    setIsSavingProfile(true);
+    try {
+      const updated = await saveProfileFields({ bio: value });
+      const sanitized = (updated.bio ?? value ?? "").slice(0, 200);
+      setBio(sanitized);
+      updateProfileState({ bio: sanitized });
+      showFeedback(successMessage);
+    } catch (err) {
+      setBio(previousBio);
+      const message = err instanceof Error ? err.message : "Unable to update bio.";
+      showFeedback(message, "error");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const isValidInstagramUrl = (value) => {
+    if (!value) return true;
+    try {
+      const url = new URL(value.trim());
+      const hostname = url.hostname.replace(/^www\./i, "").toLowerCase();
+      if (!hostname.endsWith("instagram.com")) {
+        return false;
+      }
+      return url.pathname.length > 1; // ensure something after domain
+    } catch (_err) {
+      return false;
+    }
+  };
+
+  const persistInstagram = async (value, successMessage) => {
+    const previous = instagram;
+    const trimmed = value.trim();
+    if (trimmed.length > 150) {
+      showFeedback("Instagram link must be 150 characters or fewer.", "error");
+      return;
+    }
+    if (!isValidInstagramUrl(trimmed)) {
+      showFeedback("Please enter a valid Instagram profile link.", "error");
+      return;
+    }
+    setInstagram(trimmed);
+    setIsSavingProfile(true);
+    try {
+      const updated = await saveProfileFields({ instagram: trimmed });
+      const sanitized = updated.instagram ?? trimmed ?? "";
+      setInstagram(sanitized);
+      updateProfileState({ instagram: sanitized });
+      showFeedback(successMessage);
+    } catch (err) {
+      setInstagram(previous);
+      const message = err instanceof Error ? err.message : "Unable to update Instagram link.";
+      showFeedback(message, "error");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleBioSave = () => persistBio(bio, "Bio saved");
+  const handleBioClear = () => persistBio("", "Bio cleared");
+  const handleInstagramSave = () => persistInstagram(instagram, "Instagram saved");
+  const handleInstagramClear = () => persistInstagram("", "Instagram deleted");
+
   const reviewList = profile?.reviews ?? [];
   const bioRemaining = 200 - bio.length;
   const socialFields = [
     {
       label: "Instagram",
       value: instagram,
-      setter: setInstagram,
+      setter: (next) => setInstagram(next.slice(0, 150)),
       placeholder: "https://instagram.com/yourhandle",
-    },
-    {
-      label: "Twitter / X",
-      value: twitter,
-      setter: setTwitter,
-      placeholder: "https://twitter.com/yourhandle",
-    },
-    {
-      label: "Facebook",
-      value: facebook,
-      setter: setFacebook,
-      placeholder: "https://facebook.com/yourprofile",
+      onSave: handleInstagramSave,
+      onClear: handleInstagramClear,
+      disabled: isSavingProfile,
     },
   ];
 
   return (
     <SettingsLayout>
-      <div className="flex h-full flex-col items-center overflow-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-2 pb-3 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 lg:px-10">
+      <div className="flex h-full w-full flex-col items-center overflow-y-auto bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-2 pb-3 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 lg:px-10">
         {isLoading ? (
-          <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500">Loading profile…</div>
+          <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500">Loading profile...</div>
         ) : error ? (
           <div className="flex h-full w-full items-center justify-center text-center text-red-600">{error}</div>
         ) : (
-          <div className="flex h-full w-full max-w-[1500px] flex-1 gap-10 overflow-hidden">
-            <section className="flex w-full max-w-lg flex-shrink-0 flex-col gap-6 lg:max-w-xl xl:max-w-[520px]">
+          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-8 overflow-visible min-h-0 xl:flex-row xl:gap-10">
+            <section className="flex w-full flex-col gap-6 xl:max-w-[520px]">
               <div className="rounded-3xl border border-slate-100 bg-white/80 p-6 shadow">
                 <input
                   ref={fileInputRef}
@@ -308,14 +425,17 @@ function MyProfilePage() {
                   <button
                     type="button"
                     onClick={handleAvatarClick}
-                    className="relative flex h-32 w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-4 ring-blue-100 transition hover:brightness-105"
+                    disabled={avatarUploading}
+                    className={`relative flex h-32 w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-4 ring-blue-100 transition hover:brightness-105 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
                   >
                     {avatarPreview ? (
                       <img src={avatarPreview} alt="Profile" className="h-full w-full rounded-full object-cover" />
                     ) : (
                       <span className="text-sm font-semibold text-slate-500">Upload photo</span>
                     )}
-                    <span className="absolute bottom-1.5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-semibold text-white shadow">Edit</span>
+                    <span className="absolute bottom-1.5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-semibold text-white shadow">
+                      {avatarUploading ? "Uploading..." : "Edit"}
+                    </span>
                   </button>
                   <div className="space-y-1 text-center sm:text-left">
                     <p className="text-2xl font-serif font-semibold text-slate-900">{profile?.name}</p>
@@ -337,8 +457,9 @@ function MyProfilePage() {
                       <span>Bio</span>
                       <button
                         type="button"
-                        onClick={() => handleFieldClear("Bio", setBio)}
-                        className="text-xs font-medium text-rose-500 hover:text-rose-600"
+                        onClick={handleBioClear}
+                        disabled={isSavingProfile}
+                        className={`text-xs font-medium text-rose-500 hover:text-rose-600 ${isSavingProfile ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
                         Clear
                       </button>
@@ -357,10 +478,11 @@ function MyProfilePage() {
                     <div className="mt-3 flex justify-end">
                       <button
                         type="button"
-                        onClick={() => handleFieldSave("Bio")}
-                        className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500"
+                        onClick={handleBioSave}
+                        disabled={isSavingProfile}
+                        className={`rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 ${isSavingProfile ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
-                        Save Bio
+                        {isSavingProfile ? "Saving..." : "Save Bio"}
                       </button>
                     </div>
                   </div>
@@ -373,30 +495,31 @@ function MyProfilePage() {
                         placeholder={field.placeholder}
                         value={field.value}
                         onChange={(event) => field.setter(event.target.value)}
-                        onSave={() => handleFieldSave(field.label)}
-                        onClear={() => handleFieldClear(field.label, field.setter)}
+                        onSave={field.onSave ?? (() => handleFieldSave(field.label))}
+                        onClear={field.onClear ?? (() => handleFieldClear(field.label, field.setter))}
+                        disabled={Boolean(field.disabled)}
                       />
                     ))}
                   </div>
                 </div>
-                {feedback && (
-                  <p className="mt-4 text-sm font-medium text-emerald-600">{feedback}</p>
+                {feedback.message && (
+                  <p
+                    className={`mt-4 text-sm font-medium ${
+                      feedback.tone === "error" ? "text-rose-600" : "text-emerald-600"
+                    }`}
+                  >
+                    {feedback.message}
+                  </p>
                 )}
               </div>
             </section>
 
-            <section className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white/90 p-6 shadow">
+            <section className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white/90 p-6 shadow min-h-0">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900">Reviews</h2>
                   <p className="text-sm text-slate-500">{reviewList.length} recorded review{reviewList.length === 1 ? "" : "s"}</p>
                 </div>
-                <button
-                  type="button"
-                  className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-blue-700 transition hover:border-blue-400 hover:bg-blue-50"
-                >
-                  Download summary
-                </button>
               </div>
               <div className="mt-4 flex-1 overflow-y-auto pr-1">
                 {reviewList.length === 0 ? (
@@ -404,7 +527,7 @@ function MyProfilePage() {
                 ) : (
                   <div className="flex flex-col gap-4 pb-4">
                     {reviewList.map((review, index) => (
-                      <ReviewRow key={`${review.reviewer_email}-${index}`} review={review} />
+                      <ReviewRow key={review.review_id || review.reviewer_email || index} review={review} />
                     ))}
                   </div>
                 )}
