@@ -3,7 +3,8 @@ START TRANSACTION;
 -- Seed data for review feature testing
 -- Creates a completed purchase: Marble Notebook sold by testuserschedulered@buffalo.edu to testuser@buffalo.edu
 
--- Get user IDs (assuming they exist from previous migrations)
+-- Get user IDs (users must exist from previous migrations/data files)
+-- If users don't exist, these will be NULL and subsequent operations will fail
 SELECT user_id INTO @buyer_id
 FROM user_accounts
 WHERE email = 'testuser@buffalo.edu'
@@ -15,6 +16,9 @@ WHERE email = 'testuserschedulered@buffalo.edu'
 LIMIT 1;
 
 -- Delete any existing Marble Notebook item and related records (idempotent cleanup)
+-- First get the product_id if it exists
+SET @existing_product_id = (SELECT product_id FROM INVENTORY WHERE title = 'Marble Notebook' AND seller_id = @seller_id LIMIT 1);
+
 DELETE FROM confirm_purchase_requests
 WHERE inventory_product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'Marble Notebook');
 
@@ -24,8 +28,22 @@ WHERE inventory_product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'M
 DELETE FROM product_reviews
 WHERE product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'Marble Notebook');
 
+-- Also delete any reviews by this buyer for this seller (cleanup orphaned reviews)
+DELETE FROM product_reviews
+WHERE buyer_user_id = @buyer_id AND seller_user_id = @seller_id;
+
 DELETE FROM purchased_items
-WHERE title = 'Marble Notebook' AND buyer_user_id = @buyer_id AND seller_user_id = @seller_id;
+WHERE title = 'Marble Notebook';
+
+-- Remove from purchase_history JSON array if exists
+UPDATE purchase_history
+SET items = JSON_REMOVE(
+  items,
+  JSON_UNQUOTE(JSON_SEARCH(items, 'one', CAST(@existing_product_id AS CHAR)))
+)
+WHERE user_id = @buyer_id 
+  AND @existing_product_id IS NOT NULL
+  AND JSON_SEARCH(items, 'one', CAST(@existing_product_id AS CHAR)) IS NOT NULL;
 
 DELETE FROM INVENTORY
 WHERE title = 'Marble Notebook' AND seller_id = @seller_id;
@@ -102,6 +120,10 @@ WHERE user1_id = LEAST(@buyer_id, @seller_id)
 LIMIT 1;
 
 -- Create scheduled_purchase_requests record (required for receipt)
+-- Delete any existing one first to ensure clean state
+DELETE FROM scheduled_purchase_requests
+WHERE inventory_product_id = @product_id;
+
 -- Generate a unique verification code by using product_id + timestamp to ensure uniqueness
 INSERT INTO scheduled_purchase_requests (
   inventory_product_id,
@@ -135,7 +157,11 @@ WHERE inventory_product_id = @product_id
   AND buyer_user_id = @buyer_id
 LIMIT 1;
 
--- Create confirm_purchase_requests record (required for receipt) - only if it doesn't exist
+-- Create confirm_purchase_requests record (required for receipt)
+-- Delete any existing one first to ensure clean state
+DELETE FROM confirm_purchase_requests
+WHERE inventory_product_id = @product_id;
+
 INSERT INTO confirm_purchase_requests (
   scheduled_request_id,
   inventory_product_id,
@@ -151,8 +177,7 @@ INSERT INTO confirm_purchase_requests (
   expires_at,
   buyer_response_at,
   payload_snapshot
-)
-SELECT 
+) VALUES (
   @scheduled_request_id,
   @product_id,
   @seller_id,
@@ -173,15 +198,16 @@ SELECT
     'is_trade', FALSE,
     'trade_item_description', NULL
   )
-WHERE NOT EXISTS (
-  SELECT 1 FROM confirm_purchase_requests
-  WHERE inventory_product_id = @product_id
-    AND seller_user_id = @seller_id
-    AND buyer_user_id = @buyer_id
 );
 
 -- Create purchase record in purchased_items table
+-- Note: item_id in purchased_items should match product_id from INVENTORY
+-- This allows reviews to reference the correct product
+DELETE FROM purchased_items 
+WHERE item_id = @product_id;
+
 INSERT INTO purchased_items (
+  item_id,
   title,
   sold_by,
   transacted_at,
@@ -189,6 +215,7 @@ INSERT INTO purchased_items (
   seller_user_id,
   image_url
 ) VALUES (
+  @product_id,
   'Marble Notebook',
   CONCAT(@seller_first_name, ' ', @seller_last_name),
   NOW(),
@@ -212,6 +239,9 @@ ON DUPLICATE KEY UPDATE
     @product_id
   ),
   updated_at = NOW();
+
+-- Note: Review should be manually submitted by tester (testuser@buffalo.edu)
+-- after this data is seeded. The purchase record above allows the buyer to submit a review.
 
 COMMIT;
 

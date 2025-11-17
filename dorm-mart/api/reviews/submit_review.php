@@ -220,15 +220,23 @@ try {
     }
 
     // Update seller's average seller_rating in user_accounts
-    $stmt = $conn->prepare(
-        'UPDATE user_accounts SET seller_rating = (
-            SELECT AVG(rating) FROM product_reviews WHERE seller_user_id = ?
-        ) WHERE user_id = ?'
-    );
-    if ($stmt) {
-        $stmt->bind_param('ii', $sellerId, $sellerId);
-        $stmt->execute();
-        $stmt->close();
+    // Check if seller_rating column exists before updating (graceful degradation)
+    try {
+        $checkColumn = $conn->query("SHOW COLUMNS FROM user_accounts LIKE 'seller_rating'");
+        if ($checkColumn && $checkColumn->num_rows > 0) {
+            $stmt = $conn->prepare(
+                'UPDATE user_accounts SET seller_rating = (
+                    SELECT AVG(rating) FROM product_reviews WHERE seller_user_id = ?
+                ) WHERE user_id = ?'
+            );
+            if ($stmt) {
+                $stmt->bind_param('ii', $sellerId, $sellerId);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+    } catch (Throwable $updateError) {
+        // Silently ignore seller_rating update failures to not break review submission
     }
 
     $conn->close();
@@ -237,7 +245,7 @@ try {
         'success' => true,
         'review_id' => $reviewId,
         'message' => 'Review submitted successfully'
-    ]);
+    ], JSON_UNESCAPED_SLASHES);
 
 } catch (Throwable $e) {
     error_log('submit_review.php error: ' . $e->getMessage());

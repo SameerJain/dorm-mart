@@ -27,6 +27,10 @@ function BuyerRatingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [existingRating, setExistingRating] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [confirmCallback, setConfirmCallback] = useState(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
 
   // Fetch existing rating when modal opens
   useEffect(() => {
@@ -37,6 +41,10 @@ function BuyerRatingModal({
       setExistingRating(null);
       setRating(0);
       setError(null);
+      setShowConfirmModal(false);
+      setConfirmMessage("");
+      setConfirmCallback(null);
+      setPendingSubmit(false);
     }
   }, [isOpen, productId, buyerId]);
 
@@ -109,19 +117,45 @@ function BuyerRatingModal({
   }, [isOpen]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     
     if (rating <= 0) {
       setError("Please select a rating");
       return;
     }
 
-    // Show confirmation dialog before submitting
-    const confirmed = window.confirm("Are you sure you want to submit this rating? Changes cannot be made.");
-    if (!confirmed) {
-      return;
-    }
+    if (isSubmitting || pendingSubmit) return; // Prevent double submission
 
+    // Set pending submit flag to prevent direct submission
+    setPendingSubmit(true);
+    
+    // Show confirmation dialog before submitting
+    const message = "Are you sure you want to submit this rating? Changes cannot be made.";
+    setConfirmMessage(message);
+    
+    // Create callback function that will be called when user confirms
+    const callback = async () => {
+      // Close confirmation modal first
+      setShowConfirmModal(false);
+      setConfirmMessage("");
+      // Then proceed with submission
+      await proceedWithSubmit();
+      // Reset state after submission completes
+      setConfirmCallback(null);
+      setPendingSubmit(false);
+    };
+    // Store the callback function directly
+    setConfirmCallback(() => callback);
+    
+    // Set state to show confirmation modal
+    setShowConfirmModal(true);
+    return; // Important: stop execution here, don't proceed with submission
+  };
+
+  const proceedWithSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
 
@@ -166,6 +200,12 @@ function BuyerRatingModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+      onClick={(e) => {
+        // Prevent closing main modal when confirmation modal is open
+        if (!showConfirmModal && e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full"
@@ -283,6 +323,74 @@ function BuyerRatingModal({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div 
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" 
+          role="dialog" 
+          aria-modal="true"
+          onClick={(e) => {
+            // Close confirmation modal if clicking backdrop
+            if (e.target === e.currentTarget) {
+              setShowConfirmModal(false);
+              setConfirmMessage("");
+              setConfirmCallback(null);
+              setPendingSubmit(false); // Reset pending submit flag
+            }
+          }}
+        >
+          <div 
+            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 pt-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Ready to Submit?</h2>
+              <p className="mt-2 text-gray-600 dark:text-gray-300">{confirmMessage}</p>
+            </div>
+            <div className="px-6 py-4 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setConfirmMessage("");
+                  setConfirmCallback(null);
+                  setPendingSubmit(false); // Reset pending submit flag
+                }}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirmCallback) {
+                    try {
+                      // confirmCallback is the actual callback function - call it directly
+                      await confirmCallback();
+                    } catch (err) {
+                      // Error is already handled in proceedWithSubmit
+                      // Reset confirmation modal state on error
+                      setShowConfirmModal(false);
+                      setConfirmMessage("");
+                      setConfirmCallback(null);
+                      setPendingSubmit(false);
+                    }
+                  } else {
+                    setShowConfirmModal(false);
+                    setConfirmMessage("");
+                    setConfirmCallback(null);
+                    setPendingSubmit(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

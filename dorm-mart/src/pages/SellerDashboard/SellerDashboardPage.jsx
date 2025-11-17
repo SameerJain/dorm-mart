@@ -172,10 +172,12 @@ function SellerDashboardPage() {
     useEffect(() => {
         const fetchReviews = async () => {
             const soldListings = listings.filter(l => String(l.status || '').toLowerCase() === 'sold');
+            console.log('[Review Fetch] Found sold listings:', soldListings.length, soldListings.map(l => ({ id: l.id, title: l.title })));
             const reviewMap = {};
 
             for (const listing of soldListings) {
                 try {
+                    console.log(`[Review Fetch] Fetching reviews for product ID: ${listing.id} (${listing.title})`);
                     const response = await fetch(
                         `${API_BASE}/reviews/get_product_reviews.php?product_id=${listing.id}`,
                         {
@@ -184,18 +186,36 @@ function SellerDashboardPage() {
                         }
                     );
 
+                    console.log(`[Review Fetch] Response status for product ${listing.id}:`, response.status, response.ok);
+
                     if (response.ok) {
                         const result = await response.json();
+                        console.log(`[Review Fetch] API result for product ${listing.id}:`, result);
+                        console.log(`[Review Fetch] result.success:`, result.success);
+                        console.log(`[Review Fetch] result.reviews:`, result.reviews);
+                        console.log(`[Review Fetch] result.reviews length:`, result.reviews?.length);
+                        console.log(`[Review Fetch] Full result object:`, JSON.stringify(result, null, 2));
                         if (result.success && result.reviews && result.reviews.length > 0) {
                             // Store the first review (assuming one review per product per buyer)
                             reviewMap[listing.id] = result.reviews[0];
+                            console.log(`[Review Fetch] Stored review for product ${listing.id}:`, result.reviews[0]);
+                        } else {
+                            console.log(`[Review Fetch] No reviews found for product ${listing.id} - Reason:`, 
+                                !result.success ? 'API returned success=false' : 
+                                !result.reviews ? 'reviews property missing' : 
+                                'reviews array is empty');
                         }
+                    } else {
+                        const errorResult = await response.json().catch(() => ({ error: 'Failed to parse error' }));
+                        console.error(`[Review Fetch] Failed to fetch reviews for product ${listing.id}:`, response.status, errorResult);
                     }
                 } catch (error) {
-                    console.error(`Error fetching reviews for product ${listing.id}:`, error);
+                    console.error(`[Review Fetch] Error fetching reviews for product ${listing.id}:`, error);
                 }
             }
 
+            console.log('[Review Fetch] Final review map:', reviewMap);
+            console.log('[Review Fetch] Review map has', Object.keys(reviewMap).length, 'reviews');
             setProductReviews(reviewMap);
         };
 
@@ -569,16 +589,6 @@ function SellerDashboardPage() {
                                                 </button>
                                             )}
 
-                                            {/* View Review Button - only show if review exists */}
-                                            {productReviews[listing.id] && (
-                                                <button
-                                                    onClick={() => handleViewReview(listing.id, listing.title)}
-                                                    className="font-medium text-sm sm:text-base text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
-                                                >
-                                                    View Review
-                                                </button>
-                                            )}
-
                                             {/* Rate Buyer Button - only show for sold items */}
                                             {String(listing.status || '').toLowerCase() === 'sold' && listing.buyer_user_id && (
                                                 <button
@@ -595,25 +605,39 @@ function SellerDashboardPage() {
                                                     {buyerRatings[listing.id] ? 'Buyer Rated' : 'Rate Buyer'}
                                                 </button>
                                             )}
+
+                                            {/* View Review Button - only show if review exists */}
+                                            {productReviews[listing.id] && (
+                                                <button
+                                                    onClick={() => handleViewReview(listing.id, listing.title)}
+                                                    className="font-medium text-sm sm:text-base text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                                                >
+                                                    View Review
+                                                </button>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-3 flex-wrap">
                                             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                                                 Wishlisted: {String(listing.wishlisted)}
                                             </p>
                                             {productReviews[listing.id] && productReviews[listing.id].rating && (
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">Seller:</span>
-                                                    <StarRating rating={productReviews[listing.id].rating} readOnly={true} size={16} />
-                                                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Seller:</span>
+                                                    <div className="flex items-center gap-0.5">
+                                                        <StarRating rating={productReviews[listing.id].rating} readOnly={true} size={16} />
+                                                    </div>
+                                                    <span className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                                         {productReviews[listing.id].rating.toFixed(1)}
                                                     </span>
                                                 </div>
                                             )}
                                             {productReviews[listing.id] && productReviews[listing.id].product_rating && (
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">Product:</span>
-                                                    <StarRating rating={productReviews[listing.id].product_rating} readOnly={true} size={16} />
-                                                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Product:</span>
+                                                    <div className="flex items-center gap-0.5">
+                                                        <StarRating rating={productReviews[listing.id].product_rating} readOnly={true} size={16} />
+                                                    </div>
+                                                    <span className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                                         {productReviews[listing.id].product_rating.toFixed(1)}
                                                     </span>
                                                 </div>
