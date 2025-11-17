@@ -162,9 +162,9 @@ SQL;
             'reviewer_email' => $row['buyer_email'] ?? null,
             'product_title'  => escapeHtml($row['product_title'] ?? 'Untitled product'),
             'review'         => escapeHtml($row['review_text'] ?? ''),
-            'image_1'        => $row['image1_url'] ?? null,
-            'image_2'        => $row['image2_url'] ?? null,
-            'image_3'        => $row['image3_url'] ?? null,
+            'image_1'        => format_review_image_url($row['image1_url'] ?? null),
+            'image_2'        => format_review_image_url($row['image2_url'] ?? null),
+            'image_3'        => format_review_image_url($row['image3_url'] ?? null),
             'rating'         => (float)$row['rating'],
             'created_at'     => $row['created_at'],
         ];
@@ -188,6 +188,16 @@ function derive_username(string $email): string
 }
 
 function format_profile_photo_url($value): ?string
+{
+    return format_media_image_url($value);
+}
+
+function format_review_image_url($value): ?string
+{
+    return format_media_image_url($value);
+}
+
+function format_media_image_url($value): ?string
 {
     if (!is_string($value)) {
         return null;
