@@ -35,7 +35,7 @@ try {
 
     if ($productId <= 0 && $confirmRequestId <= 0) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'product_id or confirm_request_id is required']);
+        echo json_encode(['success' => false, 'error' => 'product_id or confirm_request_id is required','product_id' => $productId, 'confirm_request_id' => $confirmRequestId]);
         exit;
     }
 
@@ -45,7 +45,7 @@ try {
     [$confirmRow, $resolvedProductId, $isAuthorized] = fetchConfirmRow($conn, $userId, $productId, $confirmRequestId);
     if (!$confirmRow) {
         http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Receipt not found for this listing']);
+        echo json_encode(['success' => false, 'error' => 'Receipt not found for this listing','product_id' => $productId, 'confirm_request_id' => $confirmRequestId]);
         exit;
     }
     if (!$isAuthorized) {

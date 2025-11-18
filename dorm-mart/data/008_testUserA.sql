@@ -5,6 +5,7 @@ DELETE FROM user_accounts
 WHERE email = 'testuserA@buffalo.edu';
 
 INSERT INTO user_accounts (
+  user_id,
   first_name,
   last_name,
   grad_month,
@@ -16,6 +17,7 @@ INSERT INTO user_accounts (
   seller,
   theme
 ) VALUES (
+  58,
   'testA',
   'general-test-user',
   5,
