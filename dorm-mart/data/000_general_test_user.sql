@@ -1,10 +1,11 @@
 START TRANSACTION;
 -- ^ Begin a transaction so the insert is all-or-nothing.
-
+SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM user_accounts
 WHERE email = 'testuser@buffalo.edu';
 
 INSERT INTO user_accounts (
+  user_id,
   first_name,
   last_name,
   grad_month,
@@ -16,6 +17,7 @@ INSERT INTO user_accounts (
   seller,
   theme
 ) VALUES (
+  30,
   'test',
   'general-test-user',
   5,
@@ -27,7 +29,7 @@ INSERT INTO user_accounts (
   0,
   0
 );
-
+SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
 
 
