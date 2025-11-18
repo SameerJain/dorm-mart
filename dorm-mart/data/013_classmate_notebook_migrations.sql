@@ -1,8 +1,8 @@
 START TRANSACTION;
+SET FOREIGN_KEY_CHECKS = 0;
 
----------------------------------------------------------
 -- DELETE IF EXISTS
----------------------------------------------------------
+
 
 -- confirm_purchase_requests
 DELETE FROM `confirm_purchase_requests`
@@ -35,9 +35,9 @@ WHERE `history_id` = 7;
 DELETE FROM `scheduled_purchase_requests`
 WHERE `request_id` = 39;
 
----------------------------------------------------------
+
 -- INSERT STATEMENTS
----------------------------------------------------------
+
 
 INSERT INTO `confirm_purchase_requests` (`confirm_request_id`, `scheduled_request_id`, `inventory_product_id`, `seller_user_id`, `buyer_user_id`, `conversation_id`, `is_successful`, `final_price`, `seller_notes`, `failure_reason`, `failure_reason_notes`, `status`, `expires_at`, `buyer_response_at`, `auto_processed_at`, `payload_snapshot`, `created_at`, `updated_at`) VALUES
 (10, 39, 59, 59, 58, 8, 1, '4.00', 'Price increased', NULL, NULL, 'buyer_accepted', '2020-11-19 00:18:48', '2020-11-14 06:20:05', NULL, '{\"buyer_id\": 58, \"is_trade\": false, \"seller_id\": 59, \"item_title\": \"Classmate Notebook\", \"meeting_at\": \"2020-11-17T18:00:00+00:00\", \"description\": \"Buyer wants this\", \"meet_location\": \"North Campus\", \"negotiated_price\": 3, \"trade_item_description\": null}', '2020-11-14 06:20:05', '2025-11-18 00:34:07');
@@ -69,4 +69,5 @@ INSERT INTO `purchase_history` (`history_id`, `user_id`, `items`, `created_at`, 
 INSERT INTO `scheduled_purchase_requests` (`request_id`, `inventory_product_id`, `seller_user_id`, `buyer_user_id`, `conversation_id`, `meet_location`, `meeting_at`, `verification_code`, `description`, `negotiated_price`, `is_trade`, `trade_item_description`, `snapshot_price_nego`, `snapshot_trades`, `snapshot_meet_location`, `status`, `canceled_by_user_id`, `buyer_response_at`, `created_at`, `updated_at`) VALUES
 (39, 59, 59, 58, 8, 'North Campus', '2020-11-17 18:00:00', 'N57U', 'Buyer wants this', '3.00', 0, NULL, 1, 0, 'North Campus', 'accepted', NULL, '2020-11-14 00:17:31', '2020-11-15 00:17:26', '2025-11-18 00:34:51');
 
+SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
