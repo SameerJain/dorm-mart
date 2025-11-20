@@ -419,7 +419,7 @@ export default function ViewProduct() {
           <>
             {isSellerViewingOwnProduct && (
               <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">You are the seller of this item.</p>
+                <p className="text-base font-semibold text-yellow-800 dark:text-yellow-200 text-center">You are the seller of this item.</p>
               </div>
             )}
           <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-6 items-start">
@@ -534,14 +534,29 @@ export default function ViewProduct() {
 
                 <div className="mt-3 space-y-2">
                   {isSellerViewingOwnProduct ? (
-                    <button
-                      onClick={() => navigate(`/app/product-listing/edit/${normalized.productId}`, { 
-                        state: { returnTo: `/app/viewProduct/${normalized.productId}` } 
-                      })}
-                      className="w-full rounded-full font-medium py-2 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white"
-                    >
-                      Edit Listing
-                    </button>
+                    <>
+                      {/* Prominent buyer perspective notice */}
+                      <div className="mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <div>
+                            <p className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Buyer's Perspective View</p>
+                            <p className="text-base text-yellow-700 dark:text-yellow-300">You're viewing your listing from a buyer's perspective. This helps you see how your item appears to potential buyers.</p>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/app/product-listing/edit/${normalized.productId}`, { 
+                          state: { returnTo: `/app/viewProduct/${normalized.productId}` } 
+                        })}
+                        className="w-full rounded-full font-medium py-2 bg-blue-800 dark:bg-blue-900 hover:bg-blue-900 dark:hover:bg-blue-800 text-white"
+                      >
+                        Edit Listing
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
