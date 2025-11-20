@@ -449,20 +449,7 @@ export default function ChatPage() {
                 {c.productTitle || `Item #${c.productId}`}
               </span>
             )}
-            {profilePath ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(profilePath);
-                }}
-                className="truncate text-left text-sm font-medium text-blue-600 hover:underline"
-              >
-                {c.receiverName}
-              </button>
-            ) : (
-              <span className="truncate text-sm">{c.receiverName}</span>
-            )}
+            <span className="truncate text-sm">{c.receiverName}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {c.productImageUrl && (
