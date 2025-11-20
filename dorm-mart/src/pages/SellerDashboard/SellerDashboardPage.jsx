@@ -466,7 +466,7 @@ function SellerDashboardPage() {
                         <h3 className="text-2xl font-bold">Statistics</h3>
                     </div>
 
-                    {/* Metrics - Original Layout on Desktop, Grid on Mobile */}
+                    {/* Metrics - Centered layout with 3 active statistics */}
                     <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-12 md:flex-1 md:justify-center">
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.activeListings}</div>
@@ -480,14 +480,18 @@ function SellerDashboardPage() {
                             <div className="text-3xl font-bold text-white">{summaryMetrics.itemsSold}</div>
                             <div className="text-sm text-blue-100">Items Sold</div>
                         </div>
+                        {/* TODO: Uncomment when draft feature is implemented
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.savedDrafts}</div>
                             <div className="text-sm text-blue-100">Saved Drafts</div>
                         </div>
+                        */}
+                        {/* TODO: Uncomment when total views tracking is implemented
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.totalViews}</div>
                             <div className="text-sm text-blue-100">Total Views</div>
                         </div>
+                        */}
                     </div>
 
                     {/* Create New Listing Button */}

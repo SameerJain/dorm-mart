@@ -324,8 +324,9 @@ function UserPreferences() {
           )}
         </div>
 
-        {/* Seller Options */}
-        <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
+        {/* TODO: Uncomment when reveal_contact_info feature is implemented
+        Seller Options */}
+        {/* <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">Seller Options</h2>
           <div className="flex items-center space-x-3">
             <input
@@ -339,7 +340,7 @@ function UserPreferences() {
               I agree to have my email and phone number be revealed to a prospective buyer
             </label>
           </div>
-        </div>
+        </div> */}
 
         {/* Theme */}
         <div className="rounded-lg border border-slate-200 p-6">
