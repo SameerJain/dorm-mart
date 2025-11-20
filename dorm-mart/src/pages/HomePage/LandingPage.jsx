@@ -214,7 +214,7 @@ export default function LandingPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_categories.php`, { signal: controller.signal });
+        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`, { signal: controller.signal });
         if (!r.ok) return;
         const data = await r.json();
         if (Array.isArray(data)) setAllCategories(data);

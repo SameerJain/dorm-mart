@@ -278,7 +278,7 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_categories.php`);
+        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`);
         if (r.ok) {
           const json = await r.json();
           if (Array.isArray(json)) setCategories(json);

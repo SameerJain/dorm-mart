@@ -12,7 +12,6 @@ export default function WishlistPage() {
   const [allItems, setAllItems] = useState([]); // Store all items for filtering
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [allCategories, setAllCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
@@ -89,21 +88,20 @@ export default function WishlistPage() {
     return () => controller.abort();
   }, []);
 
-  // Fetch categories for quick filters
-  useEffect(() => {
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const r = await fetch(`${API_BASE}/utility/get_categories.php`, { signal: controller.signal });
-        if (!r.ok) return;
-        const data = await r.json();
-        if (Array.isArray(data)) setAllCategories(data);
-      } catch (e) {
-        // ignore
+  // Extract unique categories from wishlist items
+  const wishlistCategories = useMemo(() => {
+    const categoriesSet = new Set();
+    allItems.forEach((item) => {
+      if (Array.isArray(item.tags)) {
+        item.tags.forEach((tag) => {
+          if (tag && typeof tag === 'string') {
+            categoriesSet.add(tag);
+          }
+        });
       }
-    })();
-    return () => controller.abort();
-  }, []);
+    });
+    return Array.from(categoriesSet).sort();
+  }, [allItems]);
 
   // Filter items by selected category
   const filteredItems = useMemo(() => {
@@ -140,7 +138,7 @@ export default function WishlistPage() {
                 >
                   All
                 </button>
-                {(allCategories.length ? allCategories : ["Electronics","Kitchen","Furniture","Dorm Essentials"]).map((cat) => (
+                {wishlistCategories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
