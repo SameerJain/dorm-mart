@@ -70,7 +70,6 @@ export default function LandingPage() {
   // rotating statement in blue
   const rotatingLines = [
     "Welcome to Dorm Mart!",
-    "A UB student marketplace run and developed by students.",
     "Happy Shopping!",
   ];
   const [bannerIdx, setBannerIdx] = useState(0);
