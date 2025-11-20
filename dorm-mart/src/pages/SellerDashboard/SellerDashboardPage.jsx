@@ -539,7 +539,7 @@ function SellerDashboardPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => openViewProduct(listing.id)}
-                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline"
+                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline break-words overflow-hidden w-full"
                                             >
                                                 {listing.title}
                                             </button>
