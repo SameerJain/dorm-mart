@@ -232,6 +232,11 @@ try {
             echo json_encode(['success' => false, 'error' => 'Invalid negotiated price']);
             exit;
         }
+        if ($negotiatedPrice > 9999.99) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Negotiated price must be $9999.99 or less']);
+            exit;
+        }
         // Allow 0 as a valid price (free item)
         // But convert empty/whitespace to null for consistency
     }

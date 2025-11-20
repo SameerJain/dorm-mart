@@ -66,7 +66,7 @@ function ProductListingPage() {
   const LIMITS = {
     title: 70,
     description: 1000,
-    price: 999999.99,
+    price: 9999.99,
     priceMin: 0.01,
   };
 

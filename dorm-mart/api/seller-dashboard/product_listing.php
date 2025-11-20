@@ -101,6 +101,9 @@ try {
   if ($priceStr === '' || !is_numeric($priceStr) || $price <= 0.0) {
     $errors['price'] = 'Price must be a positive number.';
   }
+  if ($price > 9999.99) {
+    $errors['price'] = 'Price must be $9999.99 or less.';
+  }
   if (empty($catsArr))                                   { $errors['categories'] = 'Select at least one category.'; }
   if ($itemLocation === null || $itemLocation === '' || $itemLocation === '<Select Option>') {
     $errors['itemLocation'] = 'Select an item location.';

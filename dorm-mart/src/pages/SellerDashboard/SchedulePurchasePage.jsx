@@ -7,7 +7,7 @@ const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
 // Price limits - max matches ProductListingPage exactly, min is 0 to allow free items
 const PRICE_LIMITS = {
-    max: 999999.99,
+    max: 9999.99,
     min: 0,
 };
 

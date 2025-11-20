@@ -265,7 +265,7 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [sortOrder, setSortOrder] = useState(""); // '', 'new', 'old'
   const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(5000);
+  const [maxPrice, setMaxPrice] = useState(9999.99);
   const [itemLocation, setItemLocation] = useState("");
   const [itemCondition, setItemCondition] = useState("");
   const [priceNegotiable, setPriceNegotiable] = useState(false);
@@ -310,8 +310,8 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
 
     const mn = parseFloat(query.get("minPrice"));
     const mx = parseFloat(query.get("maxPrice"));
-    setMinPrice(Number.isFinite(mn) ? Math.max(0, Math.min(5000, mn)) : 0);
-    setMaxPrice(Number.isFinite(mx) ? Math.max(0, Math.min(5000, mx)) : 5000);
+    setMinPrice(Number.isFinite(mn) ? Math.max(0, Math.min(9999.99, mn)) : 0);
+    setMaxPrice(Number.isFinite(mx) ? Math.max(0, Math.min(9999.99, mx)) : 9999.99);
 
     setItemLocation(query.get("location") || "");
     setItemCondition(query.get("condition") || "");
@@ -336,8 +336,8 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     if (sortOrder === "new") sp.set("sort", "new");
     else if (sortOrder === "old") sp.set("sort", "old");
     else if (sortOrder === "best") sp.set("sort", "best");
-    if (Number.isFinite(minPrice)) sp.set("minPrice", String(Math.max(0, Math.min(5000, minPrice))));
-    if (Number.isFinite(maxPrice)) sp.set("maxPrice", String(Math.max(0, Math.min(5000, maxPrice))));
+    if (Number.isFinite(minPrice)) sp.set("minPrice", String(Math.max(0, Math.min(9999.99, minPrice))));
+    if (Number.isFinite(maxPrice)) sp.set("maxPrice", String(Math.max(0, Math.min(9999.99, maxPrice))));
     if (itemLocation) sp.set("location", itemLocation);
     if (itemCondition) sp.set("condition", itemCondition);
     if (priceNegotiable) sp.set("priceNego", "1");
@@ -390,15 +390,15 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
 
       {/* Price */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Price Range ($0 – $5000)</p>
+        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Price Range ($0 – $9999.99)</p>
         <div className="mt-2 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <span>Min</span>
-            <input type="number" min={0} max={5000} value={minPrice} onChange={(e) => setMinPrice(Math.max(0, Math.min(5000, parseInt(e.target.value, 10) || 0)))} className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            <input type="number" min={0} max={9999.99} step="0.01" value={minPrice} onChange={(e) => setMinPrice(Math.max(0, Math.min(9999.99, parseFloat(e.target.value) || 0)))} className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
           </div>
           <div className="flex items-center gap-2">
             <span>Max</span>
-            <input type="number" min={0} max={5000} value={maxPrice} onChange={(e) => setMaxPrice(Math.max(0, Math.min(5000, parseInt(e.target.value, 10) || 0)))} className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            <input type="number" min={0} max={9999.99} step="0.01" value={maxPrice} onChange={(e) => setMaxPrice(Math.max(0, Math.min(9999.99, parseFloat(e.target.value) || 0)))} className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
           </div>
         </div>
       </div>
