@@ -264,8 +264,9 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
   const [categories, setCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [sortOrder, setSortOrder] = useState(""); // '', 'new', 'old'
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(9999.99);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [priceError, setPriceError] = useState("");
   const [itemLocation, setItemLocation] = useState("");
   const [itemCondition, setItemCondition] = useState("");
   const [priceNegotiable, setPriceNegotiable] = useState(false);
@@ -308,10 +309,38 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
       ""
     );
 
-    const mn = parseFloat(query.get("minPrice"));
-    const mx = parseFloat(query.get("maxPrice"));
-    setMinPrice(Number.isFinite(mn) ? Math.max(0, Math.min(9999.99, mn)) : 0);
-    setMaxPrice(Number.isFinite(mx) ? Math.max(0, Math.min(9999.99, mx)) : 9999.99);
+    const mn = query.get("minPrice");
+    const mx = query.get("maxPrice");
+    let parsedMin = null;
+    let parsedMax = null;
+    
+    if (mn !== null && mn !== "") {
+      const p = parseFloat(mn);
+      if (Number.isFinite(p)) {
+        parsedMin = Math.max(0, Math.min(9999.99, p));
+      }
+    }
+    if (mx !== null && mx !== "") {
+      const p = parseFloat(mx);
+      if (Number.isFinite(p)) {
+        parsedMax = Math.max(0, Math.min(9999.99, p));
+      }
+    }
+    
+    // Ensure min <= max when both are set
+    if (parsedMin !== null && parsedMax !== null) {
+      setMinPrice(String(Math.min(parsedMin, parsedMax)));
+      setMaxPrice(String(Math.max(parsedMin, parsedMax)));
+    } else if (parsedMin !== null) {
+      setMinPrice(String(parsedMin));
+      setMaxPrice("");
+    } else if (parsedMax !== null) {
+      setMinPrice("");
+      setMaxPrice(String(parsedMax));
+    } else {
+      setMinPrice("");
+      setMaxPrice("");
+    }
 
     setItemLocation(query.get("location") || "");
     setItemCondition(query.get("condition") || "");
@@ -329,6 +358,66 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
   };
 
   const apply = () => {
+    // Validate price inputs
+    setPriceError("");
+    let hasError = false;
+    
+    let parsedMin = null;
+    let parsedMax = null;
+    
+    // Validate min price
+    if (minPrice !== "" && minPrice !== null) {
+      const trimmedMin = minPrice.trim();
+      if (trimmedMin === "" || trimmedMin === "." || trimmedMin === "-") {
+        setPriceError("Please enter a valid minimum price");
+        hasError = true;
+      } else {
+        parsedMin = parseFloat(trimmedMin);
+        if (!Number.isFinite(parsedMin) || isNaN(parsedMin)) {
+          setPriceError("Minimum price must be a valid number");
+          hasError = true;
+        } else if (parsedMin < 0) {
+          setPriceError("Minimum price cannot be negative");
+          hasError = true;
+        } else if (parsedMin > 9999.99) {
+          setPriceError("Minimum price cannot exceed $9999.99");
+          hasError = true;
+        }
+      }
+    }
+    
+    // Validate max price
+    if (maxPrice !== "" && maxPrice !== null) {
+      const trimmedMax = maxPrice.trim();
+      if (trimmedMax === "" || trimmedMax === "." || trimmedMax === "-") {
+        setPriceError("Please enter a valid maximum price");
+        hasError = true;
+      } else {
+        parsedMax = parseFloat(trimmedMax);
+        if (!Number.isFinite(parsedMax) || isNaN(parsedMax)) {
+          setPriceError("Maximum price must be a valid number");
+          hasError = true;
+        } else if (parsedMax < 0) {
+          setPriceError("Maximum price cannot be negative");
+          hasError = true;
+        } else if (parsedMax > 9999.99) {
+          setPriceError("Maximum price cannot exceed $9999.99");
+          hasError = true;
+        }
+      }
+    }
+    
+    // Validate min <= max if both are provided
+    if (!hasError && parsedMin !== null && parsedMax !== null && parsedMin > parsedMax) {
+      setPriceError("Minimum price cannot be greater than maximum price");
+      hasError = true;
+    }
+    
+    // Don't proceed if there are validation errors
+    if (hasError) {
+      return;
+    }
+    
     const searchTerm = query.get("q") || query.get("search") || "";
     const sp = new URLSearchParams();
     if (searchTerm) sp.set("search", searchTerm);
@@ -336,8 +425,12 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     if (sortOrder === "new") sp.set("sort", "new");
     else if (sortOrder === "old") sp.set("sort", "old");
     else if (sortOrder === "best") sp.set("sort", "best");
-    if (Number.isFinite(minPrice)) sp.set("minPrice", String(Math.max(0, Math.min(9999.99, minPrice))));
-    if (Number.isFinite(maxPrice)) sp.set("maxPrice", String(Math.max(0, Math.min(9999.99, maxPrice))));
+    if (parsedMin !== null) {
+      sp.set("minPrice", String(parsedMin));
+    }
+    if (parsedMax !== null) {
+      sp.set("maxPrice", String(parsedMax));
+    }
     if (itemLocation) sp.set("location", itemLocation);
     if (itemCondition) sp.set("condition", itemCondition);
     if (priceNegotiable) sp.set("priceNego", "1");
@@ -394,13 +487,24 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
         <div className="mt-2 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <span>Min</span>
-            <input type="number" min={0} max={9999.99} step="0.01" value={minPrice} onChange={(e) => setMinPrice(Math.max(0, Math.min(9999.99, parseFloat(e.target.value) || 0)))} className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            <input type="text" inputMode="decimal" value={minPrice || ""} onChange={(e) => {
+              setMinPrice(e.target.value);
+              // Clear error when user starts typing
+              if (priceError) setPriceError("");
+            }} placeholder="Min" className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
           </div>
           <div className="flex items-center gap-2">
             <span>Max</span>
-            <input type="number" min={0} max={9999.99} step="0.01" value={maxPrice} onChange={(e) => setMaxPrice(Math.max(0, Math.min(9999.99, parseFloat(e.target.value) || 0)))} className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            <input type="text" inputMode="decimal" value={maxPrice || ""} onChange={(e) => {
+              setMaxPrice(e.target.value);
+              // Clear error when user starts typing
+              if (priceError) setPriceError("");
+            }} placeholder="Max" className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
           </div>
         </div>
+        {priceError && (
+          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{priceError}</p>
+        )}
       </div>
 
       {/* Location */}
