@@ -565,29 +565,21 @@ function SellerDashboardPage() {
                                                 );
                                             })()}
 
-                                            <button
-                                                onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
-                                                disabled={listing.has_accepted_scheduled_purchase === true}
-                                                className={`font-medium text-sm sm:text-base ${
-                                                    listing.has_accepted_scheduled_purchase === true
-                                                        ? 'text-gray-400 cursor-not-allowed'
-                                                        : 'text-blue-600 hover:text-blue-800'
-                                                }`}
-                                                title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
-                                            >
-                                                Edit
-                                            </button>
+                                            {/* Edit button - only show if item can be edited */}
+                                            {listing.has_accepted_scheduled_purchase !== true && (
+                                                <button
+                                                    onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
+                                                    className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800"
+                                                >
+                                                    Edit
+                                                </button>
+                                            )}
 
-                                            {String(listing.status || '').toLowerCase() !== 'sold' && (
+                                            {/* Delete button - only show if item is not sold and can be deleted */}
+                                            {String(listing.status || '').toLowerCase() !== 'sold' && listing.has_accepted_scheduled_purchase !== true && (
                                                 <button
                                                     onClick={() => openDeleteConfirm(listing.id)}
-                                                    disabled={listing.has_accepted_scheduled_purchase === true}
-                                                    className={`font-medium text-sm sm:text-base ${
-                                                        listing.has_accepted_scheduled_purchase === true
-                                                            ? 'text-gray-400 cursor-not-allowed'
-                                                            : 'text-red-600 hover:text-red-800'
-                                                    }`}
-                                                    title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
+                                                    className="font-medium text-sm sm:text-base text-red-600 hover:text-red-800"
                                                 >
                                                     Delete
                                                 </button>
