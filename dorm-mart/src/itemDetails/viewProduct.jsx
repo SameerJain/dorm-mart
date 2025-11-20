@@ -533,20 +533,29 @@ export default function ViewProduct() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">Pickup: {normalized.itemLocation || 'On campus'}</p>
 
                 <div className="mt-3 space-y-2">
-                  <button
-                    onClick={handleMessageSeller}
-                    disabled={!normalized.sellerId || msgLoading || isSellerViewingOwnProduct}
-                    className={`w-full rounded-full font-medium py-2 ${
-                      isSellerViewingOwnProduct
-                        ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
-                        : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
-                    }`}
-                  >
-                    {msgLoading ? "Opening chat..." : "Message Seller"}
-                  </button>
-                  {msgError ? (
-                    <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p>
-                  ) : null}
+                  {isSellerViewingOwnProduct ? (
+                    <button
+                      onClick={() => navigate(`/app/product-listing/edit/${normalized.productId}`, { 
+                        state: { returnTo: `/app/viewProduct/${normalized.productId}` } 
+                      })}
+                      className="w-full rounded-full font-medium py-2 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white"
+                    >
+                      Edit Listing
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleMessageSeller}
+                        disabled={!normalized.sellerId || msgLoading}
+                        className="w-full rounded-full font-medium py-2 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
+                      >
+                        {msgLoading ? "Opening chat..." : "Message Seller"}
+                      </button>
+                      {msgError ? (
+                        <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </div>
 

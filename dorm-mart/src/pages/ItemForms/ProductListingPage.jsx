@@ -1,11 +1,12 @@
 // src/pages/ItemForms/ProductListingPage.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { useParams, useMatch, useNavigate } from "react-router-dom";
+import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
 import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
 
 function ProductListingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // robust matcher for /product-listing/new in different mount contexts
   const matchNewAbs = useMatch({ path: "/product-listing/new", end: true });
@@ -684,8 +685,9 @@ function ProductListingPage() {
       const pid = data?.prod_id ?? data?.product_id ?? null;
       
       if (isEdit) {
-        // For edit mode, redirect to dashboard after successful update
-        navigate("/app/seller-dashboard");
+        // For edit mode, redirect back to where user came from, or dashboard
+        const returnTo = location.state?.returnTo || "/app/seller-dashboard";
+        navigate(returnTo);
       } else {
         // For new listings, show success modal
         setCreatedProdId(pid);
@@ -1195,7 +1197,10 @@ function ProductListingPage() {
                 </button>
 
                 <button
-                  onClick={() => navigate("/app/seller-dashboard")}
+                  onClick={() => {
+                    const returnTo = location.state?.returnTo || "/app/seller-dashboard";
+                    navigate(returnTo);
+                  }}
                   className="flex-1 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
                   type="button"
                 >
