@@ -560,6 +560,11 @@ function SchedulePurchasePage() {
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Negotiated Price (Optional)
                                 </label>
+                                {selectedListing?.price && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 font-medium">
+                                        Listed price: ${Number(selectedListing.price).toFixed(2)}
+                                    </p>
+                                )}
                                 <div className="flex items-center gap-3">
                                     <input
                                         type="number"
