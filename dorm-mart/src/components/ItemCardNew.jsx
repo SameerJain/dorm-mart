@@ -14,6 +14,7 @@ export default function ItemCardNew({
   sellerUsername,
   sellerEmail,
   isWishlisted = false,
+  fixedWidth = false,
 }) {
   const navigate = useNavigate();
   const isNew =
@@ -32,9 +33,9 @@ export default function ItemCardNew({
   return (
     <div
       onClick={handleClick}
-      className="group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
-                 w-[210px] h-[330px] cursor-pointer transition-all duration-200
-                 hover:shadow-xl hover:-translate-y-1"
+      className={`group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
+                 ${fixedWidth ? 'w-[210px]' : 'w-full'} h-[330px] cursor-pointer transition-all duration-200
+                 hover:shadow-xl hover:-translate-y-1`}
     >
       {/* subtle top accent */}
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>

@@ -512,6 +512,7 @@ export default function LandingPage() {
                                   sellerUsername={item.sellerUsername}
                                   sellerEmail={item.sellerEmail}
                                   isWishlisted={wishlistedIds.has(item.id)}
+                                  fixedWidth={true}
                                 />
                               </div>
                             ))
@@ -541,7 +542,7 @@ export default function LandingPage() {
                 </p>
               </header>
 
-              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 overflow-x-hidden min-w-0">
                 {exploreItems.map((item, idx) => (
                   <ItemCardNew
                     key={item.id ?? idx}

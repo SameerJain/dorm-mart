@@ -834,11 +834,38 @@ function ProductListingPage() {
                 </label>
 
                 <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => {
-                        setSelectedCategory(e.target.value);
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => {
+                      const selected = e.target.value;
+                      if (selected) {
+                        // Automatically add the selected category
+                        setSelectedCategory(selected);
+                        // Check if already added
+                        if (categories.includes(selected)) {
+                          setSelectedCategory("");
+                          return;
+                        }
+                        // Check max limit
+                        if (categories.length >= CATEGORIES_MAX) {
+                          setErrors((p) => ({
+                            ...p,
+                            categories: `Select at most ${CATEGORIES_MAX} categories`,
+                          }));
+                          setSelectedCategory("");
+                          return;
+                        }
+                        // Add the category
+                        const next = [...categories, selected];
+                        setCategories(next);
+                        setSelectedCategory("");
+                        setErrors((p) => {
+                          const ne = { ...p };
+                          if (next.length && next.length <= CATEGORIES_MAX) delete ne.categories;
+                          return ne;
+                        });
+                      } else {
+                        setSelectedCategory("");
                         if (errors.categories) {
                           setErrors((p) => {
                             const ne = { ...p };
@@ -846,38 +873,27 @@ function ProductListingPage() {
                             return ne;
                           });
                         }
-                      }}
-                      className={`flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                        errors.categories
-                          ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                          : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-                      }`}
-                    >
-                      <option value="">{`<Select Option>`}</option>
-                      {catLoading && <option disabled>Loading...</option>}
-                      {!catLoading && selectableOptions.length === 0 && (
-                        <option disabled>
-                          {catFetchError || "No categories available"}
-                        </option>
-                      )}
-                      {selectableOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={addCategory}
-                      disabled={
-                        !selectedCategory || categories.length >= CATEGORIES_MAX
                       }
-                      className="px-5 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      Add
-                    </button>
-                  </div>
+                    }}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.categories
+                        ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
+                        : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    }`}
+                  >
+                    <option value="">{`<Select Option>`}</option>
+                    {catLoading && <option disabled>Loading...</option>}
+                    {!catLoading && selectableOptions.length === 0 && (
+                      <option disabled>
+                        {catFetchError || "No categories available"}
+                      </option>
+                    )}
+                    {selectableOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
 
                   {/* Selected chips */}
                   <div className="flex flex-wrap gap-2">
