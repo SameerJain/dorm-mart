@@ -324,7 +324,7 @@ function OngoingPurchasesPage() {
         const isInactive = isCancelled || isDeclined || isCompleted;
         const isAccepted = req.status === 'accepted';
         const canCancel = (req.status === 'pending' || req.status === 'accepted') && !isInactive;
-        const canUseActionButtons = isAccepted && !isCompleted; // Only enabled for accepted status and not completed
+        // const canUseActionButtons = isAccepted && !isCompleted; // Only enabled for accepted status and not completed - Commented out: Report an Issue feature not fully implemented yet
 
         // Color scheme based on perspective - override with red if cancelled/declined, gray if completed
         const cardBorderColor = isCancelled || isDeclined
@@ -477,6 +477,7 @@ function OngoingPurchasesPage() {
                         )}
                         
                         {/* Always visible action buttons - disabled if not accepted */}
+                        {/* Report an Issue button - Commented out: Feature not fully implemented yet
                         <button
                             type="button"
                             onClick={() => navigate(`/app/scheduled-purchases/report-issue/${req.request_id}`)}
@@ -485,6 +486,7 @@ function OngoingPurchasesPage() {
                         >
                             Report an Issue
                         </button>
+                        */}
                         
                         {/* Cancel button */}
                         {canCancel && (
