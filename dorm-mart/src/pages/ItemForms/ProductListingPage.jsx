@@ -784,7 +784,7 @@ function ProductListingPage() {
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Be specific and descriptive to attract buyers
+                    Be specific and descriptive to attract buyers.
                   </p>
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     {title.length}/{LIMITS.title}
@@ -957,7 +957,7 @@ function ProductListingPage() {
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Provide detailed information about your item
+                    Provide detailed information about your item.
                   </p>
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     {description.length}/{LIMITS.description}
@@ -1091,7 +1091,7 @@ function ProductListingPage() {
                 : "border-gray-200 dark:border-gray-800"
             }`}>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">
-                Photos &amp; Media (1:1 enforced) <span className="text-red-500">*</span>
+                Photos <span className="text-red-500">*</span>
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
@@ -1140,10 +1140,10 @@ function ProductListingPage() {
                     : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600"
                 }`}
               >
-                + Add Photos (we will force 1:1)
+                + Add Photos
               </button>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
-                We enforce a square (1:1) ratio so listings look consistent.
+                All photos are displayed as squares. You can adjust the crop area when uploading.
               </p>
               {errors.images && (
                 <p className="text-red-600 dark:text-red-400 text-sm mt-2 text-center">
@@ -1159,24 +1159,24 @@ function ProductListingPage() {
               </h3>
               <ul className="text-sm text-blue-800 dark:text-blue-100 space-y-3">
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Consider bringing a friend, especially for high value items</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Consider bringing a friend, especially for high value items.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Report suspicious messages or behavior</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Report suspicious messages or behavior.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Trust your gut. Don't proceed if something feels off</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Trust your gut. Don't proceed if something feels off.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Keep receipts or transaction records</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Keep receipts or transaction records.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Use secure payment methods (cash, Venmo, Zelle)</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Use secure payment methods (cash, Venmo, Zelle).</span>
                 </li>
               </ul>
             </div>
@@ -1284,7 +1284,7 @@ function ProductListingPage() {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl max-w-3xl w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
-              Crop image to 1:1
+              Crop Image
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Drag the square to choose the area you want. The square size is fixed.
