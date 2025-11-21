@@ -993,7 +993,8 @@ function ProductListingPage() {
                       : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                   }`}
                 >
-                  {MEET_LOCATION_OPTIONS.map((opt) => (
+                  <option value="" disabled>Select An Option</option>
+                  {MEET_LOCATION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
                     <option key={opt.value || "unselected"} value={opt.value}>
                       {opt.label}
                     </option>

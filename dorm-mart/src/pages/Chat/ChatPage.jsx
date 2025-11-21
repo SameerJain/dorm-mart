@@ -701,7 +701,13 @@ export default function ChatPage() {
                               const dlSrc  = `${imgSrc}&download=1`;
                               return (
                                 <>
-                                  <a href={imgSrc} target="_blank" rel="noopener noreferrer" className="block">
+                                  <a 
+                                    href={imgSrc} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="block"
+                                    title="Chat Image - Click to view full size"
+                                  >
                                     <img
                                       src={imgSrc}
                                       alt="Image attachment"
