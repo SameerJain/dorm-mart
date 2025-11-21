@@ -170,18 +170,44 @@ function OngoingPurchasesPage() {
         return !isPastDate && !isTerminalStatus && !isCompleted;
     };
 
-    // Separate active and past purchases
-    const { activeBuyerRequests, pastBuyerRequests } = useMemo(() => {
-        const active = buyerRequests.filter(isActivePurchase);
-        const past = buyerRequests.filter(req => !isActivePurchase(req));
-        return { activeBuyerRequests: active, pastBuyerRequests: past };
-    }, [buyerRequests]);
+    // Group all purchases by item (inventory_product_id)
+    const groupedByItem = useMemo(() => {
+        // Combine all requests with perspective tracking
+        const allRequests = [
+            ...buyerRequests.map(req => ({ ...req, perspective: 'buyer' })),
+            ...sellerRequests.map(req => ({ ...req, perspective: 'seller' }))
+        ];
 
-    const { activeSellerRequests, pastSellerRequests } = useMemo(() => {
-        const active = sellerRequests.filter(isActivePurchase);
-        const past = sellerRequests.filter(req => !isActivePurchase(req));
-        return { activeSellerRequests: active, pastSellerRequests: past };
-    }, [sellerRequests]);
+        // Group by inventory_product_id
+        const grouped = {};
+        allRequests.forEach(req => {
+            const productId = req.inventory_product_id;
+            if (!grouped[productId]) {
+                grouped[productId] = {
+                    item: req.item || { title: 'Unknown Item' },
+                    productId: productId,
+                    purchases: []
+                };
+            }
+            grouped[productId].purchases.push(req);
+        });
+
+        // Sort purchases within each group by created_at (most recent first)
+        Object.values(grouped).forEach(group => {
+            group.purchases.sort((a, b) => {
+                const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+                const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+                return dateB - dateA;
+            });
+        });
+
+        // Convert to array and sort by most recent purchase date
+        return Object.values(grouped).sort((a, b) => {
+            const dateA = a.purchases[0]?.created_at ? new Date(a.purchases[0].created_at) : new Date(0);
+            const dateB = b.purchases[0]?.created_at ? new Date(b.purchases[0].created_at) : new Date(0);
+            return dateB - dateA;
+        });
+    }, [buyerRequests, sellerRequests]);
 
     // Helper function to get status badge styling
     const getStatusBadge = (status, isCompleted = false) => {
@@ -402,16 +428,13 @@ function OngoingPurchasesPage() {
                     {/* Next Steps info for accepted purchases */}
                     {renderNextStepsInfo(req)}
 
-                    {/* Item title and other party */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
-                        <div>
-                            <h3 className={`text-base font-semibold ${isCancelled || isDeclined ? 'text-red-900 dark:text-red-100' : isCompleted ? 'text-gray-700 dark:text-gray-300' : 'text-gray-900 dark:text-gray-100'}`}>{req.item?.title || 'Listing'}</h3>
-                            <p className={`text-sm ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-600 dark:text-gray-300'}`}>
-                                {isBuyer ? 'Seller' : 'Buyer'}: {isBuyer 
-                                    ? `${req.seller?.first_name || ''} ${req.seller?.last_name || ''}`.trim() 
-                                    : `${req.buyer?.first_name || ''} ${req.buyer?.last_name || ''}`.trim()}
-                            </p>
-                        </div>
+                    {/* Other party */}
+                    <div>
+                        <p className={`text-sm ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                            {isBuyer ? 'Seller' : 'Buyer'}: {isBuyer 
+                                ? `${req.seller?.first_name || ''} ${req.seller?.last_name || ''}`.trim() 
+                                : `${req.buyer?.first_name || ''} ${req.buyer?.last_name || ''}`.trim()}
+                        </p>
                     </div>
 
                     {/* Cost/Trade Information */}
@@ -509,15 +532,22 @@ function OngoingPurchasesPage() {
         );
     };
 
-    // Render section for requests
-    const renderRequestsSection = (title, requests, perspective) => {
-        if (requests.length === 0) return null;
+    // Render item group with all its scheduled purchases
+    const renderItemGroup = (itemGroup) => {
+        if (!itemGroup || itemGroup.purchases.length === 0) return null;
+        
         return (
-            <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{title}</h3>
+            <div key={itemGroup.productId} className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    {itemGroup.item.title || 'Unknown Item'}
+                </h3>
                 <div className="space-y-3">
-                    {requests.map((req) => (
-                        <PurchaseCard key={`${perspective}-${req.request_id}`} req={req} perspective={perspective} />
+                    {itemGroup.purchases.map((req) => (
+                        <PurchaseCard 
+                            key={`${req.perspective}-${req.request_id}`} 
+                            req={req} 
+                            perspective={req.perspective} 
+                        />
                     ))}
                 </div>
             </div>
@@ -535,7 +565,7 @@ function OngoingPurchasesPage() {
                 </div>
 
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Active Scheduled Purchases</h2>
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Scheduled Purchases</h2>
                     <button
                         type="button"
                         onClick={refresh}
@@ -555,24 +585,11 @@ function OngoingPurchasesPage() {
 
                 {loading ? (
                     <div className="text-gray-600 dark:text-gray-300">Loading scheduled purchases...</div>
-                ) : activeBuyerRequests.length === 0 && activeSellerRequests.length === 0 && pastBuyerRequests.length === 0 && pastSellerRequests.length === 0 ? (
+                ) : groupedByItem.length === 0 ? (
                     <div className="text-gray-600 dark:text-gray-400">You have no scheduled purchases yet.</div>
                 ) : (
                     <div className="space-y-6">
-                        {/* Active Purchases */}
-                        {renderRequestsSection('As Buyer', activeBuyerRequests, 'buyer')}
-                        {renderRequestsSection('As Seller', activeSellerRequests, 'seller')}
-
-                        {/* Past Purchases Section */}
-                        {(pastBuyerRequests.length > 0 || pastSellerRequests.length > 0) && (
-                            <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-700">
-                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Past Scheduled Purchases</h2>
-                                <div className="space-y-6">
-                                    {renderRequestsSection('As Buyer', pastBuyerRequests, 'buyer')}
-                                    {renderRequestsSection('As Seller', pastSellerRequests, 'seller')}
-                                </div>
-                            </div>
-                        )}
+                        {groupedByItem.map(itemGroup => renderItemGroup(itemGroup))}
                     </div>
                 )}
 
