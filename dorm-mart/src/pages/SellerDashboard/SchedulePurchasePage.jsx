@@ -420,7 +420,9 @@ function SchedulePurchasePage() {
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Meet Location</label>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                Meet Location <span className="text-red-500">*</span>
+                            </label>
                             <select
                                 value={meetLocationChoice}
                                 onChange={(e) => {
@@ -436,6 +438,7 @@ function SchedulePurchasePage() {
                                         : 'border-gray-300 dark:border-gray-700'
                                 }`}
                             >
+                                <option value="" disabled>Select An Option</option>
                                 {MEET_LOCATION_OPTIONS.map((option) => {
                                     // Compare meet location - handle both predefined options and custom locations
                                     const itemLocation = selectedListing?.meet_location;
@@ -478,7 +481,9 @@ function SchedulePurchasePage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Meeting Date &amp; Time</label>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                Meeting Date &amp; Time <span className="text-red-500">*</span>
+                            </label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div>
                                     <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Date</label>
