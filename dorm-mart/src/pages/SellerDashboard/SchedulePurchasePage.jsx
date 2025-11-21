@@ -214,8 +214,22 @@ function SchedulePurchasePage() {
     const validateDateTime = () => {
         setDateTimeError('');
         
-        if (!meetingDate || !meetingHour || !meetingMinute || !meetingAmPm) {
-            setDateTimeError('Please complete all date and time fields.');
+        // Check each field individually and provide specific error messages
+        const missingFields = [];
+        if (!meetingDate) missingFields.push('meeting date');
+        if (!meetingHour) missingFields.push('meeting hour');
+        if (!meetingMinute) missingFields.push('meeting minute');
+        if (!meetingAmPm) missingFields.push('AM/PM');
+        
+        if (missingFields.length > 0) {
+            if (missingFields.length === 1) {
+                setDateTimeError(`Please select a ${missingFields[0]}.`);
+            } else if (missingFields.length === 2) {
+                setDateTimeError(`Please select ${missingFields[0]} and ${missingFields[1]}.`);
+            } else {
+                const lastField = missingFields.pop();
+                setDateTimeError(`Please select ${missingFields.join(', ')}, and ${lastField}.`);
+            }
             return false;
         }
 
@@ -338,8 +352,21 @@ function SchedulePurchasePage() {
         const finalListingId = navState?.productId ? String(navState.productId) : null;
         const finalConversationId = navState?.convId ? String(navState.convId) : null;
         
-        if (!finalListingId || !finalConversationId || !finalMeetLocation) {
-            setFormError('Please complete all required fields before submitting.');
+        // Validate required fields with specific error messages
+        if (!finalListingId || !finalConversationId) {
+            setFormError('An error occurred. Please return to the chat page and try again.');
+            return;
+        }
+        
+        // Check meet location
+        if (!meetLocationChoice) {
+            setFormError('Please select a meet location.');
+            return;
+        }
+        
+        // Check custom meet location if "Other" is selected
+        if (meetLocationChoice === MEET_LOCATION_OTHER_VALUE && !trimmedCustomLocation) {
+            setFormError('Please enter a custom meet location.');
             return;
         }
 
@@ -351,7 +378,8 @@ function SchedulePurchasePage() {
 
         const meetingDateTimeISO = combineDateTime();
         if (!meetingDateTimeISO) {
-            setFormError('Please provide a valid meeting date and time.');
+            // This should not happen if validateDateTime passed, but keep as safety check
+            setFormError('Please ensure all date and time fields are properly filled.');
             return;
         }
 
