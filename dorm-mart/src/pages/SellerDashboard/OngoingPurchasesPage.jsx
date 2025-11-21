@@ -560,20 +560,8 @@ function OngoingPurchasesPage() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Ongoing Purchases</h1>
                     <p className="mt-2 text-gray-600 dark:text-gray-300">
-                        Review scheduled meetup requests. Accept to confirm the plan or decline if it does not work for you.
+                        Review scheduled meetup requests.
                     </p>
-                </div>
-
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Scheduled Purchases</h2>
-                    <button
-                        type="button"
-                        onClick={refresh}
-                        disabled={loading}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                        {loading ? 'Refreshing...' : 'Refresh'}
-                    </button>
                 </div>
 
                 {actionMessage && (
