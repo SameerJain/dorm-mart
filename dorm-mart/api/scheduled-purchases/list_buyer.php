@@ -53,7 +53,17 @@ try {
             seller.first_name AS seller_first_name,
             seller.last_name AS seller_last_name,
             canceler.first_name AS canceled_by_first_name,
-            canceler.last_name AS canceled_by_last_name
+            canceler.last_name AS canceled_by_last_name,
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 
+                    FROM confirm_purchase_requests cpr 
+                    WHERE cpr.scheduled_request_id = spr.request_id 
+                    AND cpr.status IN ('buyer_accepted', 'auto_accepted')
+                    AND cpr.is_successful = 1
+                ) THEN 1 
+                ELSE 0 
+            END AS has_completed_confirm
         FROM scheduled_purchase_requests spr
         INNER JOIN INVENTORY inv ON inv.product_id = spr.inventory_product_id
         INNER JOIN user_accounts seller ON seller.user_id = spr.seller_user_id
@@ -122,6 +132,8 @@ try {
             ];
         }
 
+        $hasCompletedConfirm = isset($row['has_completed_confirm']) && ($row['has_completed_confirm'] === 1 || $row['has_completed_confirm'] === '1');
+
         $records[] = [
             'request_id' => (int)$row['request_id'],
             'inventory_product_id' => (int)$row['inventory_product_id'],
@@ -140,6 +152,7 @@ try {
             'is_trade' => $isTrade,
             'trade_item_description' => $tradeItemDescription,
             'canceled_by' => $canceledBy,
+            'has_completed_confirm' => $hasCompletedConfirm,
             'item' => [
                 'title' => (string)$row['item_title'],
                 'photos' => $photos,
