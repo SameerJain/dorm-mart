@@ -1258,12 +1258,6 @@ function ProductListingPage() {
               <p className="mt-1 text-gray-900 dark:text-gray-100 font-semibold">
                 Congrats!
               </p>
-              <p className="mt-3 text-gray-800 dark:text-gray-200">
-                Your product id is:{" "}
-                <span className="font-mono font-bold">
-                  {createdProdId ?? "N/A"}
-                </span>
-              </p>
             </div>
             <div className="px-6 py-4 flex justify-end gap-3">
               <button
