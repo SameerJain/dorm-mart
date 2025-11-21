@@ -442,7 +442,7 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
   return (
     <aside className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 md:sticky md:top-20">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Filters</h2>
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Search Filters</h2>
         <label className="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
           <input type="checkbox" checked={includeDescriptionPref} onChange={onToggleIncludeDescription} />
           <span>Include description</span>
