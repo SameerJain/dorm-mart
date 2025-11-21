@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+// Suppress any output that might interfere with headers
+ob_start();
+
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/../auth/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
@@ -32,59 +35,127 @@ try {
         exit;
     }
 
-    $year = isset($payload['year']) ? (int)$payload['year'] : 0;
-    $currentYear = (int)date('Y');
-    $minYear = 2016;
-    $maxYear = $currentYear + 1;
-    if ($year < $minYear || $year > $maxYear) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid or missing year']);
-        exit;
+    // Get filter parameters (with defaults for backward compatibility)
+    $dateRange = isset($payload['dateRange']) ? (string)$payload['dateRange'] : (isset($payload['year']) ? 'Last Year' : 'All Time');
+    $sort = isset($payload['sort']) ? (string)$payload['sort'] : 'Newest First';
+    
+    // Handle legacy year parameter for backward compatibility
+    if (isset($payload['year']) && !isset($payload['dateRange'])) {
+        $year = (int)$payload['year'];
+        $currentYear = (int)date('Y');
+        if ($year >= 2016 && $year <= $currentYear + 1) {
+            $dateRange = 'Last Year'; // Approximate conversion
+        }
     }
 
+    // Calculate date range
     $tz = new DateTimeZone('UTC');
-    $rangeStart = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', sprintf('%04d-01-01 00:00:00', $year), $tz);
-    if (!$rangeStart) {
-        throw new RuntimeException('Failed to construct date range');
+    $now = new DateTimeImmutable('now', $tz);
+    $rangeStart = null;
+    $rangeEnd = $now;
+
+    switch ($dateRange) {
+        case 'Last 30 Days':
+            $rangeStart = $now->modify('-30 days');
+            break;
+        case 'Last 3 Months':
+            $rangeStart = $now->modify('-3 months');
+            break;
+        case 'Last Year':
+            $rangeStart = $now->modify('-1 year');
+            break;
+        case 'All Time':
+        default:
+            $rangeStart = null; // No start limit
+            break;
     }
-    $rangeEnd = $rangeStart->modify('+1 year');
 
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    $historyItems = load_purchase_history_items($conn, $userId, $rangeStart, $rangeEnd);
-    $legacyItems = load_legacy_purchased_items(
-        $conn,
-        $userId,
-        $rangeStart->format('Y-m-d H:i:s'),
-        $rangeEnd->format('Y-m-d H:i:s')
-    );
+    // Load items with date filtering
+    $historyItems = [];
+    $legacyItems = [];
+    
+    if ($rangeStart !== null) {
+        $historyItems = load_purchase_history_items($conn, $userId, $rangeStart, $rangeEnd);
+        $legacyItems = load_legacy_purchased_items(
+            $conn,
+            $userId,
+            $rangeStart->format('Y-m-d H:i:s'),
+            $rangeEnd->format('Y-m-d H:i:s')
+        );
+    } else {
+        // All time - load all items
+        $historyItems = load_purchase_history_items($conn, $userId, null, $rangeEnd);
+        $legacyItems = load_legacy_purchased_items(
+            $conn,
+            $userId,
+            '1970-01-01 00:00:00', // Very old date to get all items
+            $rangeEnd->format('Y-m-d H:i:s')
+        );
+    }
 
     $rows = array_merge($historyItems, $legacyItems);
 
-    usort(
-        $rows,
-        static function (array $a, array $b): int {
-            $left = $a['transacted_at'] ?? '';
-            $right = $b['transacted_at'] ?? '';
-            if ($left === $right) {
-                return 0;
-            }
-            return strcmp($right, $left);
-        }
-    );
+    // Sort items
+    switch ($sort) {
+        case 'Oldest First':
+            usort($rows, static function (array $a, array $b): int {
+                $left = $a['transacted_at'] ?? '';
+                $right = $b['transacted_at'] ?? '';
+                if ($left === $right) {
+                    return 0;
+                }
+                return strcmp($left, $right);
+            });
+            break;
+        case 'Price: Low to High':
+            usort($rows, static function (array $a, array $b): int {
+                $priceA = isset($a['price']) ? (float)$a['price'] : 0;
+                $priceB = isset($b['price']) ? (float)$b['price'] : 0;
+                if ($priceA === $priceB) {
+                    return 0;
+                }
+                return $priceA <=> $priceB;
+            });
+            break;
+        case 'Price: High to Low':
+            usort($rows, static function (array $a, array $b): int {
+                $priceA = isset($a['price']) ? (float)$a['price'] : 0;
+                $priceB = isset($b['price']) ? (float)$b['price'] : 0;
+                if ($priceA === $priceB) {
+                    return 0;
+                }
+                return $priceB <=> $priceA;
+            });
+            break;
+        case 'Newest First':
+        default:
+            usort($rows, static function (array $a, array $b): int {
+                $left = $a['transacted_at'] ?? '';
+                $right = $b['transacted_at'] ?? '';
+                if ($left === $right) {
+                    return 0;
+                }
+                return strcmp($right, $left);
+            });
+            break;
+    }
 
+    ob_end_clean(); // Clear output buffer before sending response
     echo json_encode(['success' => true, 'data' => $rows]);
 } catch (Throwable $e) {
-    error_log('purchase_history.php error: ' . $e->getMessage());
+    ob_end_clean(); // Clear any output buffer
+    error_log('purchase_history.php error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
 
 /**
- * @return array<int, array<string, string|int>>
+ * @return array<int, array<string, string|int|array>>
  */
-function load_purchase_history_items(mysqli $conn, int $userId, DateTimeImmutable $start, DateTimeImmutable $end): array
+function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutable $start, DateTimeImmutable $end): array
 {
     $stmt = $conn->prepare('SELECT items FROM purchase_history WHERE user_id = ? LIMIT 1');
     if (!$stmt) {
@@ -105,7 +176,7 @@ function load_purchase_history_items(mysqli $conn, int $userId, DateTimeImmutabl
         return [];
     }
 
-    $startTs = $start->getTimestamp();
+    $startTs = $start !== null ? $start->getTimestamp() : 0;
     $endTs = $end->getTimestamp();
 
     $filtered = [];
@@ -120,7 +191,11 @@ function load_purchase_history_items(mysqli $conn, int $userId, DateTimeImmutabl
         }
         $recordedAt = isset($entry['recorded_at']) ? (string)$entry['recorded_at'] : '';
         $recordedTs = strtotime($recordedAt);
-        if ($recordedTs === false || $recordedTs < $startTs || $recordedTs >= $endTs) {
+        if ($recordedTs === false) {
+            continue;
+        }
+        // Apply date filter only if start is specified
+        if ($start !== null && ($recordedTs < $startTs || $recordedTs >= $endTs)) {
             continue;
         }
 
@@ -135,7 +210,15 @@ function load_purchase_history_items(mysqli $conn, int $userId, DateTimeImmutabl
         return [];
     }
 
-    $metadata = load_inventory_metadata($conn, array_values($productIds));
+    // Load metadata with error handling
+    $metadata = [];
+    try {
+        $metadata = load_inventory_metadata($conn, array_values($productIds));
+    } catch (Throwable $metaError) {
+        error_log('Failed to load metadata for purchase history: ' . $metaError->getMessage());
+        // Continue without metadata - use fallback values
+    }
+
     $rows = [];
     foreach ($filtered as $entry) {
         $productId = $entry['product_id'];
@@ -151,6 +234,8 @@ function load_purchase_history_items(mysqli $conn, int $userId, DateTimeImmutabl
             'sold_by' => escapeHtml($sellerName),
             'transacted_at' => $entry['transacted_at'],
             'image_url' => format_purchase_history_image_url($meta['image_url'] ?? ''),
+            'categories' => $meta['categories'] ?? [],
+            'price' => $meta['price'] ?? null,
         ];
     }
 
@@ -168,7 +253,7 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
 
     $placeholders = implode(',', array_fill(0, count($productIds), '?'));
     $sql = sprintf(
-        'SELECT inv.product_id, inv.title, inv.photos, inv.seller_id, ua.first_name, ua.last_name
+        'SELECT inv.product_id, inv.title, inv.photos, inv.seller_id, inv.listing_price, ua.first_name, ua.last_name
          FROM INVENTORY inv
          LEFT JOIN user_accounts ua ON ua.user_id = inv.seller_id
          WHERE inv.product_id IN (%s)',
@@ -177,7 +262,7 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
 
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
-        throw new RuntimeException('Failed to prepare inventory metadata lookup');
+        throw new RuntimeException('Failed to prepare inventory metadata lookup: ' . $conn->error);
     }
 
     $types = str_repeat('i', count($productIds));
@@ -188,8 +273,16 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
     }
     call_user_func_array([$stmt, 'bind_param'], $params);
 
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        $stmt->close();
+        throw new RuntimeException('Failed to execute inventory metadata query: ' . $conn->error);
+    }
+    
     $res = $stmt->get_result();
+    if (!$res) {
+        $stmt->close();
+        throw new RuntimeException('Failed to get result from inventory metadata query: ' . $conn->error);
+    }
 
     $map = [];
     while ($row = $res->fetch_assoc()) {
@@ -201,10 +294,18 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
             $sellerName = $sellerId > 0 ? 'Seller #' . $sellerId : 'Unknown seller';
         }
 
+        // Get price from listing_price column
+        $price = null;
+        if (isset($row['listing_price']) && $row['listing_price'] !== null) {
+            $price = (float)$row['listing_price'];
+        }
+
         $map[(int)$row['product_id']] = [
             'title' => $row['title'] ?? '',
             'seller_name' => $sellerName,
             'image_url' => resolve_primary_photo($row['photos'] ?? null),
+            'categories' => [], // Categories not needed for purchase history
+            'price' => $price,
         ];
     }
 
@@ -232,15 +333,40 @@ function load_legacy_purchased_items(mysqli $conn, int $userId, string $start, s
     $stmt->execute();
     $res = $stmt->get_result();
 
-    $rows = [];
+    // Get product IDs to fetch metadata
+    $productIds = [];
+    $tempRows = [];
     while ($row = $res->fetch_assoc()) {
-        $rows[] = [
+        $productIds[] = (int)$row['item_id'];
+        $tempRows[(int)$row['item_id']] = [
             'item_id' => (int)$row['item_id'],
             'title' => escapeHtml($row['title'] ?? ''),
             'sold_by' => escapeHtml($row['sold_by'] ?? ''),
             'transacted_at' => $row['transacted_at'] ?? '',
             'image_url' => format_purchase_history_image_url($row['image_url'] ?? ''),
         ];
+    }
+
+    // Load metadata for legacy items
+    $metadata = [];
+    if (!empty($productIds)) {
+        try {
+            $metadata = load_inventory_metadata($conn, $productIds);
+        } catch (Throwable $metaError) {
+            // If metadata loading fails, continue without it
+            error_log('Failed to load inventory metadata for legacy items: ' . $metaError->getMessage());
+            $metadata = [];
+        }
+    }
+
+    // Merge metadata into rows
+    $rows = [];
+    foreach ($tempRows as $itemId => $row) {
+        $meta = $metadata[$itemId] ?? [];
+        $rows[] = array_merge($row, [
+            'categories' => $meta['categories'] ?? [],
+            'price' => $meta['price'] ?? null,
+        ]);
     }
 
     $stmt->close();

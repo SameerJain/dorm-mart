@@ -70,7 +70,6 @@ export default function LandingPage() {
   // rotating statement in blue
   const rotatingLines = [
     "Welcome to Dorm Mart!",
-    "A UB student marketplace run and developed by students.",
     "Happy Shopping!",
   ];
   const [bannerIdx, setBannerIdx] = useState(0);
@@ -214,7 +213,7 @@ export default function LandingPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_categories.php`, { signal: controller.signal });
+        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`, { signal: controller.signal });
         if (!r.ok) return;
         const data = await r.json();
         if (Array.isArray(data)) setAllCategories(data);
@@ -513,6 +512,7 @@ export default function LandingPage() {
                                   sellerUsername={item.sellerUsername}
                                   sellerEmail={item.sellerEmail}
                                   isWishlisted={wishlistedIds.has(item.id)}
+                                  fixedWidth={true}
                                 />
                               </div>
                             ))
@@ -542,7 +542,7 @@ export default function LandingPage() {
                 </p>
               </header>
 
-              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 overflow-x-hidden min-w-0">
                 {exploreItems.map((item, idx) => (
                   <ItemCardNew
                     key={item.id ?? idx}

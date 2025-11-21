@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import chatIcon from '../../assets/icons/icons8-chat-96.png'
 import userIcon from '../../assets/icons/icons8-user-icon-96.png'
 import notificationIcon from '../../assets/icons/icons8-notification-96.png'
@@ -10,6 +10,38 @@ import searchIcon from '../../assets/icons/icons8-search-96.png';
 import { logout } from '../../utils/handle_auth';
 import { ChatContext } from "../../context/ChatContext";
 import { useContext } from 'react';
+
+// Home icon SVG component (matching icons8 style)
+const HomeIcon = ({ className }) => (
+    <svg 
+        className={className}
+        viewBox="0 0 96 96" 
+        fill="none" 
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <path 
+            d="M48 20L20 40V80H40V60H56V80H76V40L48 20Z" 
+            fill="currentColor" 
+            stroke="currentColor" 
+            strokeWidth="2"
+        />
+    </svg>
+);
+
+// Menu icon SVG component (list/menu icon for dropdown)
+const MenuIcon = ({ className }) => (
+    <svg 
+        className={className}
+        viewBox="0 0 96 96" 
+        fill="none" 
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        {/* Three horizontal lines representing menu items */}
+        <rect x="20" y="28" width="56" height="8" rx="2" fill="currentColor" />
+        <rect x="20" y="44" width="56" height="8" rx="2" fill="currentColor" />
+        <rect x="20" y="60" width="56" height="8" rx="2" fill="currentColor" />
+    </svg>
+);
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
@@ -160,21 +192,23 @@ function MainNav() {
 
                 {/* Desktop navigation - hidden on mobile */}
                 <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
+                    {/* Home icon - left-most button */}
+                    <li>
+                        <Link to="/app" className="relative inline-block">
+                            <HomeIcon className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 lg:h-12 lg:w-12 text-slate-100" />
+                        </Link>
+                    </li>
                     <Icon to="/app/notification" src={notificationIcon} alt="Notification" badge={unreadNotificationTotal} />
 
                     <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadMsgTotal} />
 
-                    {/* User icon with dropdown */}
+                    {/* Menu icon with dropdown */}
                     <li className="relative" ref={dropdownRef}>
                         <button
                             onClick={() => setShowDropdown(!showDropdown)}
                             className="block"
                         >
-                            <img
-                                src={userIcon}
-                                alt="User Selection"
-                                className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 lg:h-10 lg:w-10"
-                            />
+                            <MenuIcon className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 lg:h-12 lg:w-12 text-slate-100" />
                         </button>
 
                         {/* Dropdown menu */}
@@ -232,6 +266,17 @@ function MainNav() {
                     {/* Mobile menu dropdown */}
                     {showMobileMenu && (
                         <div className="absolute right-0 mt-2 w-56 bg-blue-600 rounded-lg shadow-lg py-2 z-50 border-2 border-blue-400">
+                            {/* Home button - first item, left-most */}
+                            <button
+                                onClick={() => {
+                                    navigate("/app");
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <HomeIcon className="h-8 w-8 text-white" />
+                                <span>Home</span>
+                            </button>
                             <button
                                 onClick={() => {
                                     navigate("/app/notification");

@@ -97,13 +97,20 @@ function LoginPage() {
     }
 
     if (emailTrimmed === "") {
-      setError("Please input a valid email address");
+      setError("Please enter your UB email address");
+      setLoading(false);
+      return;
+    }
+
+    // Check if email is a UB email address
+    if (!emailTrimmed.toLowerCase().endsWith("@buffalo.edu")) {
+      setError("Only University at Buffalo email addresses are permitted (@buffalo.edu)");
       setLoading(false);
       return;
     }
 
     if (password.trim() === "") {
-      setError("Please input a password");
+      setError("Please enter your password");
       setLoading(false);
       return;
     }
@@ -160,8 +167,22 @@ function LoginPage() {
         // Navigate to the main app
         navigate("/app");
       } else {
-        // Show error from backend
-        setError(data.error || "Login failed");
+        // Show error from backend, with improved messaging
+        const backendError = data.error || "Login failed";
+        let userFriendlyError = backendError;
+        
+        // Map backend errors to more user-friendly messages
+        if (backendError === "Invalid input format") {
+          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
+        } else if (backendError === "Email must be @buffalo.edu") {
+          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
+        } else if (backendError === "Invalid credentials") {
+          userFriendlyError = "Invalid email or password. Please try again.";
+        } else if (backendError.includes("too large")) {
+          userFriendlyError = "Email or password is too long. Please check your input.";
+        }
+        
+        setError(userFriendlyError);
       }
     } catch (error) {
       // Handle network or other errors

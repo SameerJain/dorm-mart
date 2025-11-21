@@ -1,11 +1,18 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { logout } from "../../utils/handle_auth";
 
 const NAV_BLUE = "#2563EB"; // exact hex of your nav bar
 
 function SettingsLayout({ children }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const navigate = useNavigate();
   const linkBase = "/app/setting";
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   const links = [
     { label: "My Profile", to: `${linkBase}/my-profile` },
@@ -62,6 +69,13 @@ function SettingsLayout({ children }) {
                 {l.label}
               </NavLink>
             ))}
+            {/* Logout button - styled differently as an action button */}
+            <button
+              onClick={handleLogout}
+              className="rounded-lg px-3 py-2 text-base transition font-medium leading-6 text-white border border-white/50 hover:bg-white/20 hover:border-white/75 active:bg-white/30 mt-1"
+            >
+              Log Out
+            </button>
           </nav>
         </aside>
 
@@ -113,6 +127,16 @@ function SettingsLayout({ children }) {
                     {l.label}
                   </NavLink>
                 ))}
+                {/* Logout button - styled differently as an action button */}
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setShowMobileMenu(false);
+                  }}
+                  className="rounded-lg px-3 py-2 text-base transition font-medium leading-6 text-white border border-white/50 hover:bg-white/20 hover:border-white/75 active:bg-white/30 mt-1"
+                >
+                  Log Out
+                </button>
               </nav>
             </aside>
           </div>

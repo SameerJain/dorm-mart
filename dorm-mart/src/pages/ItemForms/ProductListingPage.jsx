@@ -1,11 +1,12 @@
 // src/pages/ItemForms/ProductListingPage.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { useParams, useMatch, useNavigate } from "react-router-dom";
+import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
 import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
 
 function ProductListingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // robust matcher for /product-listing/new in different mount contexts
   const matchNewAbs = useMatch({ path: "/product-listing/new", end: true });
@@ -66,7 +67,7 @@ function ProductListingPage() {
   const LIMITS = {
     title: 70,
     description: 1000,
-    price: 999999.99,
+    price: 9999.99,
     priceMin: 0.01,
   };
 
@@ -392,7 +393,7 @@ function ProductListingPage() {
     if (!itemLocation) {
       newErrors.itemLocation = "Select an item location";
     }
-    if (!condition || condition === "<Select Option>") {
+    if (!condition || condition === "") {
       newErrors.condition = "Select an item condition";
     }
 
@@ -684,8 +685,9 @@ function ProductListingPage() {
       const pid = data?.prod_id ?? data?.product_id ?? null;
       
       if (isEdit) {
-        // For edit mode, redirect to dashboard after successful update
-        navigate("/app/seller-dashboard");
+        // For edit mode, redirect back to where user came from, or dashboard
+        const returnTo = location.state?.returnTo || "/app/seller-dashboard";
+        navigate(returnTo);
       } else {
         // For new listings, show success modal
         setCreatedProdId(pid);
@@ -782,7 +784,7 @@ function ProductListingPage() {
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Be specific and descriptive to attract buyers
+                    Be specific and descriptive to attract buyers.
                   </p>
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     {title.length}/{LIMITS.title}
@@ -810,7 +812,7 @@ function ProductListingPage() {
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                     }`}
                   >
-                    <option>{"<Select Option>"}</option>
+                    <option value="" disabled>Select An Option</option>
                     <option>Like New</option>
                     <option>Excellent</option>
                     <option>Good</option>
@@ -832,11 +834,38 @@ function ProductListingPage() {
                 </label>
 
                 <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => {
-                        setSelectedCategory(e.target.value);
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => {
+                      const selected = e.target.value;
+                      if (selected) {
+                        // Automatically add the selected category
+                        setSelectedCategory(selected);
+                        // Check if already added
+                        if (categories.includes(selected)) {
+                          setSelectedCategory("");
+                          return;
+                        }
+                        // Check max limit
+                        if (categories.length >= CATEGORIES_MAX) {
+                          setErrors((p) => ({
+                            ...p,
+                            categories: `Select at most ${CATEGORIES_MAX} categories`,
+                          }));
+                          setSelectedCategory("");
+                          return;
+                        }
+                        // Add the category
+                        const next = [...categories, selected];
+                        setCategories(next);
+                        setSelectedCategory("");
+                        setErrors((p) => {
+                          const ne = { ...p };
+                          if (next.length && next.length <= CATEGORIES_MAX) delete ne.categories;
+                          return ne;
+                        });
+                      } else {
+                        setSelectedCategory("");
                         if (errors.categories) {
                           setErrors((p) => {
                             const ne = { ...p };
@@ -844,38 +873,27 @@ function ProductListingPage() {
                             return ne;
                           });
                         }
-                      }}
-                      className={`flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                        errors.categories
-                          ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                          : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-                      }`}
-                    >
-                      <option value="">{`<Select Option>`}</option>
-                      {catLoading && <option disabled>Loading...</option>}
-                      {!catLoading && selectableOptions.length === 0 && (
-                        <option disabled>
-                          {catFetchError || "No categories available"}
-                        </option>
-                      )}
-                      {selectableOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={addCategory}
-                      disabled={
-                        !selectedCategory || categories.length >= CATEGORIES_MAX
                       }
-                      className="px-5 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      Add
-                    </button>
-                  </div>
+                    }}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.categories
+                        ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
+                        : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    }`}
+                  >
+                    <option value="" disabled>Select An Option</option>
+                    {catLoading && <option disabled>Loading...</option>}
+                    {!catLoading && selectableOptions.length === 0 && (
+                      <option disabled>
+                        {catFetchError || "No categories available"}
+                      </option>
+                    )}
+                    {selectableOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
 
                   {/* Selected chips */}
                   <div className="flex flex-wrap gap-2">
@@ -939,7 +957,7 @@ function ProductListingPage() {
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Provide detailed information about your item
+                    Provide detailed information about your item.
                   </p>
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     {description.length}/{LIMITS.description}
@@ -975,7 +993,8 @@ function ProductListingPage() {
                       : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                   }`}
                 >
-                  {MEET_LOCATION_OPTIONS.map((opt) => (
+                  <option value="" disabled>Select An Option</option>
+                  {MEET_LOCATION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
                     <option key={opt.value || "unselected"} value={opt.value}>
                       {opt.label}
                     </option>
@@ -1073,7 +1092,7 @@ function ProductListingPage() {
                 : "border-gray-200 dark:border-gray-800"
             }`}>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">
-                Photos &amp; Media (1:1 enforced) <span className="text-red-500">*</span>
+                Photos <span className="text-red-500">*</span>
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
@@ -1122,10 +1141,10 @@ function ProductListingPage() {
                     : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600"
                 }`}
               >
-                + Add Photos (we will force 1:1)
+                + Add Photos
               </button>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
-                We enforce a square (1:1) ratio so listings look consistent.
+                All photos are displayed as squares. You can adjust the crop area when uploading.
               </p>
               {errors.images && (
                 <p className="text-red-600 dark:text-red-400 text-sm mt-2 text-center">
@@ -1141,24 +1160,24 @@ function ProductListingPage() {
               </h3>
               <ul className="text-sm text-blue-800 dark:text-blue-100 space-y-3">
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Consider bringing a friend, especially for high value items</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Consider bringing a friend, especially for high value items.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Report suspicious messages or behavior</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Report suspicious messages or behavior.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Trust your gut. Don't proceed if something feels off</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Trust your gut. Don't proceed if something feels off.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Keep receipts or transaction records</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Keep receipts or transaction records.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Use secure payment methods (cash, Venmo, Zelle)</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Use secure payment methods (cash, Venmo, Zelle).</span>
                 </li>
               </ul>
             </div>
@@ -1183,19 +1202,11 @@ function ProductListingPage() {
                     : "Publish Listing"}
                 </button>
 
-                {/* Save Draft (disabled for now) */}
                 <button
-                  type="button"
-                  disabled
-                  title="Draft saving is not available yet"
-                  className="flex-1 py-3 border border-gray-300 dark:border-gray-700 text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg font-medium cursor-not-allowed"
-                  aria-disabled="true"
-                >
-                  Save Draft
-                </button>
-
-                <button
-                  onClick={() => navigate("/app/seller-dashboard")}
+                  onClick={() => {
+                    const returnTo = location.state?.returnTo || "/app/seller-dashboard";
+                    navigate(returnTo);
+                  }}
                   className="flex-1 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
                   type="button"
                 >
@@ -1237,12 +1248,6 @@ function ProductListingPage() {
               <p className="mt-1 text-gray-900 dark:text-gray-100 font-semibold">
                 Congrats!
               </p>
-              <p className="mt-3 text-gray-800 dark:text-gray-200">
-                Your product id is:{" "}
-                <span className="font-mono font-bold">
-                  {createdProdId ?? "N/A"}
-                </span>
-              </p>
             </div>
             <div className="px-6 py-4 flex justify-end gap-3">
               <button
@@ -1269,7 +1274,7 @@ function ProductListingPage() {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl max-w-3xl w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
-              Crop image to 1:1
+              Crop Image
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Drag the square to choose the area you want. The square size is fixed.

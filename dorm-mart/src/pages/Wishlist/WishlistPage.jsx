@@ -12,8 +12,9 @@ export default function WishlistPage() {
   const [allItems, setAllItems] = useState([]); // Store all items for filtering
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [allCategories, setAllCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(null); // { id, title } or null
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,21 +90,20 @@ export default function WishlistPage() {
     return () => controller.abort();
   }, []);
 
-  // Fetch categories for quick filters
-  useEffect(() => {
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const r = await fetch(`${API_BASE}/utility/get_categories.php`, { signal: controller.signal });
-        if (!r.ok) return;
-        const data = await r.json();
-        if (Array.isArray(data)) setAllCategories(data);
-      } catch (e) {
-        // ignore
+  // Extract unique categories from wishlist items
+  const wishlistCategories = useMemo(() => {
+    const categoriesSet = new Set();
+    allItems.forEach((item) => {
+      if (Array.isArray(item.tags)) {
+        item.tags.forEach((tag) => {
+          if (tag && typeof tag === 'string') {
+            categoriesSet.add(tag);
+          }
+        });
       }
-    })();
-    return () => controller.abort();
-  }, []);
+    });
+    return Array.from(categoriesSet).sort();
+  }, [allItems]);
 
   // Filter items by selected category
   const filteredItems = useMemo(() => {
@@ -118,6 +118,55 @@ export default function WishlistPage() {
   useEffect(() => {
     setItems(filteredItems);
   }, [filteredItems]);
+
+  // Handle remove from wishlist
+  const handleRemoveFromWishlist = (itemId, itemTitle) => {
+    setConfirmRemove({ id: itemId, title: itemTitle });
+  };
+
+  const confirmRemoveItem = async () => {
+    if (!confirmRemove || !confirmRemove.id) return;
+
+    setRemoving(true);
+    try {
+      const r = await fetch(`${API_BASE}/wishlist/remove_from_wishlist.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          product_id: Number(confirmRemove.id),
+        }),
+      });
+
+      if (!r.ok) {
+        const errorData = await r.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${r.status}`);
+      }
+
+      const json = await r.json();
+      if (json.success) {
+        // Remove item from local state
+        setAllItems((prev) => prev.filter((item) => item.id !== confirmRemove.id));
+        setItems((prev) => prev.filter((item) => item.id !== confirmRemove.id));
+        setConfirmRemove(null);
+      } else {
+        throw new Error(json.error || "Failed to remove from wishlist");
+      }
+    } catch (e) {
+      console.error("Remove from wishlist failed:", e);
+      setError(e?.message || "Failed to remove from wishlist");
+      setConfirmRemove(null);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const cancelRemove = () => {
+    setConfirmRemove(null);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -140,7 +189,7 @@ export default function WishlistPage() {
                 >
                   All
                 </button>
-                {(allCategories.length ? allCategories : ["Electronics","Kitchen","Furniture","Dorm Essentials"]).map((cat) => (
+                {wishlistCategories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
@@ -243,6 +292,8 @@ export default function WishlistPage() {
                     sellerUsername={item.sellerUsername}
                     sellerEmail={item.sellerEmail}
                     isWishlisted={true}
+                    showRemoveButton={true}
+                    onRemoveFromWishlist={handleRemoveFromWishlist}
                   />
                 ))}
               </div>
@@ -250,6 +301,46 @@ export default function WishlistPage() {
           </main>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmRemove && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="remove-confirm-title"
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full">
+            <h2
+              id="remove-confirm-title"
+              className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4"
+            >
+              Remove from Wishlist?
+            </h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">
+              Are you sure you want to remove <strong>"{confirmRemove.title}"</strong> from your wishlist?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelRemove}
+                disabled={removing}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRemoveItem}
+                disabled={removing}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {removing ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,6 +14,9 @@ export default function ItemCardNew({
   sellerUsername,
   sellerEmail,
   isWishlisted = false,
+  fixedWidth = false,
+  showRemoveButton = false,
+  onRemoveFromWishlist = null,
 }) {
   const navigate = useNavigate();
   const isNew =
@@ -29,12 +32,19 @@ export default function ItemCardNew({
     navigate(`/app/viewProduct/${encodeURIComponent(id)}`);
   };
 
+  const handleRemoveClick = (e) => {
+    e.stopPropagation(); // Prevent card click navigation
+    if (onRemoveFromWishlist && id) {
+      onRemoveFromWishlist(id, title);
+    }
+  };
+
   return (
     <div
       onClick={handleClick}
-      className="group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
-                 w-[210px] h-[330px] cursor-pointer transition-all duration-200
-                 hover:shadow-xl hover:-translate-y-1"
+      className={`group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
+                 ${fixedWidth ? 'w-[210px]' : 'w-full'} h-[330px] cursor-pointer transition-all duration-200
+                 hover:shadow-xl hover:-translate-y-1`}
     >
       {/* subtle top accent */}
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
@@ -47,15 +57,42 @@ export default function ItemCardNew({
           className="object-contain w-full h-full p-2 transition-transform duration-200 group-hover:scale-[1.03]"
         />
 
-        {/* NEW badge */}
+        {/* Remove button - only shown on wishlist page, top-right corner */}
+        {showRemoveButton && (
+          <button
+            onClick={handleRemoveClick}
+            className="absolute top-2 right-2 z-30 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg transition-colors"
+            aria-label="Remove from wishlist"
+            title="Remove from wishlist"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
+
+        {/* NEW badge - positioned below remove button if present */}
         {isNew && (
-          <div className="absolute top-2 right-2 z-20 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow">
+          <div className={`absolute z-20 bg-emerald-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow ${
+            showRemoveButton ? "top-10 right-2" : "top-2 right-2"
+          }`}>
             NEW
           </div>
         )}
 
-        {/* Wishlisted badge - underneath NEW if present, top-right if not */}
-        {isWishlisted && (
+        {/* Wishlisted badge - underneath NEW if present, or below remove button */}
+        {isWishlisted && !showRemoveButton && (
           <div className={`absolute z-20 bg-purple-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow flex items-center gap-1 ${
             isNew ? "top-8 right-2" : "top-2 right-2"
           }`}>

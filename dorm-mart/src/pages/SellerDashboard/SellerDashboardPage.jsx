@@ -466,7 +466,7 @@ function SellerDashboardPage() {
                         <h3 className="text-2xl font-bold">Statistics</h3>
                     </div>
 
-                    {/* Metrics - Original Layout on Desktop, Grid on Mobile */}
+                    {/* Metrics - Centered layout with 3 active statistics */}
                     <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-12 md:flex-1 md:justify-center">
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.activeListings}</div>
@@ -480,14 +480,18 @@ function SellerDashboardPage() {
                             <div className="text-3xl font-bold text-white">{summaryMetrics.itemsSold}</div>
                             <div className="text-sm text-blue-100">Items Sold</div>
                         </div>
+                        {/* TODO: Uncomment when draft feature is implemented
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.savedDrafts}</div>
                             <div className="text-sm text-blue-100">Saved Drafts</div>
                         </div>
+                        */}
+                        {/* TODO: Uncomment when total views tracking is implemented
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.totalViews}</div>
                             <div className="text-sm text-blue-100">Total Views</div>
                         </div>
+                        */}
                     </div>
 
                     {/* Create New Listing Button */}
@@ -535,7 +539,7 @@ function SellerDashboardPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => openViewProduct(listing.id)}
-                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline"
+                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline break-words overflow-hidden w-full"
                                             >
                                                 {listing.title}
                                             </button>
@@ -561,29 +565,21 @@ function SellerDashboardPage() {
                                                 );
                                             })()}
 
-                                            <button
-                                                onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
-                                                disabled={listing.has_accepted_scheduled_purchase === true}
-                                                className={`font-medium text-sm sm:text-base ${
-                                                    listing.has_accepted_scheduled_purchase === true
-                                                        ? 'text-gray-400 cursor-not-allowed'
-                                                        : 'text-blue-600 hover:text-blue-800'
-                                                }`}
-                                                title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
-                                            >
-                                                Edit
-                                            </button>
+                                            {/* Edit button - only show if item can be edited */}
+                                            {listing.has_accepted_scheduled_purchase !== true && (
+                                                <button
+                                                    onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
+                                                    className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800"
+                                                >
+                                                    Edit
+                                                </button>
+                                            )}
 
-                                            {String(listing.status || '').toLowerCase() !== 'sold' && (
+                                            {/* Delete button - only show if item is not sold and can be deleted */}
+                                            {String(listing.status || '').toLowerCase() !== 'sold' && listing.has_accepted_scheduled_purchase !== true && (
                                                 <button
                                                     onClick={() => openDeleteConfirm(listing.id)}
-                                                    disabled={listing.has_accepted_scheduled_purchase === true}
-                                                    className={`font-medium text-sm sm:text-base ${
-                                                        listing.has_accepted_scheduled_purchase === true
-                                                            ? 'text-gray-400 cursor-not-allowed'
-                                                            : 'text-red-600 hover:text-red-800'
-                                                    }`}
-                                                    title={listing.has_accepted_scheduled_purchase === true ? 'Items with an active Scheduled Purchase cannot be modified' : ''}
+                                                    className="font-medium text-sm sm:text-base text-red-600 hover:text-red-800"
                                                 >
                                                     Delete
                                                 </button>
@@ -610,16 +606,36 @@ function SellerDashboardPage() {
                                             {productReviews[listing.id] && (
                                                 <button
                                                     onClick={() => handleViewReview(listing.id, listing.title)}
-                                                    className="font-medium text-sm sm:text-base text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                                                    className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                                 >
                                                     View Review
                                                 </button>
                                             )}
                                         </div>
                                         <div className="flex items-center gap-3 flex-wrap">
-                                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                                                Wishlisted: {String(listing.wishlisted)}
-                                            </p>
+                                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
+                                                (listing.wishlisted || 0) === 0
+                                                    ? "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
+                                                    : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                                            }`}>
+                                                <svg
+                                                    className="w-3.5 h-3.5 fill-current"
+                                                    viewBox="0 0 24 24"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                                <span className="hidden sm:inline text-xs sm:text-sm font-medium">
+                                                    Number of Wishlists:{" "}
+                                                </span>
+                                                <span className="text-xs sm:text-sm font-medium">
+                                                    {String(listing.wishlisted || 0)}
+                                                </span>
+                                            </div>
                                             {productReviews[listing.id] && productReviews[listing.id].rating && (
                                                 <div className="flex items-center gap-1.5">
                                                     <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Seller:</span>

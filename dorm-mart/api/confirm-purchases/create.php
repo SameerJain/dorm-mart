@@ -53,9 +53,9 @@ try {
     $finalPrice = isset($payload['final_price']) && $payload['final_price'] !== ''
         ? (float)$payload['final_price']
         : null;
-    if ($finalPrice !== null && ($finalPrice < 0 || $finalPrice > 999999.99)) {
+    if ($finalPrice !== null && ($finalPrice < 0 || $finalPrice > 9999.99)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Final price must be between 0 and 999,999.99']);
+        echo json_encode(['success' => false, 'error' => 'Final price must be between 0 and 9,999.99']);
         exit;
     }
 

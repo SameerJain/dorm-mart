@@ -355,46 +355,13 @@ export default function ViewProduct() {
         </div>
         <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 text-center">Product Details</h1>
         <div className="flex items-center gap-2 justify-end">
-          {!isSellerViewingOwnProduct && normalized && (
-            <button
-              onClick={handleWishlistToggle}
-              disabled={wishlistLoading || !myId}
-              className={`rounded-full font-medium px-3 py-1.5 flex items-center gap-1.5 text-sm whitespace-nowrap ${
-                isInWishlist
-                  ? "bg-purple-600 dark:bg-purple-700 hover:bg-purple-700 dark:hover:bg-purple-600 text-white"
-                  : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
-              } disabled:opacity-50 transition-colors`}
-              title={wishlistLoading ? "Loading..." : isInWishlist ? "Saved to Wishlist" : "Add to Wishlist"}
-            >
-              <svg
-                className={`w-4 h-4 ${isInWishlist ? "fill-current" : ""}`}
-                fill={isInWishlist ? "currentColor" : "none"}
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-              {wishlistLoading ? (
-                <span className="hidden sm:inline">Loading...</span>
-              ) : isInWishlist ? (
-                <span className="hidden sm:inline">Saved to Wishlist</span>
-              ) : (
-                <span className="hidden sm:inline">Add to Wishlist</span>
-              )}
-            </button>
-          )}
           {isSellerViewingOwnProduct ? (
             <button
               onClick={() => navigate('/app/seller-dashboard')}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium whitespace-nowrap"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
             >
-              View Seller Dashboard
+              <span className="hidden sm:inline">View Seller Dashboard</span>
+              <span className="sm:hidden">Dashboard</span>
             </button>
           ) : (
             <div className="w-0" />
@@ -418,10 +385,10 @@ export default function ViewProduct() {
           <>
             {isSellerViewingOwnProduct && (
               <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">You are the seller of this item.</p>
+                <p className="text-base font-semibold text-yellow-800 dark:text-yellow-200 text-center">You are the seller of this item.</p>
               </div>
             )}
-          <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-3 lg:gap-4 items-start">
             {/* Left: photos */}
             <section className="flex gap-3 items-start justify-center lg:sticky lg:top-20">
               {/* Vertical thumbnails (md+) */}
@@ -491,7 +458,7 @@ export default function ViewProduct() {
             {/* Right: details */}
             <section className="flex flex-col gap-4 min-w-0">
               {/* Title */}
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug">{normalized.title}</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words overflow-hidden">{normalized.title}</h2>
 
               {/* Meta row */}
                 <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -518,7 +485,38 @@ export default function ViewProduct() {
               </div>
 
               {/* Buy box (Amazon-like, but with our palette and only Message Seller) */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 w-full max-w-md">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 w-full relative">
+                {/* Wishlist button - top right corner */}
+                {!isSellerViewingOwnProduct && normalized && (
+                  <button
+                    onClick={handleWishlistToggle}
+                    disabled={wishlistLoading || !myId}
+                    className={`absolute top-3 right-3 rounded-full font-medium px-3 py-1.5 flex items-center gap-1.5 text-sm whitespace-nowrap ${isInWishlist ? "bg-purple-600 dark:bg-purple-700 hover:bg-purple-700 dark:hover:bg-purple-600 text-white" : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"} disabled:opacity-50 transition-colors`}
+                    title={wishlistLoading ? "Loading..." : isInWishlist ? "Saved to Wishlist" : "Add to Wishlist"}
+                  >
+                    <svg
+                      className={`w-4 h-4 ${isInWishlist ? "fill-current" : ""}`}
+                      fill={isInWishlist ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                    {wishlistLoading ? (
+                      <span className="hidden sm:inline">Loading...</span>
+                    ) : isInWishlist ? (
+                      <span className="hidden sm:inline">Saved to Wishlist</span>
+                    ) : (
+                      <span className="hidden sm:inline">Add to Wishlist</span>
+                    )}
+                  </button>
+                )}
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-semibold text-gray-900 dark:text-gray-100">${normalized.price?.toFixed(2)}</span>
                   {normalized.priceNego ? (
@@ -531,21 +529,45 @@ export default function ViewProduct() {
                 <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">{normalized.sold ? 'Not available' : 'In Stock'}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Pickup: {normalized.itemLocation || 'On campus'}</p>
 
-                <div className="mt-3 space-y-2">
-                  <button
-                    onClick={handleMessageSeller}
-                    disabled={!normalized.sellerId || msgLoading || isSellerViewingOwnProduct}
-                    className={`w-full rounded-full font-medium py-2 ${
-                      isSellerViewingOwnProduct
-                        ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
-                        : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
-                    }`}
-                  >
-                    {msgLoading ? "Opening chat..." : "Message Seller"}
-                  </button>
-                  {msgError ? (
-                    <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p>
-                  ) : null}
+                <div className="mt-3 space-y-2 flex flex-col items-center">
+                  {isSellerViewingOwnProduct ? (
+                    <>
+                      {/* Prominent buyer perspective notice */}
+                      <div className="mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg w-full">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <div>
+                            <p className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Buyer's Perspective View</p>
+                            <p className="text-base text-yellow-700 dark:text-yellow-300">You're viewing your listing from a buyer's perspective. This helps you see how your item appears to potential buyers.</p>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/app/product-listing/edit/${normalized.productId}`, { 
+                          state: { returnTo: `/app/viewProduct/${normalized.productId}` } 
+                        })}
+                        className="w-full max-w-xs rounded-full font-medium py-2 bg-blue-800 dark:bg-blue-900 hover:bg-blue-900 dark:hover:bg-blue-800 text-white"
+                      >
+                        Edit Listing
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleMessageSeller}
+                        disabled={!normalized.sellerId || msgLoading}
+                        className="w-full max-w-xs rounded-full font-medium py-2 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
+                      >
+                        {msgLoading ? "Opening chat..." : "Message Seller"}
+                      </button>
+                      {msgError ? (
+                        <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -553,7 +575,7 @@ export default function ViewProduct() {
               {normalized.description ? (
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">About this item</h3>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{normalized.description}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line break-words overflow-hidden">{normalized.description}</p>
                 </div>
               ) : null}
 
