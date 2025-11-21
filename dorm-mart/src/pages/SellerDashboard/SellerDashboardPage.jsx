@@ -606,16 +606,36 @@ function SellerDashboardPage() {
                                             {productReviews[listing.id] && (
                                                 <button
                                                     onClick={() => handleViewReview(listing.id, listing.title)}
-                                                    className="font-medium text-sm sm:text-base text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                                                    className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                                                 >
                                                     View Review
                                                 </button>
                                             )}
                                         </div>
                                         <div className="flex items-center gap-3 flex-wrap">
-                                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                                                Wishlisted: {String(listing.wishlisted)}
-                                            </p>
+                                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
+                                                (listing.wishlisted || 0) === 0
+                                                    ? "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
+                                                    : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                                            }`}>
+                                                <svg
+                                                    className="w-3.5 h-3.5 fill-current"
+                                                    viewBox="0 0 24 24"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                                <span className="hidden sm:inline text-xs sm:text-sm font-medium">
+                                                    Number of Wishlists:{" "}
+                                                </span>
+                                                <span className="text-xs sm:text-sm font-medium">
+                                                    {String(listing.wishlisted || 0)}
+                                                </span>
+                                            </div>
                                             {productReviews[listing.id] && productReviews[listing.id].rating && (
                                                 <div className="flex items-center gap-1.5">
                                                     <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Seller:</span>

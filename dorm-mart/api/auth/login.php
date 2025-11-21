@@ -61,7 +61,7 @@ if (strpos($ct, 'application/json') !== false) {
 // Note: SQL injection is already prevented by prepared statements
 if (containsXSSPattern($emailRaw)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted']);
+    echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);
     exit;
 }
 
@@ -74,9 +74,9 @@ if ($email === false || $password === false) {
     if ($email === false) {
         // Check if it's because email doesn't match UB format
         if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $emailRaw)) {
-            echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted']);
+            echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);
         } else {
-            echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted']);
+            echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);
         }
     } else {
         echo json_encode(['ok' => false, 'error' => 'Invalid password format. Please check your password.']);
@@ -96,7 +96,7 @@ if (strlen($email) >= 50 || strlen($password) >= 64) {
 }
 if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted']);
+    echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);
     exit;
 }
 
