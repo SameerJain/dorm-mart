@@ -1201,17 +1201,6 @@ function ProductListingPage() {
                     : "Publish Listing"}
                 </button>
 
-                {/* Save Draft (disabled for now) */}
-                <button
-                  type="button"
-                  disabled
-                  title="Draft saving is not available yet"
-                  className="flex-1 py-3 border border-gray-300 dark:border-gray-700 text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg font-medium cursor-not-allowed"
-                  aria-disabled="true"
-                >
-                  Save Draft
-                </button>
-
                 <button
                   onClick={() => {
                     const returnTo = location.state?.returnTo || "/app/seller-dashboard";
