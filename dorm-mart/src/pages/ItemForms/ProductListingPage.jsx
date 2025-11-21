@@ -393,7 +393,7 @@ function ProductListingPage() {
     if (!itemLocation) {
       newErrors.itemLocation = "Select an item location";
     }
-    if (!condition || condition === "<Select Option>") {
+    if (!condition || condition === "") {
       newErrors.condition = "Select an item condition";
     }
 
@@ -812,7 +812,7 @@ function ProductListingPage() {
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                     }`}
                   >
-                    <option>{"<Select Option>"}</option>
+                    <option value="" disabled>Select An Option</option>
                     <option>Like New</option>
                     <option>Excellent</option>
                     <option>Good</option>
@@ -881,7 +881,7 @@ function ProductListingPage() {
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                     }`}
                   >
-                    <option value="">{`<Select Option>`}</option>
+                    <option value="" disabled>Select An Option</option>
                     {catLoading && <option disabled>Loading...</option>}
                     {!catLoading && selectableOptions.length === 0 && (
                       <option disabled>
