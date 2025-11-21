@@ -167,6 +167,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     return `$${price.toFixed(2)}`;
   };
 
+
   return (
     <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.textColor} overflow-hidden`}>
       <div className="p-4 space-y-3">

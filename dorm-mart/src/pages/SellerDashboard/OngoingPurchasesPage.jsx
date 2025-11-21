@@ -289,6 +289,7 @@ function OngoingPurchasesPage() {
         return null;
     };
 
+
     // Component to render a purchase card
     const PurchaseCard = ({ req, perspective }) => {
         const isBuyer = perspective === 'buyer';

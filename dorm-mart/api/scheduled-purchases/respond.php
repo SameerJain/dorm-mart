@@ -320,6 +320,27 @@ try {
             $updateStmt->bind_param('iii', $msgId, $conversationId, $msgReceiverId);
             $updateStmt->execute();
             $updateStmt->close();
+            
+            // If purchase was accepted, send a separate "Next Steps" message
+            // Note: This message does NOT increment unread count (no notification for either party)
+            if ($action === 'accept') {
+                $nextStepsContent = 'Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities!';
+                $nextStepsMetadata = json_encode([
+                    'type' => 'next_steps',
+                    'request_id' => $requestId,
+                ], JSON_UNESCAPED_SLASHES);
+                
+                // Send next steps message (buyer is sender, seller is receiver)
+                // Do NOT update unread count - this is an informational message, not a notification
+                // Buyer (sender) won't get a notification since they're the sender
+                // Seller (receiver) won't get a notification because we're not updating unread_count
+                $nextStepsMsgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
+                $nextStepsMsgStmt->bind_param('iiissss', $conversationId, $msgSenderId, $msgReceiverId, $senderName, $receiverName, $nextStepsContent, $nextStepsMetadata);
+                $nextStepsMsgStmt->execute();
+                $nextStepsMsgStmt->close();
+                
+                // Intentionally NOT updating unread count - this message should not trigger notifications for anyone
+            }
         }
     }
 

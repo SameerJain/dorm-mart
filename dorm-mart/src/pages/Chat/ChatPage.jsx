@@ -4,6 +4,7 @@ import fmtTime from "./chat_page_utils";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import MessageCard from "./components/MessageCard";
 import ScheduleMessageCard from "./components/ScheduleMessageCard";
+import NextStepsMessageCard from "./components/NextStepsMessageCard";
 import ImageModal from "./components/ImageModal";
 import ConfirmMessageCard from "./components/ConfirmMessageCard";
 
@@ -648,7 +649,7 @@ export default function ChatPage() {
                 <p className="text-center text-sm text-gray-500">No messages yet.</p>
               ) : (
                 messages.map((m) => {
-                  /** Categorize message type: basic, schedule, confirm, or listing intro */
+                  /** Categorize message type: basic, schedule, confirm, listing intro, or next steps */
                   const messageType = m.metadata?.type;
                   const isScheduleMessage = messageType === 'schedule_request' ||
                                             messageType === 'schedule_accepted' ||
@@ -658,25 +659,30 @@ export default function ChatPage() {
                                            messageType === 'confirm_accepted' ||
                                            messageType === 'confirm_denied' ||
                                            messageType === 'confirm_auto_accepted';
+                  const isNextStepsMessage = messageType === 'next_steps';
 
                   return (
-                    <div key={m.message_id} className={m.sender === "me" ? "flex justify-end" : "flex justify-start"}>
-                      {messageType === "listing_intro" ? (
-                        <MessageCard message={m} isMine={m.sender === "me"} />
-                      ) : isScheduleMessage ? (
-                        <ScheduleMessageCard
-                          message={m}
-                          isMine={m.sender === "me"}
-                          onRespond={async () => {
-                            if (activeConvId) {
-                              await fetchConversation(activeConvId);
-                              const controller = new AbortController();
-                              await checkActiveScheduledPurchase(controller.signal);
-                              await checkConfirmStatus(controller.signal);
-                            }
-                          }}
-                        />
-                      ) : isConfirmMessage ? (
+                    <div key={m.message_id}>
+                      {isNextStepsMessage ? (
+                        <NextStepsMessageCard message={m} />
+                      ) : (
+                        <div className={m.sender === "me" ? "flex justify-end" : "flex justify-start"}>
+                          {messageType === "listing_intro" ? (
+                            <MessageCard message={m} isMine={m.sender === "me"} />
+                          ) : isScheduleMessage ? (
+                            <ScheduleMessageCard
+                              message={m}
+                              isMine={m.sender === "me"}
+                              onRespond={async () => {
+                                if (activeConvId) {
+                                  await fetchConversation(activeConvId);
+                                  const controller = new AbortController();
+                                  await checkActiveScheduledPurchase(controller.signal);
+                                  await checkConfirmStatus(controller.signal);
+                                }
+                              }}
+                            />
+                          ) : isConfirmMessage ? (
                         <ConfirmMessageCard
                           message={m}
                           isMine={m.sender === "me"}
@@ -754,6 +760,8 @@ export default function ChatPage() {
                             </div>
                           </div>
                         )
+                      )}
+                        </div>
                       )}
                     </div>
                   );
