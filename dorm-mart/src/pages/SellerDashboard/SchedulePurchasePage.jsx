@@ -1,6 +1,5 @@
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChatContext } from '../../context/ChatContext';
 import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constants/meetLocations';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
@@ -14,17 +13,20 @@ const PRICE_LIMITS = {
 function SchedulePurchasePage() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { conversations } = useContext(ChatContext) || { conversations: [] };
     const navState = location.state && typeof location.state === 'object' ? location.state : null;
+
+    // Redirect if navState is missing - form should only be accessible from chat
+    useEffect(() => {
+        if (!navState || !navState.productId || !navState.convId) {
+            navigate('/app/chat');
+        }
+    }, [navState, navigate]);
 
     const [listings, setListings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formError, setFormError] = useState('');
     const [formSuccess, setFormSuccess] = useState('');
-
-    const [selectedListingId, setSelectedListingId] = useState(navState?.productId ? String(navState.productId) : '');
-    const [selectedConversationId, setSelectedConversationId] = useState(navState?.convId ? String(navState.convId) : '');
     const [meetLocationChoice, setMeetLocationChoice] = useState('');
     const [customMeetLocation, setCustomMeetLocation] = useState('');
     const [meetingDate, setMeetingDate] = useState('');
@@ -80,31 +82,9 @@ function SchedulePurchasePage() {
     }, []);
 
 
-    const conversationOptions = useMemo(() => {
-        if (!Array.isArray(conversations)) return [];
-        return conversations.map((c) => ({
-            convId: c.conv_id,
-            receiverId: c.receiverId,
-            label: c.receiverName || `User #${c.receiverId}`,
-        }));
-    }, [conversations]);
-
-    const listingOptions = useMemo(() => {
-        if (!Array.isArray(listings)) return [];
-        return listings.map((l) => ({
-            id: l.id,
-            title: l.title,
-            price: l.price,
-            status: l.status,
-            priceNegotiable: l.priceNegotiable || false,
-            acceptTrades: l.acceptTrades || false,
-            meet_location: l.meet_location || null,
-        }));
-    }, [listings]);
-
-    // Update selectedListing when selectedListingId changes
+    // Update selectedListing when listings are loaded and navState.productId is available
     useEffect(() => {
-        const finalListingId = navState?.productId ? String(navState.productId) : selectedListingId;
+        const finalListingId = navState?.productId ? String(navState.productId) : null;
         if (finalListingId && listings.length > 0) {
             const listing = listings.find(l => String(l.id) === finalListingId);
             if (listing) {
@@ -126,7 +106,7 @@ function SchedulePurchasePage() {
         } else {
             setSelectedListing(null);
         }
-    }, [selectedListingId, listings, navState]);
+    }, [listings, navState]);
 
     // resetForm function removed - not currently used
     // const resetForm = () => {
@@ -324,9 +304,9 @@ function SchedulePurchasePage() {
             ? trimmedCustomLocation
             : meetLocationChoice;
 
-        // If prefilled from navState, use those values
-        const finalListingId = navState?.productId ? String(navState.productId) : selectedListingId;
-        const finalConversationId = navState?.convId ? String(navState.convId) : selectedConversationId;
+        // Get values from navState (required since form is only accessible from chat)
+        const finalListingId = navState?.productId ? String(navState.productId) : null;
+        const finalConversationId = navState?.convId ? String(navState.convId) : null;
         
         if (!finalListingId || !finalConversationId || !finalMeetLocation) {
             setFormError('Please complete all required fields before submitting.');
@@ -438,48 +418,7 @@ function SchedulePurchasePage() {
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                    {navState && (navState.convId || navState.productId) && (
-                        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                            <p className="text-sm text-blue-800 dark:text-blue-200">Some fields have been prefilled from your chat conversation.</p>
-                        </div>
-                    )}
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Always show listing dropdown, but disable if prefilled */}
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Select Listing</label>
-                            <select
-                                value={navState?.productId ? String(navState.productId) : selectedListingId}
-                                onChange={(e) => setSelectedListingId(e.target.value)}
-                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
-                                disabled={loading || listingOptions.length === 0 || !!navState?.productId}
-                            >
-                                <option value="">{loading ? 'Loading your listings...' : 'Choose a listing'}</option>
-                                {listingOptions.map((listing) => (
-                                    <option key={listing.id} value={listing.id}>
-                                        {listing.title} {listing.price ? `( $${Number(listing.price).toFixed(2)} )` : ''}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Always show buyer dropdown, but disable if prefilled */}
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Select Buyer (Active Conversations)</label>
-                            <select
-                                value={navState?.convId ? String(navState.convId) : selectedConversationId}
-                                onChange={(e) => setSelectedConversationId(e.target.value)}
-                                className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
-                                disabled={conversationOptions.length === 0 || !!navState?.convId}
-                            >
-                                <option value="">{conversationOptions.length ? 'Choose a buyer' : 'No active conversations found'}</option>
-                                {conversationOptions.map((conv) => (
-                                    <option key={conv.convId} value={conv.convId}>
-                                        {conv.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Meet Location</label>
                             <select
