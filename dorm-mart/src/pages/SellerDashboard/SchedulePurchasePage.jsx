@@ -10,6 +10,14 @@ const PRICE_LIMITS = {
     min: 0,
 };
 
+// Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
+function containsMemePrice(priceString) {
+    if (!priceString) return false;
+    const priceStr = String(priceString);
+    const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
+    return memeNumbers.some(meme => priceStr.includes(meme));
+}
+
 function SchedulePurchasePage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -23,7 +31,6 @@ function SchedulePurchasePage() {
     }, [navState, navigate]);
 
     const [listings, setListings] = useState([]);
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formError, setFormError] = useState('');
     const [formSuccess, setFormSuccess] = useState('');
@@ -76,7 +83,6 @@ function SchedulePurchasePage() {
     useEffect(() => {
         const abort = new AbortController();
         async function loadListings() {
-            setLoading(true);
             setError('');
             try {
                 const res = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
@@ -102,8 +108,6 @@ function SchedulePurchasePage() {
                 if (e.name !== 'AbortError') {
                     setError('Unable to load your listings right now.');
                 }
-            } finally {
-                setLoading(false);
             }
         }
 
@@ -410,6 +414,11 @@ function SchedulePurchasePage() {
                     setIsSubmitting(false);
                     return;
                 }
+                if (containsMemePrice(negotiatedPrice)) {
+                    setFormError('The price has a meme input in it. Please try a different price.');
+                    setIsSubmitting(false);
+                    return;
+                }
                 if (negotiatedPriceValue < 0) {
                     setFormError('Price cannot be negative.');
                     setIsSubmitting(false);
@@ -470,8 +479,7 @@ function SchedulePurchasePage() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Schedule a Purchase</h1>
                     <p className="mt-2 text-gray-600 dark:text-gray-300">
-                        Coordinate a meetup with a buyer you are chatting with. They will confirm on their side and share the
-                        provided 4-character code at the exchange.
+                        Coordinate a meetup with this buyer. They will either accept or deny this meetup request.
                     </p>
                 </div>
 
@@ -678,8 +686,8 @@ function SchedulePurchasePage() {
                                     const listedPriceValue = parseFloat(selectedListing.price);
                                     if (!isNaN(negotiatedPriceValue) && !isNaN(listedPriceValue) && negotiatedPriceValue > listedPriceValue) {
                                         return (
-                                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                                                This is higher than the listed price
+                                            <p className="mt-2 text-sm text-orange-600 dark:text-orange-400">
+                                                Please note that this is higher than the listed price
                                             </p>
                                         );
                                     }

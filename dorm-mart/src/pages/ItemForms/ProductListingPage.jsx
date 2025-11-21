@@ -3,6 +3,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
 import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
 
+// Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
+function containsMemePrice(priceString) {
+  if (!priceString) return false;
+  const priceStr = String(priceString);
+  const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
+  return memeNumbers.some(meme => priceStr.includes(meme));
+}
+
 function ProductListingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -407,6 +415,8 @@ function ProductListingPage() {
 
     if (price === "") {
       newErrors.price = "Price is required";
+    } else if (containsMemePrice(price)) {
+      newErrors.price = "The price has a meme input in it. Please try a different price.";
     } else if (Number(price) < LIMITS.priceMin) {
       newErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
     } else if (Number(price) > LIMITS.price) {
