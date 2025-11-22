@@ -4,10 +4,9 @@ import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constant
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
-// Price limits - max matches ProductListingPage exactly, min is 0 to allow free items
+// Price limits - max matches ProductListingPage exactly
 const PRICE_LIMITS = {
     max: 9999.99,
-    min: 0,
 };
 
 // Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
@@ -33,7 +32,6 @@ function SchedulePurchasePage() {
     const [listings, setListings] = useState([]);
     const [error, setError] = useState('');
     const [formError, setFormError] = useState('');
-    const [formSuccess, setFormSuccess] = useState('');
     const [meetLocationChoice, setMeetLocationChoice] = useState('');
     const [customMeetLocation, setCustomMeetLocation] = useState('');
     const [meetingDate, setMeetingDate] = useState('');
@@ -339,7 +337,6 @@ function SchedulePurchasePage() {
     async function handleSubmit(e) {
         e.preventDefault();
         setFormError('');
-        setFormSuccess('');
         setDateTimeError('');
 
         // Validate date and time first
@@ -759,9 +756,6 @@ function SchedulePurchasePage() {
 
                         {formError && (
                             <div className="text-sm text-red-600 dark:text-red-400">{formError}</div>
-                        )}
-                        {formSuccess && (
-                            <div className="text-sm text-green-600 dark:text-green-400">{formSuccess}</div>
                         )}
 
                         <div className="pt-2 flex justify-between items-center">
