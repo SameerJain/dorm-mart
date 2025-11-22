@@ -81,6 +81,10 @@ function ProductListingPage() {
     priceMin: 0.01,
   };
 
+  // File type restrictions (same as chat)
+  const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+  const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+
   // ========== CROPPER STATE ==========
   const [showCropper, setShowCropper] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState(null);
@@ -460,11 +464,42 @@ function ProductListingPage() {
   // ============================================
   // IMAGE UPLOAD + 1:1 ENFORCEMENT
   // ============================================
+  function isAllowedType(f) {
+    // Prefer MIME, but fall back to extension if needed
+    if (f.type && ALLOWED_MIME.has(f.type)) return true;
+
+    const name = (f.name || "").toLowerCase();
+    const ext = ALLOWED_EXTS.has(
+      name.slice(name.lastIndexOf(".")) // includes dot
+    );
+    return ext;
+  }
+
   function onFileChange(e) {
     const files = Array.from(e.target.files || []).slice(0, 1);
     if (!files.length) return;
 
     const file = files[0];
+
+    // Validate file type
+    if (!isAllowedType(file)) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Only JPG/JPEG, PNG, and WEBP images are allowed.",
+      }));
+      e.target.value = null;
+      return;
+    }
+
+    // Clear file type error if validation passes
+    if (errors.images && errors.images.includes("Only JPG/JPEG")) {
+      setErrors((prev) => {
+        const ne = { ...prev };
+        delete ne.images;
+        return ne;
+      });
+    }
+
     const reader = new FileReader();
     reader.onload = function (ev) {
       const img = new Image();
@@ -969,7 +1004,7 @@ function ProductListingPage() {
                         }
                       }
                     }}
-                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                    className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.categories
                         ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
@@ -1232,7 +1267,7 @@ function ProductListingPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 multiple
                 onChange={onFileChange}
                 className="hidden"
