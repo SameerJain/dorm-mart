@@ -84,6 +84,7 @@ function ProductListingPage() {
   // File type restrictions (same as chat)
   const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
   const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+  const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
   // ========== CROPPER STATE ==========
   const [showCropper, setShowCropper] = useState(false);
@@ -481,6 +482,16 @@ function ProductListingPage() {
 
     const file = files[0];
 
+    // Validate file size
+    if (file.size > MAX_BYTES) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Image is too large. Max size is 2 MB.",
+      }));
+      e.target.value = null;
+      return;
+    }
+
     // Validate file type
     if (!isAllowedType(file)) {
       setErrors((prev) => ({
@@ -491,8 +502,8 @@ function ProductListingPage() {
       return;
     }
 
-    // Clear file type error if validation passes
-    if (errors.images && errors.images.includes("Only JPG/JPEG")) {
+    // Clear file size and type errors if validation passes
+    if (errors.images && (errors.images.includes("Image is too large") || errors.images.includes("Only JPG/JPEG"))) {
       setErrors((prev) => {
         const ne = { ...prev };
         delete ne.images;
