@@ -10,6 +10,14 @@ const PRICE_LIMITS = {
     min: 0,
 };
 
+// Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
+function containsMemePrice(priceString) {
+    if (!priceString) return false;
+    const priceStr = String(priceString);
+    const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
+    return memeNumbers.some(meme => priceStr.includes(meme));
+}
+
 function SchedulePurchasePage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -23,7 +31,6 @@ function SchedulePurchasePage() {
     }, [navState, navigate]);
 
     const [listings, setListings] = useState([]);
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formError, setFormError] = useState('');
     const [formSuccess, setFormSuccess] = useState('');
@@ -36,6 +43,36 @@ function SchedulePurchasePage() {
     const [dateTimeError, setDateTimeError] = useState('');
     const [description, setDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+    
+    // Prevent body scroll when close confirmation modal is open
+    useEffect(() => {
+        if (closeConfirmOpen) {
+            const scrollY = window.scrollY;
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollY}px`;
+            document.body.style.width = '100%';
+        } else {
+            const scrollY = document.body.style.top;
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            if (scrollY) {
+                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+            }
+        }
+        return () => {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+        };
+    }, [closeConfirmOpen]);
     
     // New fields for price negotiation and trades
     const [negotiatedPrice, setNegotiatedPrice] = useState('');
@@ -46,7 +83,6 @@ function SchedulePurchasePage() {
     useEffect(() => {
         const abort = new AbortController();
         async function loadListings() {
-            setLoading(true);
             setError('');
             try {
                 const res = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
@@ -72,8 +108,6 @@ function SchedulePurchasePage() {
                 if (e.name !== 'AbortError') {
                     setError('Unable to load your listings right now.');
                 }
-            } finally {
-                setLoading(false);
             }
         }
 
@@ -184,8 +218,22 @@ function SchedulePurchasePage() {
     const validateDateTime = () => {
         setDateTimeError('');
         
-        if (!meetingDate || !meetingHour || !meetingMinute || !meetingAmPm) {
-            setDateTimeError('Please complete all date and time fields.');
+        // Check each field individually and provide specific error messages
+        const missingFields = [];
+        if (!meetingDate) missingFields.push('meeting date');
+        if (!meetingHour) missingFields.push('meeting hour');
+        if (!meetingMinute) missingFields.push('meeting minute');
+        if (!meetingAmPm) missingFields.push('AM/PM');
+        
+        if (missingFields.length > 0) {
+            if (missingFields.length === 1) {
+                setDateTimeError(`Please select a ${missingFields[0]}.`);
+            } else if (missingFields.length === 2) {
+                setDateTimeError(`Please select ${missingFields[0]} and ${missingFields[1]}.`);
+            } else {
+                const lastField = missingFields.pop();
+                setDateTimeError(`Please select ${missingFields.join(', ')}, and ${lastField}.`);
+            }
             return false;
         }
 
@@ -308,8 +356,21 @@ function SchedulePurchasePage() {
         const finalListingId = navState?.productId ? String(navState.productId) : null;
         const finalConversationId = navState?.convId ? String(navState.convId) : null;
         
-        if (!finalListingId || !finalConversationId || !finalMeetLocation) {
-            setFormError('Please complete all required fields before submitting.');
+        // Validate required fields with specific error messages
+        if (!finalListingId || !finalConversationId) {
+            setFormError('An error occurred. Please return to the chat page and try again.');
+            return;
+        }
+        
+        // Check meet location
+        if (!meetLocationChoice) {
+            setFormError('Please select a meet location.');
+            return;
+        }
+        
+        // Check custom meet location if "Other" is selected
+        if (meetLocationChoice === MEET_LOCATION_OTHER_VALUE && !trimmedCustomLocation) {
+            setFormError('Please enter a custom meet location.');
             return;
         }
 
@@ -321,7 +382,8 @@ function SchedulePurchasePage() {
 
         const meetingDateTimeISO = combineDateTime();
         if (!meetingDateTimeISO) {
-            setFormError('Please provide a valid meeting date and time.');
+            // This should not happen if validateDateTime passed, but keep as safety check
+            setFormError('Please ensure all date and time fields are properly filled.');
             return;
         }
 
@@ -349,6 +411,11 @@ function SchedulePurchasePage() {
             if (negotiatedPriceValue !== null) {
                 if (isNaN(negotiatedPriceValue) || !isFinite(negotiatedPriceValue)) {
                     setFormError('Please enter a valid price.');
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (containsMemePrice(negotiatedPrice)) {
+                    setFormError('The price has a meme input in it. Please try a different price.');
                     setIsSubmitting(false);
                     return;
                 }
@@ -412,15 +479,16 @@ function SchedulePurchasePage() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Schedule a Purchase</h1>
                     <p className="mt-2 text-gray-600 dark:text-gray-300">
-                        Coordinate a meetup with a buyer you are chatting with. They will confirm on their side and share the
-                        provided 4-character code at the exchange.
+                        Coordinate a meetup with this buyer. They will either accept or deny this meetup request.
                     </p>
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Meet Location</label>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                Meet Location <span className="text-red-500">*</span>
+                            </label>
                             <select
                                 value={meetLocationChoice}
                                 onChange={(e) => {
@@ -436,6 +504,7 @@ function SchedulePurchasePage() {
                                         : 'border-gray-300 dark:border-gray-700'
                                 }`}
                             >
+                                <option value="" disabled>Select An Option</option>
                                 {MEET_LOCATION_OPTIONS.map((option) => {
                                     // Compare meet location - handle both predefined options and custom locations
                                     const itemLocation = selectedListing?.meet_location;
@@ -478,7 +547,9 @@ function SchedulePurchasePage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Meeting Date &amp; Time</label>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                Meeting Date &amp; Time <span className="text-red-500">*</span>
+                            </label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div>
                                     <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Date</label>
@@ -615,8 +686,8 @@ function SchedulePurchasePage() {
                                     const listedPriceValue = parseFloat(selectedListing.price);
                                     if (!isNaN(negotiatedPriceValue) && !isNaN(listedPriceValue) && negotiatedPriceValue > listedPriceValue) {
                                         return (
-                                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                                                This is higher than the listed price
+                                            <p className="mt-2 text-sm text-orange-600 dark:text-orange-400">
+                                                Please note that this is higher than the listed price
                                             </p>
                                         );
                                     }
@@ -693,7 +764,14 @@ function SchedulePurchasePage() {
                             <div className="text-sm text-green-600 dark:text-green-400">{formSuccess}</div>
                         )}
 
-                        <div className="pt-2 flex justify-end">
+                        <div className="pt-2 flex justify-between items-center">
+                            <button
+                                type="button"
+                                onClick={() => setCloseConfirmOpen(true)}
+                                className="inline-flex items-center px-4 py-2 border-2 border-red-500 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500"
+                            >
+                                Close
+                            </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
@@ -707,6 +785,40 @@ function SchedulePurchasePage() {
 
                 {error && (
                     <div className="mt-6 text-sm text-red-600 dark:text-red-400">{error}</div>
+                )}
+
+                {/* Close Confirmation Modal */}
+                {closeConfirmOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setCloseConfirmOpen(false)}>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="p-6">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Close This Form?</h3>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                                    Are you sure you want to close? All information you've entered will be lost.
+                                </p>
+                                <div className="flex gap-3 justify-end">
+                                    <button
+                                        onClick={() => setCloseConfirmOpen(false)}
+                                        className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    >
+                                        No, Keep Editing
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (navState?.convId) {
+                                                navigate(`/app/chat?conv=${navState.convId}`);
+                                            } else {
+                                                navigate('/app/chat');
+                                            }
+                                        }}
+                                        className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700"
+                                    >
+                                        Yes, Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

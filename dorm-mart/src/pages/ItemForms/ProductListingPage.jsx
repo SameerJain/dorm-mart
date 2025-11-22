@@ -3,6 +3,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
 import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
 
+// Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
+function containsMemePrice(priceString) {
+  if (!priceString) return false;
+  const priceStr = String(priceString);
+  const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
+  return memeNumbers.some(meme => priceStr.includes(meme));
+}
+
 function ProductListingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -77,6 +85,35 @@ function ProductListingPage() {
   const [cropImgEl, setCropImgEl] = useState(null);
   const [pendingFileName, setPendingFileName] = useState("");
   const previewBoxSize = 480;
+
+  // Prevent body scroll when cropper modal is open
+  useEffect(() => {
+    if (showCropper) {
+      const scrollY = window.scrollY;
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+    } else {
+      const scrollY = document.body.style.top;
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    }
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+    };
+  }, [showCropper]);
 
   // we still keep React state for display/selection so UI updates,
   // but we ALSO mirror them in refs so drag reads the latest values.
@@ -378,6 +415,8 @@ function ProductListingPage() {
 
     if (price === "") {
       newErrors.price = "Price is required";
+    } else if (containsMemePrice(price)) {
+      newErrors.price = "The price has a meme input in it. Please try a different price.";
     } else if (Number(price) < LIMITS.priceMin) {
       newErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
     } else if (Number(price) > LIMITS.price) {
