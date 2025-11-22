@@ -4,6 +4,22 @@ import SettingsLayout from "./SettingsLayout";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
+// File type restrictions (same as product listing and chat)
+const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+
+function isAllowedType(f) {
+  // Prefer MIME, but fall back to extension if needed
+  if (f.type && ALLOWED_MIME.has(f.type)) return true;
+
+  const name = (f.name || "").toLowerCase();
+  const ext = ALLOWED_EXTS.has(
+    name.slice(name.lastIndexOf(".")) // includes dot
+  );
+  return ext;
+}
+
 async function fetchSettingsProfile(apiBase = API_BASE) {
   const response = await fetch(`${apiBase}/profile/my_profile.php`, {
     method: "GET",
@@ -232,6 +248,7 @@ function MyProfilePage() {
   const [bio, setBio] = useState("");
   const [instagram, setInstagram] = useState("");
   const [feedback, setFeedback] = useState({ message: "", tone: "success" });
+  const [avatarError, setAvatarError] = useState("");
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -307,6 +324,28 @@ function MyProfilePage() {
   const handleAvatarChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Clear any previous errors
+    setAvatarError("");
+
+    // Validate file size
+    if (file.size > MAX_BYTES) {
+      const errorMsg = "Image is too large. Maximum file size is 2 MB.";
+      setAvatarError(errorMsg);
+      showFeedback(errorMsg, "error");
+      event.target.value = null; // Clear the input
+      return;
+    }
+
+    // Validate file type
+    if (!isAllowedType(file)) {
+      const errorMsg = "Only JPG/JPEG, PNG, and WEBP images are allowed.";
+      setAvatarError(errorMsg);
+      showFeedback(errorMsg, "error");
+      event.target.value = null; // Clear the input
+      return;
+    }
+
     const fallback = profile?.image_url || "";
     const nextUrl = URL.createObjectURL(file);
     if (blobUrlRef.current) {
@@ -326,6 +365,7 @@ function MyProfilePage() {
       }
       setAvatarPreview(finalUrl);
       updateProfileState({ image_url: finalUrl });
+      setAvatarError(""); // Clear any errors on success
       showFeedback("Profile photo updated");
     } catch (err) {
       if (blobUrlRef.current) {
@@ -334,6 +374,7 @@ function MyProfilePage() {
       }
       setAvatarPreview(fallback);
       const message = err instanceof Error ? err.message : "Unable to update profile photo.";
+      setAvatarError(message);
       showFeedback(message, "error");
     } finally {
       setAvatarUploading(false);
@@ -469,6 +510,16 @@ function MyProfilePage() {
                   <StarRating rating={ratingValue} size={24} label="Average rating" />
                   <span>Average rating across dorm transactions</span>
                 </div>
+                {avatarError && (
+                  <div className="mt-4 rounded-lg bg-rose-50 dark:bg-rose-900/30 border-2 border-rose-200 dark:border-rose-700 p-3">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm font-medium text-rose-800 dark:text-rose-200">{avatarError}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-1 flex-col rounded-3xl border border-slate-100 bg-white/80 p-6 shadow">
