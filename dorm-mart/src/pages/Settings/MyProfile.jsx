@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
+import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
@@ -210,6 +211,7 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
 }
 
 function MyProfilePage() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -455,7 +457,18 @@ function MyProfilePage() {
               </div>
 
               <div className="flex flex-1 flex-col rounded-3xl border border-slate-100 bg-white/80 p-6 shadow">
-                <h2 className="text-lg font-semibold text-slate-900">Public Details</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-slate-900">Public Details</h2>
+                  {profile?.username && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/app/profile?username=${encodeURIComponent(profile.username)}&preview=true`)}
+                      className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors"
+                    >
+                      View Public Profile Display
+                    </button>
+                  )}
+                </div>
                 <div className="mt-4 space-y-4">
                   <div className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm">
                     <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
