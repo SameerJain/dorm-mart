@@ -482,7 +482,7 @@ function SchedulePurchasePage() {
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        <div>
+                        <div className="max-w-xs">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                 Meet Location <span className="text-red-500">*</span>
                             </label>
@@ -624,7 +624,7 @@ function SchedulePurchasePage() {
 
                         {/* Price negotiation field - only show if item is price negotiable */}
                         {selectedListing?.priceNegotiable && (
-                            <div>
+                            <div className="max-w-xs">
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Negotiated Price (Optional)
                                 </label>
@@ -634,27 +634,32 @@ function SchedulePurchasePage() {
                                     </p>
                                 )}
                                 <div className="flex items-center gap-3">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        max={PRICE_LIMITS.max}
-                                        value={negotiatedPrice}
-                                        onChange={(e) => {
-                                            const value = e.target.value;
-                                            if (value === '') {
-                                                setNegotiatedPrice('');
-                                                return;
-                                            }
-                                            const numValue = parseFloat(value);
-                                            if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
-                                                setNegotiatedPrice(value);
-                                            }
-                                        }}
-                                        placeholder="Enter negotiated price"
-                                        disabled={isTrade}
-                                        className={`flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isTrade ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    />
+                                    <div className="relative flex-1">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">
+                                            $
+                                        </span>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            max={PRICE_LIMITS.max}
+                                            value={negotiatedPrice}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (value === '') {
+                                                    setNegotiatedPrice('');
+                                                    return;
+                                                }
+                                                const numValue = parseFloat(value);
+                                                if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
+                                                    setNegotiatedPrice(value);
+                                                }
+                                            }}
+                                            placeholder="Enter negotiated price"
+                                            disabled={isTrade}
+                                            className={`w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isTrade ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        />
+                                    </div>
                                     {selectedListing?.acceptTrades && (
                                         <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                                             <input
