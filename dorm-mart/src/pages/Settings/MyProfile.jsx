@@ -182,7 +182,12 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
         <span>{label}</span>
         <button
           type="button"
-          onClick={onClear}
+          onClick={(e) => {
+            if (disabled) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onClear();
+          }}
           disabled={disabled}
           className={`text-xs font-medium text-rose-500 hover:text-rose-600 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
@@ -199,9 +204,17 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={onSave}
+          id={`save-${label.toLowerCase().replace(/\s+/g, '-')}-button`}
+          onClick={(e) => {
+            if (disabled) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onSave();
+          }}
           disabled={disabled}
-          className={`rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          className={`rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           {disabled ? "Saving..." : "Save"}
         </button>
@@ -219,11 +232,13 @@ function MyProfilePage() {
   const [bio, setBio] = useState("");
   const [instagram, setInstagram] = useState("");
   const [feedback, setFeedback] = useState({ message: "", tone: "success" });
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingBio, setIsSavingBio] = useState(false);
+  const [isSavingInstagram, setIsSavingInstagram] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef(null);
   const blobUrlRef = useRef(null);
   const feedbackTimerRef = useRef(null);
+  const buttonClickRef = useRef(false);
 
   const updateProfileState = (partial) => {
     setProfile((prev) => (prev ? { ...prev, ...partial } : prev));
@@ -333,7 +348,7 @@ function MyProfilePage() {
   const persistBio = async (value, successMessage) => {
     const previousBio = bio;
     setBio(value);
-    setIsSavingProfile(true);
+    setIsSavingBio(true);
     try {
       const updated = await saveProfileFields({ bio: value });
       const sanitized = (updated.bio ?? value ?? "").slice(0, 200);
@@ -345,7 +360,7 @@ function MyProfilePage() {
       const message = err instanceof Error ? err.message : "Unable to update bio.";
       showFeedback(message, "error");
     } finally {
-      setIsSavingProfile(false);
+      setIsSavingBio(false);
     }
   };
 
@@ -375,7 +390,7 @@ function MyProfilePage() {
       return;
     }
     setInstagram(trimmed);
-    setIsSavingProfile(true);
+    setIsSavingInstagram(true);
     try {
       const updated = await saveProfileFields({ instagram: trimmed });
       const sanitized = updated.instagram ?? trimmed ?? "";
@@ -387,7 +402,7 @@ function MyProfilePage() {
       const message = err instanceof Error ? err.message : "Unable to update Instagram link.";
       showFeedback(message, "error");
     } finally {
-      setIsSavingProfile(false);
+      setIsSavingInstagram(false);
     }
   };
 
@@ -406,7 +421,7 @@ function MyProfilePage() {
       placeholder: "https://instagram.com/yourhandle",
       onSave: handleInstagramSave,
       onClear: handleInstagramClear,
-      disabled: isSavingProfile,
+      disabled: isSavingInstagram,
     },
   ];
 
@@ -462,7 +477,14 @@ function MyProfilePage() {
                   {profile?.username && (
                     <button
                       type="button"
-                      onClick={() => navigate(`/app/profile?username=${encodeURIComponent(profile.username)}&preview=true`)}
+                      onClick={(e) => {
+                        if (buttonClickRef.current) return;
+                        buttonClickRef.current = true;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate(`/app/profile?username=${encodeURIComponent(profile.username)}&preview=true`);
+                        setTimeout(() => { buttonClickRef.current = false; }, 300);
+                      }}
                       className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors"
                     >
                       View Public Profile Display
@@ -475,9 +497,16 @@ function MyProfilePage() {
                       <span>Bio</span>
                       <button
                         type="button"
-                        onClick={handleBioClear}
-                        disabled={isSavingProfile}
-                        className={`text-xs font-medium text-rose-500 hover:text-rose-600 ${isSavingProfile ? "opacity-60 cursor-not-allowed" : ""}`}
+                        onClick={(e) => {
+                          if (buttonClickRef.current || isSavingBio) return;
+                          buttonClickRef.current = true;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleBioClear();
+                          setTimeout(() => { buttonClickRef.current = false; }, 300);
+                        }}
+                        disabled={isSavingBio}
+                        className={`text-xs font-medium text-rose-500 hover:text-rose-600 ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
                         Clear
                       </button>
@@ -496,11 +525,21 @@ function MyProfilePage() {
                     <div className="mt-3 flex justify-end">
                       <button
                         type="button"
-                        onClick={handleBioSave}
-                        disabled={isSavingProfile}
-                        className={`rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 ${isSavingProfile ? "opacity-60 cursor-not-allowed" : ""}`}
+                        id="save-bio-button"
+                        onClick={(e) => {
+                          if (buttonClickRef.current || isSavingBio) return;
+                          buttonClickRef.current = true;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleBioSave();
+                          setTimeout(() => { buttonClickRef.current = false; }, 300);
+                        }}
+                        disabled={isSavingBio}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onMouseUp={(e) => e.stopPropagation()}
+                        className={`rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
-                        {isSavingProfile ? "Saving..." : "Save Bio"}
+                        {isSavingBio ? "Saving..." : "Save Bio"}
                       </button>
                     </div>
                   </div>
