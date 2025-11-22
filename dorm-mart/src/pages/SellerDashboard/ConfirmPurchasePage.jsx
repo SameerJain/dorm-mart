@@ -217,10 +217,20 @@ export default function ConfirmPurchasePage() {
 
         {!error && (
           <>
-            <section className="bg-gray-50 dark:bg-gray-900/40 rounded-lg p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                Review what you agreed with the buyer. Once submitted, the buyer will have 24 hours to accept or deny the confirmation. If they do nothing, it will automatically be accepted.
-              </p>
+            <section className="bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-200 dark:border-indigo-700 rounded-lg p-5 mb-6">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-base font-semibold text-indigo-900 dark:text-indigo-100 mb-2">
+                    Fill this form out after you and the buyer have met in person and completed the exchange
+                  </p>
+                  <p className="text-sm text-indigo-800 dark:text-indigo-200 leading-relaxed">
+                    This form must be completed in order to mark this transaction as complete. Once submitted, the buyer will have 24 hours to accept or deny.
+                  </p>
+                </div>
+              </div>
             </section>
 
             <section className="grid gap-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
