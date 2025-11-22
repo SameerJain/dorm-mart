@@ -221,7 +221,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               </p>
             )}
             {description && (
-              <p className={`text-sm ${config.textColor}`}>
+              <p className={`text-sm ${config.textColor} break-words`}>
                 <span className="font-semibold">Description:</span> {description}
               </p>
             )}

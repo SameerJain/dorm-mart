@@ -494,7 +494,7 @@ function OngoingPurchasesPage() {
 
                     {/* Description */}
                     {req.description && (
-                        <div className={`text-sm ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                        <div className={`text-sm break-words ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
                             <span className="font-semibold">Description:</span> {req.description}
                         </div>
                     )}
