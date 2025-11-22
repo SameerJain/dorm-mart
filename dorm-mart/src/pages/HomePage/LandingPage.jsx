@@ -327,6 +327,28 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* Mobile Filter Button */}
+        <button
+          onClick={() => navigate('/app/listings')}
+          className="lg:hidden flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          aria-label="Open filters"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
+          </svg>
+          <span className="text-sm font-medium">Filters</span>
+        </button>
+
         {/* interest chips */}
         <div className="flex gap-2 flex-wrap justify-end">
           {interests.length ? (

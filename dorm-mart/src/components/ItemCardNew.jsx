@@ -43,7 +43,7 @@ export default function ItemCardNew({
     <div
       onClick={handleClick}
       className={`group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
-                 ${fixedWidth ? 'w-[210px]' : 'w-full'} h-[330px] cursor-pointer transition-all duration-200
+                 ${fixedWidth ? 'w-[210px]' : 'w-full'} h-[280px] cursor-pointer transition-all duration-200
                  hover:shadow-xl hover:-translate-y-1`}
     >
       {/* subtle top accent */}
@@ -123,7 +123,7 @@ export default function ItemCardNew({
       </div>
 
       {/* BODY */}
-      <div className="flex flex-col gap-1 px-3 py-3 flex-grow">
+      <div className="flex flex-col gap-0.5 px-3 py-2">
         {/* title */}
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
           {title}
@@ -138,7 +138,7 @@ export default function ItemCardNew({
         ) : null}
 
         {/* price */}
-        <p className="text-lg font-bold text-gray-900 dark:text-gray-50 mt-1">
+        <p className="text-lg font-bold text-gray-900 dark:text-gray-50 mt-0.5">
           {typeof price === "string"
             ? price
             : `$${price?.toFixed?.(2) ?? price ?? "0.00"}`}

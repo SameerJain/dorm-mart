@@ -15,6 +15,7 @@ export default function WishlistPage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(null); // { id, title } or null
   const [removing, setRemoving] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -119,6 +120,27 @@ export default function WishlistPage() {
     setItems(filteredItems);
   }, [filteredItems]);
 
+  // Prevent body scrolling when mobile filter panel is open
+  useEffect(() => {
+    if (showMobileFilters) {
+      // Save current scroll position
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        // Restore scroll position when closing
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showMobileFilters]);
+
   // Handle remove from wishlist
   const handleRemoveFromWishlist = (itemId, itemTitle) => {
     setConfirmRemove({ id: itemId, title: itemTitle });
@@ -213,9 +235,34 @@ export default function WishlistPage() {
           {/* CENTER - Heading */}
           <div className="flex flex-col gap-6 min-w-0">
             <div className="mb-4">
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                My Wishlist
-              </h1>
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100">
+                  My Wishlist
+                </h1>
+                {/* Mobile Filter Button */}
+                {allItems.length > 0 && (
+                  <button
+                    onClick={() => setShowMobileFilters(!showMobileFilters)}
+                    className="lg:hidden flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    aria-label="Toggle filters"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">Filters</span>
+                  </button>
+                )}
+              </div>
               <p className="text-gray-600 dark:text-gray-300">
                 {selectedCategory 
                   ? `Items in ${selectedCategory}`
@@ -313,6 +360,77 @@ export default function WishlistPage() {
           )}
         </div>
       </div>
+
+      {/* Mobile Filter Panel */}
+      {showMobileFilters && allItems.length > 0 && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+            onClick={() => setShowMobileFilters(false)}
+          />
+          {/* Filter Panel */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Quick filters
+              </h2>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Close filters"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedCategory(null);
+                    setShowMobileFilters(false);
+                  }}
+                  className={`px-4 py-2 rounded-full text-sm border ${
+                    selectedCategory === null
+                      ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                      : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  All
+                </button>
+                {wishlistCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      setShowMobileFilters(false);
+                    }}
+                    className={`px-4 py-2 rounded-full text-sm border ${
+                      selectedCategory === cat
+                        ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700"
+                        : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Confirmation Modal */}
       {confirmRemove && (
