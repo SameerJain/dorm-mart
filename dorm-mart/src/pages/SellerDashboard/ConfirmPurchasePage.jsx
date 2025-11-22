@@ -168,6 +168,8 @@ export default function ConfirmPurchasePage() {
       }
       setFormSuccess('Sent! The buyer now has 24 hours to accept or deny this confirmation.');
       setFormError('');
+      // Redirect to chat page with the conversation ID
+      navigate('/app/chat', { state: { convId: navState.convId } });
     } catch (err) {
       setFormError(err.message || 'Unable to submit the form. Please try again.');
     } finally {
