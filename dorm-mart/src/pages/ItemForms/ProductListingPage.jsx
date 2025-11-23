@@ -50,10 +50,12 @@ function ProductListingPage() {
   );
   const [images, setImages] = useState([]); // [{file, url}, ...]
   const fileInputRef = useRef();
+  const formTopRef = useRef(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverMsg, setServerMsg] = useState(null);
   const [loadingExisting, setLoadingExisting] = useState(false);
+  const [showTopErrorBanner, setShowTopErrorBanner] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
   // success modal
@@ -78,6 +80,11 @@ function ProductListingPage() {
     price: 9999.99,
     priceMin: 0.01,
   };
+
+  // File type restrictions (same as chat)
+  const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+  const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+  const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
   // ========== CROPPER STATE ==========
   const [showCropper, setShowCropper] = useState(false);
@@ -458,11 +465,52 @@ function ProductListingPage() {
   // ============================================
   // IMAGE UPLOAD + 1:1 ENFORCEMENT
   // ============================================
+  function isAllowedType(f) {
+    // Prefer MIME, but fall back to extension if needed
+    if (f.type && ALLOWED_MIME.has(f.type)) return true;
+
+    const name = (f.name || "").toLowerCase();
+    const ext = ALLOWED_EXTS.has(
+      name.slice(name.lastIndexOf(".")) // includes dot
+    );
+    return ext;
+  }
+
   function onFileChange(e) {
     const files = Array.from(e.target.files || []).slice(0, 1);
     if (!files.length) return;
 
     const file = files[0];
+
+    // Validate file size
+    if (file.size > MAX_BYTES) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Image is too large. Max size is 2 MB.",
+      }));
+      e.target.value = null;
+      return;
+    }
+
+    // Validate file type
+    if (!isAllowedType(file)) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Only JPG/JPEG, PNG, and WEBP images are allowed.",
+      }));
+      e.target.value = null;
+      return;
+    }
+
+    // Clear file size and type errors if validation passes
+    if (errors.images && (errors.images.includes("Image is too large") || errors.images.includes("Only JPG/JPEG"))) {
+      setErrors((prev) => {
+        const ne = { ...prev };
+        delete ne.images;
+        return ne;
+      });
+    }
+
     const reader = new FileReader();
     reader.onload = function (ev) {
       const img = new Image();
@@ -664,7 +712,14 @@ function ProductListingPage() {
   async function publishListing(e) {
     e.preventDefault();
     setServerMsg(null);
-    if (!validateAll()) return;
+    if (!validateAll()) {
+      // Scroll to top and show error banner
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setShowTopErrorBanner(true);
+      return;
+    }
+    // Hide error banner on successful validation
+    setShowTopErrorBanner(false);
 
     const fd = new FormData();
     fd.append("mode", isEdit ? "update" : "create");
@@ -795,6 +850,42 @@ function ProductListingPage() {
             <p className="text-gray-500 dark:text-gray-400 text-lg">Loading listing data...</p>
           </div>
         ) : (
+        <div ref={formTopRef}>
+        {/* Top-of-Form Error Banner */}
+        {showTopErrorBanner && Object.keys(errors).length > 0 && (() => {
+          const errorCount = Object.keys(errors).length;
+          const showSpecificErrors = errorCount <= 2;
+          
+          return (
+            <div className="mb-6 rounded-lg border-2 border-red-500 dark:border-red-600 bg-red-50 dark:bg-red-950/20 p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  {showSpecificErrors ? (
+                    <>
+                      <h3 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">
+                        A few things need your attention:
+                      </h3>
+                      <ul className="list-disc list-inside space-y-1">
+                        {Object.values(errors).map((error, index) => (
+                          <li key={index} className="text-sm text-red-800 dark:text-red-300">
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p className="text-lg font-semibold text-red-900 dark:text-red-200">
+                      Please fill out the missing information.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         <div className="space-y-6">
           {/* Basic Information */}
           <div className="bg-white dark:bg-gray-950/50 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
@@ -844,7 +935,16 @@ function ProductListingPage() {
                   </label>
                   <select
                     value={condition}
-                    onChange={(e) => setCondition(e.target.value)}
+                    onChange={(e) => {
+                      setCondition(e.target.value);
+                      if (errors.condition) {
+                        setErrors((prev) => {
+                          const ne = { ...prev };
+                          delete ne.condition;
+                          return ne;
+                        });
+                      }
+                    }}
                     className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.condition
                         ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
@@ -867,12 +967,13 @@ function ProductListingPage() {
               </div>
 
               {/* Categories */}
-              <div>
-                <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Categories <span className="text-red-500">*</span>
-                </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Categories <span className="text-red-500">*</span>
+                  </label>
 
-                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2">
                   <select
                     value={selectedCategory}
                     onChange={(e) => {
@@ -914,7 +1015,7 @@ function ProductListingPage() {
                         }
                       }
                     }}
-                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                    className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.categories
                         ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
@@ -964,11 +1065,12 @@ function ProductListingPage() {
                   </div>
                 </div>
 
-                {errors.categories && (
-                  <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                    {errors.categories}
-                  </p>
-                )}
+                  {errors.categories && (
+                    <p className="text-red-600 dark:text-red-400 text-sm mt-1">
+                      {errors.categories}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Description */}
@@ -1025,7 +1127,16 @@ function ProductListingPage() {
                 </label>
                 <select
                   value={itemLocation}
-                  onChange={(e) => setItemLocation(e.target.value)}
+                  onChange={(e) => {
+                    setItemLocation(e.target.value);
+                    if (errors.itemLocation) {
+                      setErrors((prev) => {
+                        const ne = { ...prev };
+                        delete ne.itemLocation;
+                        return ne;
+                      });
+                    }
+                  }}
                   className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                     errors.itemLocation
                       ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
@@ -1167,7 +1278,7 @@ function ProductListingPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 multiple
                 onChange={onFileChange}
                 className="hidden"
@@ -1261,6 +1372,7 @@ function ProductListingPage() {
               )}
             </div>
           </div>
+        </div>
         </div>
         )}
       </main>

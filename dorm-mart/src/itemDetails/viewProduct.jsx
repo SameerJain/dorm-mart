@@ -598,21 +598,6 @@ export default function ViewProduct() {
                   ) : null}
                 </div>
               </div>
-
-              <div className="pt-1">
-                <button 
-                  onClick={() => {
-                    if (returnTo) {
-                      navigate(returnTo);
-                    } else {
-                      navigate(-1);
-                    }
-                  }} 
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  Back to results
-                </button>
-              </div>
             </section>
           </div>
           </>

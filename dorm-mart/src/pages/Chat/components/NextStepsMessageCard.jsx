@@ -13,7 +13,7 @@ function NextStepsMessageCard({ message }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-1">Next Steps</p>
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-1">Next Steps: Meet In-Person</p>
               <p className="text-sm text-orange-700 dark:text-orange-300">
                 {content}
               </p>

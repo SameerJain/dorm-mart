@@ -138,9 +138,18 @@ function MainNav() {
     return (
         <nav className="bg-blue-600 text-slate-100 dark:bg-gray-800 dark:text-gray-100">
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
+                {/* Home icon - visible on mobile only */}
                 <button
                     onClick={() => navigate("/app")}
-                    className="ml-1 sm:ml-2 md:ml-4 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-semibold cursor-pointer hover:scale-105 hover:opacity-90 hover:drop-shadow-lg transition-all duration-200 bg-transparent border-none p-0 text-slate-100 whitespace-nowrap flex-shrink-0"
+                    className="md:hidden ml-1 sm:ml-2 flex-shrink-0"
+                    aria-label="Home"
+                >
+                    <HomeIcon className="h-8 w-8 text-slate-100" />
+                </button>
+                {/* Dorm Mart logo - visible on desktop only */}
+                <button
+                    onClick={() => navigate("/app")}
+                    className="hidden md:block ml-1 sm:ml-2 md:ml-4 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-semibold cursor-pointer hover:scale-105 hover:opacity-90 hover:drop-shadow-lg transition-all duration-200 bg-transparent border-none p-0 text-slate-100 whitespace-nowrap flex-shrink-0"
                 >
                     Dorm Mart
                 </button>

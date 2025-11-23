@@ -81,6 +81,7 @@ function PublicProfilePage() {
   const navigate = useNavigate();
   const query = useQuery();
   const usernameParam = query.get("username")?.trim();
+  const isPreview = query.get("preview") === "true";
   const [profileData, setProfileData] = useState(null);
   const [listings, setListings] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -212,6 +213,26 @@ function PublicProfilePage() {
             ← Back
           </button>
         </div>
+        {isPreview && (
+          <div className="mb-3 p-4 bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-200 dark:border-yellow-700 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Public Profile Preview</p>
+                <p className="text-base text-yellow-700 dark:text-yellow-300 mb-3">You're viewing your profile as others see it. This helps you see how your profile appears to potential buyers to help you make any adjustments.</p>
+                <button
+                  onClick={() => navigate('/app/setting/my-profile')}
+                  className="rounded-full font-medium px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                >
+                  Edit Profile
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <header className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
           <div className="flex flex-col gap-6 md:flex-row md:items-center">
             <div className="flex flex-col items-center gap-4 md:flex-row">

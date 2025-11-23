@@ -1,7 +1,24 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
+import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+
+// File type restrictions (same as product listing and chat)
+const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+
+function isAllowedType(f) {
+  // Prefer MIME, but fall back to extension if needed
+  if (f.type && ALLOWED_MIME.has(f.type)) return true;
+
+  const name = (f.name || "").toLowerCase();
+  const ext = ALLOWED_EXTS.has(
+    name.slice(name.lastIndexOf(".")) // includes dot
+  );
+  return ext;
+}
 
 async function fetchSettingsProfile(apiBase = API_BASE) {
   const response = await fetch(`${apiBase}/profile/my_profile.php`, {
@@ -124,39 +141,40 @@ function StarRating({ rating = 0, size = 28, label }) {
   });
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1" aria-label={label || `Rating: ${normalized} out of 5`}>
+    <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center gap-0.5 sm:gap-1" aria-label={label || `Rating: ${normalized} out of 5`}>
         {stars}
       </div>
-      <span className="text-sm font-semibold text-gray-600">{normalized.toFixed(1)}</span>
+      <span className="text-xs sm:text-sm font-semibold text-gray-600">{normalized.toFixed(1)}</span>
     </div>
   );
 }
 
 function ReviewRow({ review }) {
   const attachments = [review.image_1, review.image_2, review.image_3].filter(Boolean);
-  const imageClass = "h-28 w-32 rounded-xl object-cover shadow flex-shrink-0";
-  const reviewerUsername = review.reviewer_username || (review.reviewer_email ? review.reviewer_email.split("@")[0] : "");
+  const imageClass = "h-20 w-24 sm:h-28 sm:w-32 rounded-xl object-cover shadow flex-shrink-0";
 
   return (
-    <article className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-blue-200 hover:shadow">
+    <article className="flex flex-col gap-3 sm:gap-4 rounded-none sm:rounded-2xl border-0 sm:border border-slate-200 bg-transparent sm:bg-white/80 p-3 sm:p-4 shadow-none sm:shadow-sm transition sm:hover:border-blue-200 sm:hover:shadow">
       <div className="space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="space-y-0.5">
-            <p className="text-base font-semibold text-slate-900">{review.reviewer_name || "Anonymous"}</p>
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <p className="text-sm sm:text-base font-semibold text-slate-900 break-words">{review.reviewer_name || "Anonymous"}</p>
             {review.reviewer_email ? (
-              <p className="text-sm text-slate-500">{review.reviewer_email}</p>
+              <p className="text-xs sm:text-sm text-slate-500 break-all">{review.reviewer_email}</p>
             ) : (
-              <p className="text-sm text-slate-400">No email provided</p>
+              <p className="text-xs sm:text-sm text-slate-400">No email provided</p>
             )}
           </div>
-          <StarRating rating={review.rating} size={18} label={`${review.reviewer_name || "Reviewer"} rating`} />
+          <div className="flex-shrink-0">
+            <StarRating rating={review.rating} size={16} label={`${review.reviewer_name || "Reviewer"} rating`} />
+          </div>
         </div>
-        <p className="text-sm font-semibold text-blue-700">{review.product_title}</p>
-        <p className="text-sm leading-relaxed text-slate-700">{review.review}</p>
+        <p className="text-xs sm:text-sm font-semibold text-blue-700 break-words">{review.product_title}</p>
+        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 break-words whitespace-pre-wrap">{review.review}</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-t border-slate-100 pt-3">
         {attachments.length > 0 ? (
           attachments.map((image, index) => (
             <img
@@ -176,14 +194,19 @@ function ReviewRow({ review }) {
 
 function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear, disabled = false }) {
   return (
-    <div className="space-y-2 rounded-2xl border border-slate-100 bg-white/60 p-4 shadow-sm">
-      <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+    <div className="space-y-2 rounded-none sm:rounded-2xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/60 p-3 sm:p-4 shadow-none sm:shadow-sm">
+      <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700">
         <span>{label}</span>
         <button
           type="button"
-          onClick={onClear}
+          onClick={(e) => {
+            if (disabled) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onClear();
+          }}
           disabled={disabled}
-          className={`text-xs font-medium text-rose-500 hover:text-rose-600 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          className={`text-xs font-medium text-rose-500 hover:text-rose-600 touch-manipulation py-1 px-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           Delete
         </button>
@@ -193,14 +216,22 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
       />
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={onSave}
+          id={`save-${label.toLowerCase().replace(/\s+/g, '-')}-button`}
+          onClick={(e) => {
+            if (disabled) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onSave();
+          }}
           disabled={disabled}
-          className={`rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           {disabled ? "Saving..." : "Save"}
         </button>
@@ -210,6 +241,7 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
 }
 
 function MyProfilePage() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -217,11 +249,14 @@ function MyProfilePage() {
   const [bio, setBio] = useState("");
   const [instagram, setInstagram] = useState("");
   const [feedback, setFeedback] = useState({ message: "", tone: "success" });
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const [isSavingBio, setIsSavingBio] = useState(false);
+  const [isSavingInstagram, setIsSavingInstagram] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef(null);
   const blobUrlRef = useRef(null);
   const feedbackTimerRef = useRef(null);
+  const buttonClickRef = useRef(false);
 
   const updateProfileState = (partial) => {
     setProfile((prev) => (prev ? { ...prev, ...partial } : prev));
@@ -290,6 +325,28 @@ function MyProfilePage() {
   const handleAvatarChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Clear any previous errors
+    setAvatarError("");
+
+    // Validate file size
+    if (file.size > MAX_BYTES) {
+      const errorMsg = "Image is too large. Maximum file size is 2 MB.";
+      setAvatarError(errorMsg);
+      showFeedback(errorMsg, "error");
+      event.target.value = null; // Clear the input
+      return;
+    }
+
+    // Validate file type
+    if (!isAllowedType(file)) {
+      const errorMsg = "Only JPG/JPEG, PNG, and WEBP images are allowed.";
+      setAvatarError(errorMsg);
+      showFeedback(errorMsg, "error");
+      event.target.value = null; // Clear the input
+      return;
+    }
+
     const fallback = profile?.image_url || "";
     const nextUrl = URL.createObjectURL(file);
     if (blobUrlRef.current) {
@@ -309,6 +366,7 @@ function MyProfilePage() {
       }
       setAvatarPreview(finalUrl);
       updateProfileState({ image_url: finalUrl });
+      setAvatarError(""); // Clear any errors on success
       showFeedback("Profile photo updated");
     } catch (err) {
       if (blobUrlRef.current) {
@@ -317,6 +375,7 @@ function MyProfilePage() {
       }
       setAvatarPreview(fallback);
       const message = err instanceof Error ? err.message : "Unable to update profile photo.";
+      setAvatarError(message);
       showFeedback(message, "error");
     } finally {
       setAvatarUploading(false);
@@ -331,7 +390,7 @@ function MyProfilePage() {
   const persistBio = async (value, successMessage) => {
     const previousBio = bio;
     setBio(value);
-    setIsSavingProfile(true);
+    setIsSavingBio(true);
     try {
       const updated = await saveProfileFields({ bio: value });
       const sanitized = (updated.bio ?? value ?? "").slice(0, 200);
@@ -343,7 +402,7 @@ function MyProfilePage() {
       const message = err instanceof Error ? err.message : "Unable to update bio.";
       showFeedback(message, "error");
     } finally {
-      setIsSavingProfile(false);
+      setIsSavingBio(false);
     }
   };
 
@@ -373,7 +432,7 @@ function MyProfilePage() {
       return;
     }
     setInstagram(trimmed);
-    setIsSavingProfile(true);
+    setIsSavingInstagram(true);
     try {
       const updated = await saveProfileFields({ instagram: trimmed });
       const sanitized = updated.instagram ?? trimmed ?? "";
@@ -385,7 +444,7 @@ function MyProfilePage() {
       const message = err instanceof Error ? err.message : "Unable to update Instagram link.";
       showFeedback(message, "error");
     } finally {
-      setIsSavingProfile(false);
+      setIsSavingInstagram(false);
     }
   };
 
@@ -404,21 +463,34 @@ function MyProfilePage() {
       placeholder: "https://instagram.com/yourhandle",
       onSave: handleInstagramSave,
       onClear: handleInstagramClear,
-      disabled: isSavingProfile,
+      disabled: isSavingInstagram,
     },
   ];
 
   return (
     <SettingsLayout>
-      <div className="flex h-full w-full flex-col items-center overflow-y-auto bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-2 pb-3 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 lg:px-10">
+      <style>{`
+        @media (max-width: 639px) {
+          .mobile-scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .mobile-scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+        }
+      `}</style>
+      <div 
+        className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pb-4 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 lg:px-10 mobile-scrollbar-hide"
+      >
         {isLoading ? (
           <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500">Loading profile...</div>
         ) : error ? (
           <div className="flex h-full w-full items-center justify-center text-center text-red-600">{error}</div>
         ) : (
-          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-8 overflow-visible min-h-0 xl:flex-row xl:gap-10">
-            <section className="flex w-full flex-col gap-6 xl:max-w-[520px]">
-              <div className="rounded-3xl border border-slate-100 bg-white/80 p-6 shadow">
+          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-6 sm:gap-8 overflow-visible min-h-0 xl:flex-row xl:gap-10">
+            <section className="flex w-full flex-col gap-4 sm:gap-6 xl:max-w-[520px]">
+              <div className="rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/80 p-4 sm:p-6 shadow-none sm:shadow">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -431,7 +503,7 @@ function MyProfilePage() {
                     type="button"
                     onClick={handleAvatarClick}
                     disabled={avatarUploading}
-                    className={`relative flex h-32 w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-4 ring-blue-100 transition hover:brightness-105 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
+                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-2 sm:ring-4 ring-blue-100 transition hover:brightness-105 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
                   >
                     {avatarPreview ? (
                       <img src={avatarPreview} alt="Profile" className="h-full w-full rounded-full object-cover" />
@@ -443,28 +515,63 @@ function MyProfilePage() {
                     </span>
                   </button>
                   <div className="space-y-1 text-center sm:text-left text-slate-900">
-                    <p className="text-2xl font-serif font-semibold">{profile?.name}</p>
-                    <p className="text-sm">@{profile?.username}</p>
-                    <p className="text-sm">{profile?.email}</p>
+                    <p className="text-xl sm:text-2xl font-serif font-semibold break-words">{profile?.name}</p>
+                    <p className="text-xs sm:text-sm break-all">@{profile?.username}</p>
+                    <p className="text-xs sm:text-sm break-all">{profile?.email}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-col items-center gap-1 text-center text-sm text-slate-500 sm:items-start sm:text-left">
-                  <StarRating rating={ratingValue} size={24} label="Average rating" />
-                  <span>Average rating across dorm transactions</span>
+                <div className="mt-4 flex flex-col items-center gap-1 text-center text-xs sm:text-sm text-slate-500 sm:items-start sm:text-left">
+                  <StarRating rating={ratingValue} size={20} label="Average rating" />
+                  <span className="px-2 sm:px-0">Average rating across dorm transactions</span>
                 </div>
+                {avatarError && (
+                  <div className="mt-4 rounded-lg bg-rose-50 dark:bg-rose-900/30 border-2 border-rose-200 dark:border-rose-700 p-3">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm font-medium text-rose-800 dark:text-rose-200">{avatarError}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-1 flex-col rounded-3xl border border-slate-100 bg-white/80 p-6 shadow">
-                <h2 className="text-lg font-semibold text-slate-900">Public Details</h2>
-                <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm">
-                    <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+              <div className="flex flex-1 flex-col rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/80 p-4 sm:p-6 shadow-none sm:shadow">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <h2 className="text-base sm:text-lg font-semibold text-slate-900">Public Details</h2>
+                  {profile?.username && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        if (buttonClickRef.current) return;
+                        buttonClickRef.current = true;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate(`/app/profile?username=${encodeURIComponent(profile.username)}&preview=true`);
+                        setTimeout(() => { buttonClickRef.current = false; }, 300);
+                      }}
+                      className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                    >
+                      View Public Profile Display
+                    </button>
+                  )}
+                </div>
+                <div className="mt-4 space-y-3 sm:space-y-4">
+                  <div className="rounded-none sm:rounded-2xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/70 p-3 sm:p-4 shadow-none sm:shadow-sm">
+                    <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700">
                       <span>Bio</span>
                       <button
                         type="button"
-                        onClick={handleBioClear}
-                        disabled={isSavingProfile}
-                        className={`text-xs font-medium text-rose-500 hover:text-rose-600 ${isSavingProfile ? "opacity-60 cursor-not-allowed" : ""}`}
+                        onClick={(e) => {
+                          if (buttonClickRef.current || isSavingBio) return;
+                          buttonClickRef.current = true;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleBioClear();
+                          setTimeout(() => { buttonClickRef.current = false; }, 300);
+                        }}
+                        disabled={isSavingBio}
+                        className={`text-xs font-medium text-rose-500 hover:text-rose-600 touch-manipulation py-1 px-2 ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
                         Clear
                       </button>
@@ -474,7 +581,7 @@ function MyProfilePage() {
                       onChange={handleBioChange}
                       maxLength={200}
                       placeholder="Add a short description about yourself and what you sell."
-                      className="mt-2 h-28 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                      className="mt-2 h-28 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
                     />
                     <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
                       <span>200 characters max</span>
@@ -483,11 +590,21 @@ function MyProfilePage() {
                     <div className="mt-3 flex justify-end">
                       <button
                         type="button"
-                        onClick={handleBioSave}
-                        disabled={isSavingProfile}
-                        className={`rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 ${isSavingProfile ? "opacity-60 cursor-not-allowed" : ""}`}
+                        id="save-bio-button"
+                        onClick={(e) => {
+                          if (buttonClickRef.current || isSavingBio) return;
+                          buttonClickRef.current = true;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleBioSave();
+                          setTimeout(() => { buttonClickRef.current = false; }, 300);
+                        }}
+                        disabled={isSavingBio}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onMouseUp={(e) => e.stopPropagation()}
+                        className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
-                        {isSavingProfile ? "Saving..." : "Save Bio"}
+                        {isSavingBio ? "Saving..." : "Save Bio"}
                       </button>
                     </div>
                   </div>
@@ -519,14 +636,14 @@ function MyProfilePage() {
               </div>
             </section>
 
-            <section className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white/90 p-6 shadow min-h-0">
+            <section className="flex flex-1 flex-col overflow-visible xl:overflow-hidden rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/90 p-4 sm:p-6 shadow-none sm:shadow xl:min-h-0">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Reviews</h2>
-                  <p className="text-sm text-slate-500">{reviewList.length} recorded review{reviewList.length === 1 ? "" : "s"}</p>
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Reviews</h2>
+                  <p className="text-xs sm:text-sm text-slate-500">{reviewList.length} recorded review{reviewList.length === 1 ? "" : "s"}</p>
                 </div>
               </div>
-              <div className="mt-4 flex-1 overflow-y-auto pr-1">
+              <div className="mt-4 flex-1 xl:overflow-y-auto xl:pr-1">
                 {reviewList.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-sm text-slate-400">No reviews yet.</div>
                 ) : (

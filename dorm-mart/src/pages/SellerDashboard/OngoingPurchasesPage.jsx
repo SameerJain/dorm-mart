@@ -494,7 +494,7 @@ function OngoingPurchasesPage() {
 
                     {/* Description */}
                     {req.description && (
-                        <div className={`text-sm ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                        <div className={`text-sm break-words ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
                             <span className="font-semibold">Description:</span> {req.description}
                         </div>
                     )}
@@ -553,6 +553,19 @@ function OngoingPurchasesPage() {
                                 className="px-3 py-1.5 text-sm font-medium rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-60 disabled:cursor-not-allowed"
                             >
                                 Cancel
+                            </button>
+                        )}
+
+                        {/* Review button for completed purchases (buyer only) */}
+                        {isBuyer && isCompleted && req.inventory_product_id && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigate(`/app/purchase-history?review=${encodeURIComponent(req.inventory_product_id)}`);
+                                }}
+                                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600"
+                            >
+                                Leave a Review
                             </button>
                         )}
                     </div>

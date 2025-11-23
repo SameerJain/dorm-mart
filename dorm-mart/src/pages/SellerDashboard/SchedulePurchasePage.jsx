@@ -4,10 +4,9 @@ import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constant
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
-// Price limits - max matches ProductListingPage exactly, min is 0 to allow free items
+// Price limits - max matches ProductListingPage exactly
 const PRICE_LIMITS = {
     max: 9999.99,
-    min: 0,
 };
 
 // Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
@@ -33,7 +32,6 @@ function SchedulePurchasePage() {
     const [listings, setListings] = useState([]);
     const [error, setError] = useState('');
     const [formError, setFormError] = useState('');
-    const [formSuccess, setFormSuccess] = useState('');
     const [meetLocationChoice, setMeetLocationChoice] = useState('');
     const [customMeetLocation, setCustomMeetLocation] = useState('');
     const [meetingDate, setMeetingDate] = useState('');
@@ -339,7 +337,6 @@ function SchedulePurchasePage() {
     async function handleSubmit(e) {
         e.preventDefault();
         setFormError('');
-        setFormSuccess('');
         setDateTimeError('');
 
         // Validate date and time first
@@ -485,7 +482,7 @@ function SchedulePurchasePage() {
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        <div>
+                        <div className="max-w-xs">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                 Meet Location <span className="text-red-500">*</span>
                             </label>
@@ -627,7 +624,7 @@ function SchedulePurchasePage() {
 
                         {/* Price negotiation field - only show if item is price negotiable */}
                         {selectedListing?.priceNegotiable && (
-                            <div>
+                            <div className="max-w-xs">
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                     Negotiated Price (Optional)
                                 </label>
@@ -637,27 +634,32 @@ function SchedulePurchasePage() {
                                     </p>
                                 )}
                                 <div className="flex items-center gap-3">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        max={PRICE_LIMITS.max}
-                                        value={negotiatedPrice}
-                                        onChange={(e) => {
-                                            const value = e.target.value;
-                                            if (value === '') {
-                                                setNegotiatedPrice('');
-                                                return;
-                                            }
-                                            const numValue = parseFloat(value);
-                                            if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
-                                                setNegotiatedPrice(value);
-                                            }
-                                        }}
-                                        placeholder="Enter negotiated price"
-                                        disabled={isTrade}
-                                        className={`flex-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isTrade ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    />
+                                    <div className="relative flex-1">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">
+                                            $
+                                        </span>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            max={PRICE_LIMITS.max}
+                                            value={negotiatedPrice}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (value === '') {
+                                                    setNegotiatedPrice('');
+                                                    return;
+                                                }
+                                                const numValue = parseFloat(value);
+                                                if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
+                                                    setNegotiatedPrice(value);
+                                                }
+                                            }}
+                                            placeholder="Enter negotiated price"
+                                            disabled={isTrade}
+                                            className={`w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isTrade ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        />
+                                    </div>
                                     {selectedListing?.acceptTrades && (
                                         <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                                             <input
@@ -759,9 +761,6 @@ function SchedulePurchasePage() {
 
                         {formError && (
                             <div className="text-sm text-red-600 dark:text-red-400">{formError}</div>
-                        )}
-                        {formSuccess && (
-                            <div className="text-sm text-green-600 dark:text-green-400">{formSuccess}</div>
                         )}
 
                         <div className="pt-2 flex justify-between items-center">
