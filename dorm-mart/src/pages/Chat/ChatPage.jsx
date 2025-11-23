@@ -76,7 +76,10 @@ export default function ChatPage() {
   const [isOtherPersonTyping, setIsOtherPersonTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
   const typingStatusTimeoutRef = useRef(null);
-  const typingStartTimeRef = useRef(null);
+  const typingStartTimesRef = useRef(new Map()); // Map<conversationId, timestamp>
+  const currentConvIdRef = useRef(null); // Track current active conversation
+  const abortControllerRef = useRef(null); // For canceling fetch requests
+  const sendTypingAbortControllerRef = useRef(null); // For canceling send typing requests
   
   // Prevent body scroll when delete confirmation modal is open
   useEffect(() => {
@@ -244,65 +247,135 @@ export default function ChatPage() {
     if (activeConvId) setIsMobileList(false);
   }, [activeConvId]);
 
+  /** Cleanup typing-related timeouts and requests when conversation changes */
+  useEffect(() => {
+    return () => {
+      // Clear all timeouts
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (typingStatusTimeoutRef.current) {
+        clearTimeout(typingStatusTimeoutRef.current);
+        typingStatusTimeoutRef.current = null;
+      }
+      
+      // Cancel all in-flight requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      if (sendTypingAbortControllerRef.current) {
+        sendTypingAbortControllerRef.current.abort();
+        sendTypingAbortControllerRef.current = null;
+      }
+    };
+  }, [activeConvId]);
+
   /** Auto-scroll to bottom when active conversation or messages change */
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-    // Hide typing indicator when new message arrives
-    if (messages.length > 0) {
-      setIsOtherPersonTyping(false);
-    }
+    // Note: Removed automatic hiding of typing indicator on messages.length change
+    // The backend already handles typing status expiration, and this was causing
+    // race conditions where the indicator would disappear when messages were being fetched
   }, [activeConvId, messages.length]);
+
+  /** Auto-scroll to bottom when typing indicator appears */
+  useEffect(() => {
+    if (isOtherPersonTyping) {
+      // Use setTimeout to ensure DOM has updated with typing indicator
+      const timeoutId = setTimeout(() => {
+        const el = scrollRef.current;
+        if (el) {
+          el.scrollTop = el.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isOtherPersonTyping]);
 
   /** Poll for other person's typing status */
   useEffect(() => {
     if (!activeConvId) {
       setIsOtherPersonTyping(false);
+      currentConvIdRef.current = null;
       return;
     }
 
+    // Update current conversation ref
+    currentConvIdRef.current = activeConvId;
+    
+    // Cancel any previous fetch requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this conversation
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     let pollingInterval;
     let isMounted = true;
+    const convId = activeConvId; // Capture conversation ID
 
     const checkTypingStatus = async () => {
+      // Verify conversation is still active before proceeding
+      if (currentConvIdRef.current !== convId || !isMounted) {
+        return;
+      }
+
       try {
         const response = await fetch(
-          `${API_BASE}/chat/typing_status.php?conversation_id=${activeConvId}`,
+          `${API_BASE}/chat/typing_status.php?conversation_id=${convId}`,
           {
             method: 'GET',
-            credentials: 'include'
+            credentials: 'include',
+            signal: abortController.signal
           }
         );
-        if (!isMounted) return;
+        
+        // Verify conversation is still active after fetch
+        if (currentConvIdRef.current !== convId || !isMounted) {
+          return;
+        }
         
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
+            // Final check before state update
+            if (currentConvIdRef.current !== convId || !isMounted) {
+              return;
+            }
+
             const isTyping = data.is_typing || false;
             
             if (isTyping) {
-              // If typing just started, record the timestamp
-              if (typingStartTimeRef.current === null) {
-                typingStartTimeRef.current = Date.now();
+              // Get or create conversation-specific timestamp
+              if (!typingStartTimesRef.current.has(convId)) {
+                typingStartTimesRef.current.set(convId, Date.now());
               }
               
               // Check if typing has been going on for more than 30 seconds
-              const typingDuration = Date.now() - typingStartTimeRef.current;
+              const startTime = typingStartTimesRef.current.get(convId);
+              const typingDuration = Date.now() - startTime;
               if (typingDuration > 30000) {
                 // Hide indicator if typing for more than 30 seconds (anti-troll measure)
                 setIsOtherPersonTyping(false);
-                typingStartTimeRef.current = null;
+                typingStartTimesRef.current.delete(convId);
               } else {
                 setIsOtherPersonTyping(true);
               }
             } else {
-              // Typing stopped, reset the timestamp
-              typingStartTimeRef.current = null;
+              // Typing stopped, reset the timestamp for this conversation
+              typingStartTimesRef.current.delete(convId);
               setIsOtherPersonTyping(false);
             }
           }
         }
       } catch (error) {
+        // Ignore abort errors
+        if (error.name === 'AbortError') return;
         // Silently fail - typing indicator is not critical
         console.warn('Failed to check typing status:', error);
       }
@@ -319,25 +392,51 @@ export default function ChatPage() {
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
+      if (abortController) {
+        abortController.abort();
+      }
       setIsOtherPersonTyping(false);
-      typingStartTimeRef.current = null;
+      // Capture convId for cleanup (already captured in closure)
+      const cleanupConvId = convId;
+      typingStartTimesRef.current.delete(cleanupConvId);
+      if (currentConvIdRef.current === cleanupConvId) {
+        currentConvIdRef.current = null;
+      }
     };
   }, [activeConvId]);
 
   /** Send typing status to backend */
   const sendTypingStatus = useCallback(async (conversationId, isTyping) => {
     if (!conversationId) return;
+    
+    // Verify conversation is still active
+    if (currentConvIdRef.current !== conversationId) {
+      return;
+    }
+    
+    // Cancel any previous send typing requests
+    if (sendTypingAbortControllerRef.current) {
+      sendTypingAbortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    sendTypingAbortControllerRef.current = abortController;
+    
     try {
       await fetch(`${API_BASE}/chat/typing_status.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        signal: abortController.signal,
         body: JSON.stringify({
           conversation_id: conversationId,
           is_typing: isTyping
         })
       });
     } catch (error) {
+      // Ignore abort errors
+      if (error.name === 'AbortError') return;
       // Silently fail - typing indicator is not critical
       console.warn('Failed to send typing status:', error);
     }
@@ -350,6 +449,9 @@ export default function ChatPage() {
 
     if (!activeConvId) return;
 
+    // Capture conversation ID to avoid stale closure
+    const convId = activeConvId;
+
     // Clear existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -360,12 +462,18 @@ export default function ChatPage() {
 
     // Send "typing" status after 300ms of typing
     typingTimeoutRef.current = setTimeout(() => {
-      sendTypingStatus(activeConvId, true);
+      // Verify conversation is still active before sending
+      if (currentConvIdRef.current === convId) {
+        sendTypingStatus(convId, true);
+      }
     }, 300);
 
     // Send "stopped" status after 4s of inactivity
     typingStatusTimeoutRef.current = setTimeout(() => {
-      sendTypingStatus(activeConvId, false);
+      // Verify conversation is still active before sending
+      if (currentConvIdRef.current === convId) {
+        sendTypingStatus(convId, false);
+      }
     }, 4000);
   }, [activeConvId, sendTypingStatus]);
 
@@ -382,8 +490,9 @@ export default function ChatPage() {
       setAttachedImage(null);
       
       // Stop typing status when message is sent
-      if (activeConvId) {
-        sendTypingStatus(activeConvId, false);
+      const convId = activeConvId;
+      if (convId && currentConvIdRef.current === convId) {
+        sendTypingStatus(convId, false);
         if (typingTimeoutRef.current) {
           clearTimeout(typingTimeoutRef.current);
         }
