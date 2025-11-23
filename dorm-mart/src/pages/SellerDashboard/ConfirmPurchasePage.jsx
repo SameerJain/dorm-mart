@@ -3,6 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
+// Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
+const PRICE_LIMITS = {
+  max: 9999.99,
+};
+
 const DEFAULT_FAILURE_REASONS = [
   { value: 'buyer_no_show', label: 'Buyer no showed' },
   { value: 'insufficient_funds', label: 'Buyer did not have enough money' },
@@ -126,6 +131,18 @@ export default function ConfirmPurchasePage() {
     if (finalPrice !== '' && Number.isNaN(Number(finalPrice))) {
       setFormError('Final price must be a valid number.');
       return;
+    }
+
+    if (finalPrice !== '') {
+      const finalPriceValue = Number(finalPrice);
+      if (finalPriceValue < 0) {
+        setFormError('Price cannot be negative.');
+        return;
+      }
+      if (finalPriceValue > PRICE_LIMITS.max) {
+        setFormError(`Price must be $${PRICE_LIMITS.max.toFixed(2)} or less`);
+        return;
+      }
     }
 
     if (!isSuccessful) {
@@ -303,9 +320,20 @@ export default function ConfirmPurchasePage() {
                       type="number"
                       step="0.01"
                       min="0"
+                      max={PRICE_LIMITS.max}
                       value={finalPrice}
                       disabled={disableForm}
-                      onChange={(e) => setFinalPrice(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                          setFinalPrice('');
+                          return;
+                        }
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
+                          setFinalPrice(value);
+                        }
+                      }}
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/40 pl-10 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
                       placeholder="0.00"
                     />

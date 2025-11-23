@@ -332,6 +332,10 @@ export default function ViewReceipt() {
 
   const pageHeading = "Purchase Receipt";
 
+  // Determine transaction status for styling
+  const isSuccessful = !purchaseDetails?.failureReason;
+  const transactionStatus = isSuccessful ? "Successful" : "Failed";
+
   const handleMessageSeller = async () => {
     if (msgLoading || !normalized?.sellerId) return;
 
@@ -435,6 +439,41 @@ export default function ViewReceipt() {
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">You are the seller of this item.</p>
               </div>
             )}
+            
+            {/* Receipt Header Badge */}
+            {purchaseDetails && (
+              <div className={`mb-6 rounded-xl border-2 shadow-md p-5 ${
+                isSuccessful 
+                  ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700" 
+                  : "bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700"
+              }`}>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider ${
+                      isSuccessful
+                        ? "bg-emerald-600 dark:bg-emerald-700 text-white"
+                        : "bg-red-600 dark:bg-red-700 text-white"
+                    }`}>
+                      Receipt
+                    </div>
+                    {purchaseDetails.receiptId && (
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-400">Receipt Number</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-gray-100">#{purchaseDetails.receiptId}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className={`px-4 py-2 rounded-lg font-semibold text-sm ${
+                    isSuccessful
+                      ? "bg-emerald-100 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200"
+                      : "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200"
+                  }`}>
+                    {transactionStatus}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-1 lg:grid-cols-[1.05fr,1.15fr] gap-6 items-start">
               <section className="flex gap-3 items-start justify-center lg:sticky lg:top-20">
                 {normalized.photoUrls && normalized.photoUrls.length > 1 ? (
@@ -529,73 +568,127 @@ export default function ViewReceipt() {
                   ) : null}
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 w-full max-w-md">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{displayPriceText}</span>
-                    {normalized.priceNego ? (
-                      <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-full px-2 py-0.5">
-                        Price Negotiable
-                      </span>
-                    ) : null}
-                    {normalized.trades ? (
-                      <span className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-full px-2 py-0.5">
-                        Open to trades
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">{normalized.sold ? "Not available" : "In Stock"}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Pickup: {normalized.itemLocation || "On campus"}</p>
-
-                  <div className="mt-3 space-y-2">
-                    <button
-                      onClick={handleMessageSeller}
-                      disabled={!normalized.sellerId || msgLoading || isSellerViewingOwnProduct}
-                      className={`w-full rounded-full font-medium py-2 ${
-                        isSellerViewingOwnProduct
-                          ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
-                          : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
-                      }`}
-                    >
-                      {msgLoading ? "Opening chat..." : "Message Seller"}
-                    </button>
-                    {msgError ? <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p> : null}
-                  </div>
-                </div>
-
+                {/* Purchase Details Section - Moved Higher and Enhanced */}
                 {purchaseDetails ? (
-                  <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 w-full">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className={`rounded-xl border-2 shadow-lg p-6 w-full ${
+                    isSuccessful
+                      ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700"
+                      : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700"
+                  }`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                       <div>
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Purchase details</h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Snapshot from the Confirm Purchase form.</p>
+                        <h3 className={`text-xl font-bold ${isSuccessful ? "text-emerald-900 dark:text-emerald-100" : "text-red-900 dark:text-red-100"}`}>
+                          Transaction Details
+                        </h3>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Complete purchase information</p>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {purchaseRows.length ? (
-                        purchaseRows.map((row, idx) => <Detail key={`${row.label}-${idx}`} label={row.label} value={row.value} />)
-                      ) : (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Purchase metadata will appear here once it is available.</p>
+                    {/* Key Receipt Information - Prominently Displayed */}
+                    <div className="space-y-4 mb-6">
+                      {purchaseDetails.receiptId && (
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Receipt Number</p>
+                          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">#{purchaseDetails.receiptId}</p>
+                        </div>
+                      )}
+                      
+                      {purchaseDetails.purchaseDate && (
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Purchase Date</p>
+                          <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{formatDateTime(purchaseDetails.purchaseDate)}</p>
+                        </div>
+                      )}
+                      
+                      {purchaseDetails.finalPrice != null && (
+                        <div className={`rounded-lg p-5 border-2 ${
+                          isSuccessful
+                            ? "bg-emerald-100 dark:bg-emerald-800/50 border-emerald-300 dark:border-emerald-600"
+                            : "bg-red-100 dark:bg-red-800/50 border-red-300 dark:border-red-600"
+                        }`}>
+                          <p className="text-sm uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-2">Amount Paid</p>
+                          <p className={`text-5xl font-bold ${isSuccessful ? "text-emerald-900 dark:text-emerald-100" : "text-red-900 dark:text-red-100"}`}>
+                            {formatCurrency(purchaseDetails.finalPrice) ?? `$${Number(purchaseDetails.finalPrice).toFixed(2)}`}
+                          </p>
+                          {purchaseDetails.negotiatedPrice != null && purchaseDetails.negotiatedPrice !== purchaseDetails.finalPrice && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                              Original: {formatCurrency(purchaseDetails.negotiatedPrice)}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
 
+                    {/* Additional Details */}
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {purchaseRows.filter(row => {
+                        // Filter out already displayed fields
+                        return row.label !== "Receipt #" && 
+                               row.label !== "Purchase date" && 
+                               row.label !== "Final price" &&
+                               row.label !== "Negotiated price";
+                      }).map((row, idx) => (
+                        <ReceiptDetail key={`${row.label}-${idx}`} label={row.label} value={row.value} isSuccessful={isSuccessful} />
+                      ))}
+                    </div>
+
                     {purchaseDetails.failureReason ? (
-                      <div className="mt-4">
-                        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Failure reason</p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      <div className={`mt-6 p-4 rounded-lg border-2 ${
+                        isSuccessful
+                          ? "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          : "bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700"
+                      }`}>
+                        <p className="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-400 mb-2">Failure Reason</p>
+                        <p className="text-base font-bold text-gray-900 dark:text-gray-100">
                           {purchaseDetails.failureReasonLabel || humanizeStatus(purchaseDetails.failureReason)}
                         </p>
                         {purchaseDetails.failureReasonNotes ? (
-                          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-1">{purchaseDetails.failureReasonNotes}</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-2">{purchaseDetails.failureReasonNotes}</p>
                         ) : null}
                       </div>
                     ) : null}
 
-                    {purchaseDetails.sellerNotes ? <NoteBlock title="Seller notes" text={purchaseDetails.sellerNotes} /> : null}
-                    {purchaseDetails.buyerNotes ? <NoteBlock title="Buyer comments" text={purchaseDetails.buyerNotes} /> : null}
-                    {purchaseDetails.comments ? <NoteBlock title="Additional comments" text={purchaseDetails.comments} /> : null}
+                    {purchaseDetails.sellerNotes ? <NoteBlock title="Seller notes" text={purchaseDetails.sellerNotes} isSuccessful={isSuccessful} /> : null}
+                    {purchaseDetails.buyerNotes ? <NoteBlock title="Buyer comments" text={purchaseDetails.buyerNotes} isSuccessful={isSuccessful} /> : null}
+                    {purchaseDetails.comments ? <NoteBlock title="Additional comments" text={purchaseDetails.comments} isSuccessful={isSuccessful} /> : null}
                   </div>
                 ) : null}
+
+                {/* Price Display Box - Only shown when no purchase details exist */}
+                {!purchaseDetails && (
+                  <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 w-full max-w-md">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-semibold text-gray-900 dark:text-gray-100">{displayPriceText}</span>
+                      {normalized.priceNego ? (
+                        <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-full px-2 py-0.5">
+                          Price Negotiable
+                        </span>
+                      ) : null}
+                      {normalized.trades ? (
+                        <span className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-full px-2 py-0.5">
+                          Open to trades
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">{normalized.sold ? "Not available" : "In Stock"}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Pickup: {normalized.itemLocation || "On campus"}</p>
+
+                    <div className="mt-3 space-y-2">
+                      <button
+                        onClick={handleMessageSeller}
+                        disabled={!normalized.sellerId || msgLoading || isSellerViewingOwnProduct}
+                        className={`w-full rounded-full font-medium py-2 ${
+                          isSellerViewingOwnProduct
+                            ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
+                            : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
+                        }`}
+                      >
+                        {msgLoading ? "Opening chat..." : "Message Seller"}
+                      </button>
+                      {msgError ? <p className="text-xs text-red-600 dark:text-red-400">{msgError}</p> : null}
+                    </div>
+                  </div>
+                )}
 
                 {normalized.description ? (
                   <div className="prose prose-sm max-w-none dark:prose-invert">
@@ -662,12 +755,42 @@ function Detail({ label, value }) {
   );
 }
 
-function NoteBlock({ title, text }) {
+function ReceiptDetail({ label, value, isSuccessful }) {
+  // Special handling for buyer/seller names to make them bolder
+  const isNameField = label === "Buyer" || label === "Seller";
+  
+  return (
+    <div className={`p-3 rounded-lg border ${
+      isSuccessful
+        ? "bg-white dark:bg-gray-800 border-emerald-200 dark:border-emerald-700"
+        : "bg-white dark:bg-gray-800 border-red-200 dark:border-red-700"
+    }`}>
+      <p className={`text-xs uppercase tracking-wide mb-1 ${
+        isSuccessful ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"
+      }`}>
+        {label}
+      </p>
+      <p className={`${isNameField ? "text-base font-bold" : "text-sm font-semibold"} text-gray-900 dark:text-gray-100 break-words`}>
+        {value ?? "—"}
+      </p>
+    </div>
+  );
+}
+
+function NoteBlock({ title, text, isSuccessful }) {
   if (!text) return null;
   return (
-    <div className="mt-4">
-      <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</p>
-      <p className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap mt-1">{text}</p>
+    <div className={`mt-6 p-4 rounded-lg border ${
+      isSuccessful
+        ? "bg-white dark:bg-gray-800 border-emerald-200 dark:border-emerald-700"
+        : "bg-white dark:bg-gray-800 border-red-200 dark:border-red-700"
+    }`}>
+      <p className={`text-xs uppercase tracking-wide mb-2 ${
+        isSuccessful ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"
+      }`}>
+        {title}
+      </p>
+      <p className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">{text}</p>
     </div>
   );
 }
