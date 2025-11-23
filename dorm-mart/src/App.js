@@ -5,6 +5,7 @@ import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import RootLayout from "./pages/RootLayout";
 // auth
 import LoginPage from "./pages/LoginPage";
+import WelcomePage from "./pages/WelcomePage";
 import LandingPage from "./pages/HomePage/LandingPage";
 import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
 import ResetPasswordConfirmation from './pages/ResetPassword/ResetPasswordConfirmation.jsx';
@@ -37,8 +38,8 @@ import ChatPage from "./pages/Chat/ChatPage.jsx";
 import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 
 export const router = createHashRouter([
-  // redirect default hash `#/` to `#/login`
-  { path: "/", element: <Navigate to="/login" replace /> },
+  // Welcome page
+  { path: "/", element: <WelcomePage /> },
 
   // Auth
   { path: "/login", element: <LoginPage /> },
