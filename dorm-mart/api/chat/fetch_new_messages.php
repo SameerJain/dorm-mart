@@ -44,7 +44,32 @@ $res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result
 error_log(sprintf('[read_new_messages] num_rows=%d', $res->num_rows));
 $messages = [];
 while ($row = $res->fetch_assoc()) {
-    $messages[] = $row;   // use row as-is
+    // Enrich schedule_request messages with current scheduled purchase status
+    $metadata = json_decode($row['metadata'] ?? '{}', true);
+    if (isset($metadata['type']) && $metadata['type'] === 'schedule_request' && isset($metadata['request_id'])) {
+        $requestId = (int)$metadata['request_id'];
+        // Fetch current status and buyer_response_at from scheduled_purchase_requests
+        $statusStmt = $conn->prepare('SELECT status, buyer_response_at FROM scheduled_purchase_requests WHERE request_id = ? LIMIT 1');
+        if ($statusStmt) {
+            $statusStmt->bind_param('i', $requestId);
+            $statusStmt->execute();
+            $statusRes = $statusStmt->get_result();
+            if ($statusRes && $statusRes->num_rows > 0) {
+                $statusRow = $statusRes->fetch_assoc();
+                // Add status and buyer_response_at to metadata
+                $metadata['scheduled_purchase_status'] = (string)$statusRow['status'];
+                if (!empty($statusRow['buyer_response_at'])) {
+                    $dt = date_create($statusRow['buyer_response_at'], new DateTimeZone('UTC'));
+                    if ($dt) {
+                        $metadata['buyer_response_at'] = $dt->format(DateTime::ATOM);
+                    }
+                }
+                $row['metadata'] = json_encode($metadata, JSON_UNESCAPED_SLASHES);
+            }
+            $statusStmt->close();
+        }
+    }
+    $messages[] = $row;
 }
 $stmt->close();
 
