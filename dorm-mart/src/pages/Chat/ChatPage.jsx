@@ -662,9 +662,9 @@ export default function ChatPage() {
                   <button
                     onClick={() => { setIsMobileList(true); clearActiveConversation(); }}
                     className="md:hidden rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
-                    aria-label="Back to conversations"
+                    aria-label="View Chats"
                   >
-                    Back
+                    View Chats
                   </button>
                 </div>
               </div>
