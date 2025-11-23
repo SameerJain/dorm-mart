@@ -13,6 +13,37 @@ import BuyerRatingPromptMessageCard from "./components/BuyerRatingPromptMessageC
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
+// Typing indicator icon component (three animated dots)
+const TypingIndicatorIcon = ({ className }) => (
+  <svg 
+    className={className}
+    viewBox="0 0 96 96" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="32" cy="48" r="8" fill="currentColor">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0s" />
+    </circle>
+    <circle cx="48" cy="48" r="8" fill="currentColor">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0.2s" />
+    </circle>
+    <circle cx="64" cy="48" r="8" fill="currentColor">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0.4s" />
+    </circle>
+  </svg>
+);
+
+// Typing indicator message component (displays in messages area)
+const TypingIndicatorMessage = () => (
+  <div className="flex justify-start">
+    <div className="max-w-[80%] rounded-2xl px-3 py-2 bg-gray-100 text-gray-900 shadow">
+      <div className="flex items-center gap-1">
+        <TypingIndicatorIcon className="h-12 w-12 text-gray-600" />
+      </div>
+    </div>
+  </div>
+);
+
 /** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
   /** Chat global state and actions from context */
@@ -42,6 +73,10 @@ export default function ChatPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
+  const [isOtherPersonTyping, setIsOtherPersonTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
+  const typingStatusTimeoutRef = useRef(null);
+  const typingStartTimeRef = useRef(null);
   
   // Prevent body scroll when delete confirmation modal is open
   useEffect(() => {
@@ -213,7 +248,126 @@ export default function ChatPage() {
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
+    // Hide typing indicator when new message arrives
+    if (messages.length > 0) {
+      setIsOtherPersonTyping(false);
+    }
   }, [activeConvId, messages.length]);
+
+  /** Poll for other person's typing status */
+  useEffect(() => {
+    if (!activeConvId) {
+      setIsOtherPersonTyping(false);
+      return;
+    }
+
+    let pollingInterval;
+    let isMounted = true;
+
+    const checkTypingStatus = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE}/chat/typing_status.php?conversation_id=${activeConvId}`,
+          {
+            method: 'GET',
+            credentials: 'include'
+          }
+        );
+        if (!isMounted) return;
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            const isTyping = data.is_typing || false;
+            
+            if (isTyping) {
+              // If typing just started, record the timestamp
+              if (typingStartTimeRef.current === null) {
+                typingStartTimeRef.current = Date.now();
+              }
+              
+              // Check if typing has been going on for more than 30 seconds
+              const typingDuration = Date.now() - typingStartTimeRef.current;
+              if (typingDuration > 30000) {
+                // Hide indicator if typing for more than 30 seconds (anti-troll measure)
+                setIsOtherPersonTyping(false);
+                typingStartTimeRef.current = null;
+              } else {
+                setIsOtherPersonTyping(true);
+              }
+            } else {
+              // Typing stopped, reset the timestamp
+              typingStartTimeRef.current = null;
+              setIsOtherPersonTyping(false);
+            }
+          }
+        }
+      } catch (error) {
+        // Silently fail - typing indicator is not critical
+        console.warn('Failed to check typing status:', error);
+      }
+    };
+
+    // Check immediately
+    checkTypingStatus();
+
+    // Poll every 3 seconds
+    pollingInterval = setInterval(checkTypingStatus, 3000);
+
+    return () => {
+      isMounted = false;
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+      setIsOtherPersonTyping(false);
+      typingStartTimeRef.current = null;
+    };
+  }, [activeConvId]);
+
+  /** Send typing status to backend */
+  const sendTypingStatus = useCallback(async (conversationId, isTyping) => {
+    if (!conversationId) return;
+    try {
+      await fetch(`${API_BASE}/chat/typing_status.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          is_typing: isTyping
+        })
+      });
+    } catch (error) {
+      // Silently fail - typing indicator is not critical
+      console.warn('Failed to send typing status:', error);
+    }
+  }, []);
+
+  /** Handle draft input change and track typing status */
+  const handleDraftChange = useCallback((e) => {
+    const newValue = e.target.value;
+    setDraft(newValue);
+
+    if (!activeConvId) return;
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (typingStatusTimeoutRef.current) {
+      clearTimeout(typingStatusTimeoutRef.current);
+    }
+
+    // Send "typing" status after 300ms of typing
+    typingTimeoutRef.current = setTimeout(() => {
+      sendTypingStatus(activeConvId, true);
+    }, 300);
+
+    // Send "stopped" status after 4s of inactivity
+    typingStatusTimeoutRef.current = setTimeout(() => {
+      sendTypingStatus(activeConvId, false);
+    }, 4000);
+  }, [activeConvId, sendTypingStatus]);
 
   /** Keydown handler for textarea: submit on Enter (without Shift) */
   function handleKeyDown(e) {
@@ -226,6 +380,17 @@ export default function ChatPage() {
       }
       setDraft("");
       setAttachedImage(null);
+      
+      // Stop typing status when message is sent
+      if (activeConvId) {
+        sendTypingStatus(activeConvId, false);
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        if (typingStatusTimeoutRef.current) {
+          clearTimeout(typingStatusTimeoutRef.current);
+        }
+      }
     }
   }
 
@@ -810,6 +975,9 @@ export default function ChatPage() {
                   );
                 })
               )}
+              {isOtherPersonTyping && activeConvId && (
+                <TypingIndicatorMessage />
+              )}
               {shouldShowReviewPrompt && (
                 <ReviewPromptMessageCard
                   productId={activeConversation.productId}
@@ -910,7 +1078,7 @@ export default function ChatPage() {
                       <textarea
                         ref={taRef}
                         value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
+                        onChange={handleDraftChange}
                         onInput={autoGrow}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message…"
