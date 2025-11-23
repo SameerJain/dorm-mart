@@ -45,6 +45,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectStmt = $conn->prepare('
         SELECT cpr.*, inv.title AS item_title
         FROM confirm_purchase_requests cpr
@@ -81,6 +82,7 @@ try {
     }
 
     $nextStatus = $action === 'accept' ? 'buyer_accepted' : 'buyer_declined';
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $updateStmt = $conn->prepare('UPDATE confirm_purchase_requests SET status = ?, buyer_response_at = NOW() WHERE confirm_request_id = ? AND status = \'pending\' LIMIT 1');
     if (!$updateStmt) {
         throw new RuntimeException('Failed to prepare confirm update');
@@ -96,7 +98,7 @@ try {
         exit;
     }
 
-    // Reload row for updated timestamps
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1');
     $selectStmt->bind_param('i', $confirmRequestId);
     $selectStmt->execute();

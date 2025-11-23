@@ -233,14 +233,14 @@ function PublicProfilePage() {
             </div>
           </div>
         )}
-        <header className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center">
-            <div className="flex flex-col items-center gap-4 md:flex-row">
-              <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-white shadow-lg">
+        <header className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm overflow-hidden">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center min-w-0">
+            <div className="flex flex-col items-center gap-4 md:flex-row min-w-0 flex-1">
+              <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-white shadow-lg flex-shrink-0">
                 <img src={profile.imageUrl} alt={profile.name} className="h-full w-full object-cover" />
               </div>
-              <div className="text-center md:text-left">
-                <h1 className="text-2xl font-serif font-semibold text-slate-900">{profile.name}</h1>
+              <div className="text-center md:text-left min-w-0 max-w-full overflow-hidden flex-1">
+                <h1 className="text-2xl font-serif font-semibold text-slate-900 truncate block">{profile.name}</h1>
                 <p className="text-sm text-slate-500">@{profile.username}</p>
                 <p className="text-sm text-slate-500">{profile.email}</p>
                 {profile.instagram && (
@@ -255,12 +255,18 @@ function PublicProfilePage() {
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 px-6 py-4 md:ml-auto">
-              <StarRating rating={profile.avgRating} />
-              <p className="text-xs uppercase tracking-wide text-slate-500">{profile.reviewCount} review(s)</p>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 px-6 py-4 md:ml-auto flex-shrink-0">
+              {profile.reviewCount === 0 ? (
+                <p className="text-sm text-slate-500">No reviews yet</p>
+              ) : (
+                <>
+                  <StarRating rating={profile.avgRating} />
+                  <p className="text-xs uppercase tracking-wide text-slate-500">{profile.reviewCount} review(s)</p>
+                </>
+              )}
             </div>
           </div>
-          {profile.bio && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700">{profile.bio}</p>}
+          {profile.bio && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 line-clamp-3">{profile.bio}</p>}
         </header>
 
         <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">

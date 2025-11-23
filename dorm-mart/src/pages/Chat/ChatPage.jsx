@@ -110,6 +110,12 @@ export default function ChatPage() {
     if (navigationState?.receiverId) return `User ${navigationState.receiverId}`;
     return "Select a chat";
   }, [conversations, activeConvId, navigationState]);
+
+  /** Extract first name for mobile display */
+  const activeLabelFirstName = useMemo(() => {
+    if (!activeLabel || activeLabel === "Select a chat") return activeLabel;
+    return activeLabel.split(' ')[0];
+  }, [activeLabel]);
   const activeReceiverId = activeConversation?.receiverId ?? navigationState?.receiverId ?? null;
   const activeReceiverUsername = activeReceiverId ? usernameMap[activeReceiverId] : null;
   const activeProfilePath = activeReceiverUsername
@@ -179,14 +185,6 @@ export default function ChatPage() {
     })();
   }, [activeReceiverId, activeProfilePath, navigate]);
 
-  /** Mobile back button handler: go back or to /app as fallback */
-  function goBackOrHome() {
-    if (location.key !== "default") {
-      navigate(-1);
-    } else {
-      navigate("/app");
-    }
-  }
 
   /** Controls which pane is visible on mobile (list vs messages) */
   const [isMobileList, setIsMobileList] = useState(true);
@@ -464,10 +462,10 @@ export default function ChatPage() {
         } else if (isSeller) {
           buttonColorClass = "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300";
         } else {
-          buttonColorClass = "bg-indigo-50 text-indigo-700";
+          buttonColorClass = "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300";
         }
       } else {
-        buttonColorClass = "bg-indigo-50 text-indigo-700";
+        buttonColorClass = "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300";
       }
     }
     const hoverColor = sectionType === 'buyers' ? "hover:bg-green-600" : "hover:bg-blue-600";
@@ -535,7 +533,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-[calc(100dvh-var(--nav-h))] w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ "--nav-h": "64px" }}>
+    <div className="h-[100dvh] md:h-[calc(100dvh-var(--nav-h))] w-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ "--nav-h": "64px" }}>
       <div className="mx-auto h-full max-w-[1200px] px-4 py-6">
         <div className="grid h-full grid-cols-12 gap-4">
           {/* Sidebar */}
@@ -545,15 +543,8 @@ export default function ChatPage() {
               (isMobileList ? "block" : "hidden") + " md:block"
             }
           >
-            <div className="border-b-4 border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
+            <div className="border-b-4 border-gray-200 dark:border-gray-700 p-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Chats</h2>
-              <button
-                onClick={goBackOrHome}
-                className="md:hidden rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
-                aria-label="Back to previous page"
-              >
-                Back
-              </button>
             </div>
             <ul className="max-h-[70vh] overflow-y-auto p-2" aria-label="Conversation list">
               {convError ? (
@@ -607,26 +598,30 @@ export default function ChatPage() {
             }
           >
             {/* Header */}
-            <div className={`relative border-4 ${headerBgColor} px-5 py-4`}>
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
+            <div className={`relative border-4 ${headerBgColor} px-5 py-4 overflow-hidden`}>
+              <div className="flex items-center justify-between min-w-0">
+                <div className="flex flex-col flex-shrink-0">
                   {activeReceiverId ? (
                     <button
                       type="button"
                       onClick={handleProfileHeaderClick}
-                      className="text-left text-lg font-semibold text-blue-600 hover:underline disabled:opacity-50"
+                      className="text-left text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
                     >
-                      {activeLabel}
+                      <span className="md:hidden">{activeLabelFirstName}</span>
+                      <span className="hidden md:inline">{activeLabel}</span>
                     </button>
                   ) : (
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{activeLabel}</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      <span className="md:hidden">{activeLabelFirstName}</span>
+                      <span className="hidden md:inline">{activeLabel}</span>
+                    </h2>
                   )}
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Direct message</p>
+                  <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400">Direct message</p>
                 </div>
 
                 {(activeConversation?.productTitle || activeConversation?.productId) && (
-                  <div className="flex-1 flex flex-col items-center text-center">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <div className="flex-1 flex flex-col items-center text-center min-w-0 px-2">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate block w-full">
                       {activeConversation.productTitle || `Item #${activeConversation.productId}`}
                     </h2>
                   </div>
@@ -634,10 +629,10 @@ export default function ChatPage() {
 
                 <div className="flex items-center gap-2">
                   {activeConversation?.productImageUrl && (
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
+                    <div className="inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
                       <img
                         src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
-                        alt={activeConversation.productTitle || 'Product'}
+                        alt=""
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -649,7 +644,7 @@ export default function ChatPage() {
                           state: { returnTo: `/app/chat?conv=${activeConvId}` }
                         });
                       }}
-                      className={`px-3 py-1.5 text-sm text-white rounded-lg font-medium transition-colors ${
+                      className={`hidden md:flex px-3 py-1.5 text-sm text-white rounded-lg font-medium transition-colors ${
                         isSellerPerspective
                           ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
                           : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
@@ -661,10 +656,10 @@ export default function ChatPage() {
                   )}
                   <button
                     onClick={() => { setIsMobileList(true); clearActiveConversation(); }}
-                    className="md:hidden rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-700 dark:text-gray-200"
-                    aria-label="Back to conversations"
+                    className="md:hidden rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:shadow transition-all duration-200"
+                    aria-label="View Chats"
                   >
-                    Back
+                    View Chats
                   </button>
                 </div>
               </div>
@@ -680,41 +675,57 @@ export default function ChatPage() {
             >
               {!activeConvId ? (
                 <div className="flex h-full items-center justify-center">
-                  <p className="text-sm text-gray-500">Select a chat to view messages.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Select a chat to view messages.</p>
                 </div>
               ) : chatByConvError[activeConvId] === true ? (
                 <p className="text-center text-sm text-red-600 dark:text-red-400">Something went wrong, please try again later</p>
               ) : messagesByConv[activeConvId] === undefined ? (
                 <div className="flex h-full items-center justify-center">
-                  <p className="text-sm text-gray-500">Loading messages...</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Loading messages...</p>
                 </div>
               ) : messages.length === 0 ? (
-                <p className="text-center text-sm text-gray-500">No messages yet.</p>
+                <p className="text-center text-sm text-gray-500 dark:text-gray-400">No messages yet.</p>
               ) : (
                 messages.map((m) => {
                   /** Categorize message type: basic, schedule, confirm, listing intro, or next steps */
-                  const messageType = m.metadata?.type;
+                  // Handle metadata that might be a string or object
+                  const metadata = typeof m.metadata === 'string' ? (() => {
+                    try { return JSON.parse(m.metadata); } catch { return null; }
+                  })() : (m.metadata || null);
+                  const messageType = metadata?.type;
                   const isScheduleMessage = messageType === 'schedule_request' ||
                                             messageType === 'schedule_accepted' ||
                                             messageType === 'schedule_denied' ||
                                             messageType === 'schedule_cancelled';
-                  const isConfirmMessage = messageType === 'confirm_request' ||
-                                           messageType === 'confirm_accepted' ||
-                                           messageType === 'confirm_denied' ||
-                                           messageType === 'confirm_auto_accepted';
+                  // Only treat as confirm message if it has valid confirm message type AND required metadata
+                  // Must have messageType and for confirm_request, require confirm_request_id to be present
+                  const hasValidConfirmMetadata = messageType && (
+                    messageType === 'confirm_request' 
+                      ? (metadata?.confirm_request_id != null)
+                      : true // Other confirm types just need messageType to exist
+                  );
+                  const isConfirmMessage = hasValidConfirmMetadata && (
+                    messageType === 'confirm_request' ||
+                    messageType === 'confirm_accepted' ||
+                    messageType === 'confirm_denied' ||
+                    messageType === 'confirm_auto_accepted'
+                  );
                   const isNextStepsMessage = messageType === 'next_steps';
 
+                  // Ensure message has parsed metadata
+                  const messageWithMetadata = metadata ? { ...m, metadata } : m;
+                  
                   return (
                     <div key={m.message_id}>
                       {isNextStepsMessage ? (
-                        <NextStepsMessageCard message={m} />
+                        <NextStepsMessageCard message={messageWithMetadata} />
                       ) : (
                         <div className={m.sender === "me" ? "flex justify-end" : "flex justify-start"}>
                           {messageType === "listing_intro" ? (
-                            <MessageCard message={m} isMine={m.sender === "me"} />
+                            <MessageCard message={messageWithMetadata} isMine={m.sender === "me"} />
                           ) : isScheduleMessage ? (
                             <ScheduleMessageCard
-                              message={m}
+                              message={messageWithMetadata}
                               isMine={m.sender === "me"}
                               onRespond={async () => {
                                 if (activeConvId) {
@@ -727,7 +738,7 @@ export default function ChatPage() {
                             />
                           ) : isConfirmMessage ? (
                         <ConfirmMessageCard
-                          message={m}
+                          message={messageWithMetadata}
                           isMine={m.sender === "me"}
                           onRespond={async () => {
                             if (activeConvId) {
@@ -738,7 +749,7 @@ export default function ChatPage() {
                           }}
                         />
                       ) : (
-                        m.image_url ? (
+                        messageWithMetadata.image_url ? (
                           <div
                             className={
                               "max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow " +
@@ -772,7 +783,7 @@ export default function ChatPage() {
                                   <div
                                     className={
                                       "mt-1 flex items-center justify-between text-[10px] " +
-                                      (m.sender === "me" ? "text-indigo-100" : "text-gray-500")
+                                      (m.sender === "me" ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")
                                     }
                                   >
                                     <span>{fmtTime(m.ts)}</span>
@@ -780,7 +791,7 @@ export default function ChatPage() {
                                       href={dlSrc}
                                       className={
                                         "ml-3 underline hover:no-underline " +
-                                        (m.sender === "me" ? "text-indigo-100" : "text-gray-600")
+                                        (m.sender === "me" ? "text-indigo-100" : "text-gray-600 dark:text-gray-400")
                                       }
                                     >
                                       Download
@@ -794,11 +805,11 @@ export default function ChatPage() {
                           <div
                             className={
                               "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
-                              (m.sender === "me" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900")
+                              (m.sender === "me" ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100")
                             }
                           >
                             <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                            <div className={"mt-1 text-[10px] " + (m.sender === "me" ? "text-indigo-100" : "text-gray-500")}>
+                            <div className={"mt-1 text-[10px] " + (m.sender === "me" ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
                               {fmtTime(m.ts)}
                             </div>
                           </div>
@@ -834,8 +845,8 @@ export default function ChatPage() {
                     disabled={hasActiveScheduledPurchase}
                     className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
                       hasActiveScheduledPurchase
-                        ? 'bg-gray-400 cursor-not-allowed text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-600 text-white'
                     }`}
                     title={hasActiveScheduledPurchase ? 'There is already a Scheduled Purchase for this item' : ''}
                   >
@@ -847,8 +858,8 @@ export default function ChatPage() {
                     disabled={confirmButtonDisabled}
                     className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
                       confirmButtonDisabled
-                        ? 'bg-gray-400 cursor-not-allowed text-white'
-                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white'
+                        : 'bg-emerald-600 hover:bg-emerald-700 dark:hover:bg-emerald-600 text-white'
                     }`}
                     title={confirmButtonTitle}
                   >
@@ -856,7 +867,7 @@ export default function ChatPage() {
                   </button>
 
                   {confirmState && confirmState.message && !confirmState.can_confirm && (
-                    <p className="w-full text-xs text-gray-500 dark:text-gray-400">
+                    <p className="hidden md:block w-full text-xs text-gray-500 dark:text-gray-400">
                       {confirmState.message}
                     </p>
                   )}
@@ -931,7 +942,15 @@ export default function ChatPage() {
                     open={attachOpen}
                     onClose={() => setAttachOpen(false)}
                     onSelect={(file) => {
-                      setAttachedImage(file);
+                      // On mobile, auto-send the image immediately
+                      const isMobile = window.innerWidth < 768; // md breakpoint
+                      if (isMobile) {
+                        createImageMessage(draft, file);
+                        setDraft("");
+                        setAttachedImage(null);
+                      } else {
+                        setAttachedImage(file);
+                      }
                       setAttachOpen(false);
                     }}
                   />

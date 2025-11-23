@@ -357,6 +357,20 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     setSelectedCategories((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   };
 
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return (
+      selectedCategories.length > 0 ||
+      sortOrder !== "" ||
+      (minPrice !== "" && minPrice !== null && minPrice.trim() !== "") ||
+      (maxPrice !== "" && maxPrice !== null && maxPrice.trim() !== "") ||
+      itemLocation !== "" ||
+      itemCondition !== "" ||
+      priceNegotiable ||
+      acceptingTrades
+    );
+  }, [selectedCategories, sortOrder, minPrice, maxPrice, itemLocation, itemCondition, priceNegotiable, acceptingTrades]);
+
   const apply = () => {
     // Validate price inputs
     setPriceError("");
@@ -545,7 +559,17 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
         </label>
       </div>
 
-      <button onClick={apply} className="w-full px-3 py-2 rounded bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600">Apply</button>
+      <button 
+        onClick={apply} 
+        className={`w-full px-3 py-2 rounded text-sm font-medium transition-colors ${
+          hasActiveFilters
+            ? "bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600"
+            : "bg-gray-400 dark:bg-gray-600 text-white cursor-not-allowed"
+        }`}
+        disabled={!hasActiveFilters}
+      >
+        Apply
+      </button>
     </aside>
   );
 }

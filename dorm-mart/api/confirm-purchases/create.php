@@ -65,6 +65,12 @@ try {
         echo json_encode(['success' => false, 'error' => 'Notes cannot exceed 2000 characters']);
         exit;
     }
+    // XSS PROTECTION: Check for XSS patterns in sellerNotes
+    if ($sellerNotes !== '' && containsXSSPattern($sellerNotes)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid characters in seller notes']);
+        exit;
+    }
 
     $failureReason = isset($payload['failure_reason']) ? trim((string)$payload['failure_reason']) : null;
     $failureReasonNotes = isset($payload['failure_reason_notes']) ? trim((string)$payload['failure_reason_notes']) : null;
@@ -94,6 +100,12 @@ try {
             echo json_encode(['success' => false, 'error' => 'Failure notes cannot exceed 1000 characters']);
             exit;
         }
+        // XSS PROTECTION: Check for XSS patterns in failureReasonNotes
+        if ($failureReasonNotes !== null && $failureReasonNotes !== '' && containsXSSPattern($failureReasonNotes)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Invalid characters in failure reason notes']);
+            exit;
+        }
     }
 
     if ($scheduledRequestId <= 0 || $conversationId <= 0 || $productId <= 0) {
@@ -105,7 +117,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Ensure scheduled request belongs to seller, conversation, and is accepted
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
         SELECT
             spr.request_id,
@@ -157,7 +169,7 @@ try {
         exit;
     }
 
-    // Prevent duplicate pending confirmations
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $pendingStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE scheduled_request_id = ? AND status = \'pending\' ORDER BY confirm_request_id DESC LIMIT 1');
     $pendingStmt->bind_param('i', $scheduledRequestId);
     $pendingStmt->execute();
@@ -204,6 +216,7 @@ try {
         throw new RuntimeException('Failed to encode snapshot');
     }
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $insertStmt = $conn->prepare('
         INSERT INTO confirm_purchase_requests
             (scheduled_request_id, inventory_product_id, seller_user_id, buyer_user_id, conversation_id, is_successful,

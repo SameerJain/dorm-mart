@@ -54,10 +54,16 @@ function CreateAccountPage() {
     // Enforce hard caps at input-time
     let nextValue = type === "checkbox" ? checked : value;
     if (name === "firstName" || name === "lastName") {
-      nextValue = String(nextValue).slice(0, 100);
+      nextValue = String(nextValue).slice(0, 30);
     }
     if (name === "email") {
       nextValue = String(nextValue).slice(0, 255);
+    }
+    if (name === "gradMonth") {
+      nextValue = String(nextValue).slice(0, 2);
+    }
+    if (name === "gradYear") {
+      nextValue = String(nextValue).slice(0, 4);
     }
 
     setFormData(prev => ({
@@ -92,13 +98,13 @@ function CreateAccountPage() {
     else if (xssPatterns.some(pattern => pattern.test(first))) {
       newErrors.firstName = "Invalid characters in first name";
     }
-    else if (first.length > 100) newErrors.firstName = "First name must be 100 characters or fewer";
+    else if (first.length > 30) newErrors.firstName = "First name must be 30 characters or fewer";
 
     if (!last) newErrors.lastName = "Last name is required";
     else if (xssPatterns.some(pattern => pattern.test(last))) {
       newErrors.lastName = "Invalid characters in last name";
     }
-    else if (last.length > 100) newErrors.lastName = "Last name must be 100 characters or fewer";
+    else if (last.length > 30) newErrors.lastName = "Last name must be 30 characters or fewer";
 
     if (!formData.gradMonth || !formData.gradYear) {
       newErrors.gradDate = "Graduation month and year are required";
@@ -217,7 +223,7 @@ function CreateAccountPage() {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    maxLength={100}
+                    maxLength={30}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                   {errors.firstName && <p className="text-red-200 text-xs mt-1">{errors.firstName}</p>}
@@ -231,7 +237,7 @@ function CreateAccountPage() {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    maxLength={100}
+                    maxLength={30}
                     className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                   {errors.lastName && <p className="text-red-200 text-xs mt-1">{errors.lastName}</p>}
@@ -247,6 +253,7 @@ function CreateAccountPage() {
                       value={formData.gradMonth}
                       onChange={handleChange}
                       placeholder="MM"
+                      maxLength={2}
                       className="w-1/2 px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     />
                     <input
@@ -255,6 +262,7 @@ function CreateAccountPage() {
                       value={formData.gradYear}
                       onChange={handleChange}
                       placeholder="YYYY"
+                      maxLength={4}
                       className="w-1/2 px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                     />
                   </div>

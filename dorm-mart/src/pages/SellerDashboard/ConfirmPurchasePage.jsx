@@ -3,6 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
 
+// Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
+const PRICE_LIMITS = {
+  max: 9999.99,
+};
+
 const DEFAULT_FAILURE_REASONS = [
   { value: 'buyer_no_show', label: 'Buyer no showed' },
   { value: 'insufficient_funds', label: 'Buyer did not have enough money' },
@@ -123,9 +128,46 @@ export default function ConfirmPurchasePage() {
     if (!prefill) return;
     setFormError('');
 
+    // XSS PROTECTION: Check for XSS patterns in sellerNotes and failureReasonNotes
+    const xssPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /onerror=/i,
+      /onload=/i,
+      /onclick=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i,
+      /<img[^>]*on/i,
+      /<svg[^>]*on/i,
+      /vbscript:/i
+    ];
+
+    if (sellerNotes.trim() && xssPatterns.some(pattern => pattern.test(sellerNotes))) {
+      setFormError('Invalid characters in seller notes.');
+      return;
+    }
+
+    if (failureReasonNotes.trim() && xssPatterns.some(pattern => pattern.test(failureReasonNotes))) {
+      setFormError('Invalid characters in failure reason notes.');
+      return;
+    }
+
     if (finalPrice !== '' && Number.isNaN(Number(finalPrice))) {
       setFormError('Final price must be a valid number.');
       return;
+    }
+
+    if (finalPrice !== '') {
+      const finalPriceValue = Number(finalPrice);
+      if (finalPriceValue < 0) {
+        setFormError('Price cannot be negative.');
+        return;
+      }
+      if (finalPriceValue > PRICE_LIMITS.max) {
+        setFormError(`Price must be $${PRICE_LIMITS.max.toFixed(2)} or less`);
+        return;
+      }
     }
 
     if (!isSuccessful) {
@@ -195,11 +237,11 @@ export default function ConfirmPurchasePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Confirm Purchase</h1>
+      <div className="flex items-center justify-between mb-6 min-w-0">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 truncate block min-w-0 flex-1">Confirm Purchase</h1>
         <button
           onClick={() => navigate(-1)}
-          className="text-sm text-indigo-600 hover:text-indigo-500 font-medium"
+          className="text-sm text-indigo-600 hover:text-indigo-500 font-medium flex-shrink-0 ml-4"
         >
           Back
         </button>
@@ -214,49 +256,49 @@ export default function ConfirmPurchasePage() {
 
         {!error && (
           <>
-            <section className="bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-200 dark:border-indigo-700 rounded-lg p-5 mb-6">
-              <div className="flex items-start gap-3">
+            <section className="bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-200 dark:border-indigo-700 rounded-lg p-5 mb-6 overflow-hidden">
+              <div className="flex items-start gap-3 min-w-0">
                 <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <div>
-                  <p className="text-base font-semibold text-indigo-900 dark:text-indigo-100 mb-2">
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <p className="text-base font-semibold text-indigo-900 dark:text-indigo-100 mb-2 break-words">
                     Fill this form out after you and the buyer have met in person and completed the exchange
                   </p>
-                  <p className="text-sm text-indigo-800 dark:text-indigo-200 leading-relaxed">
+                  <p className="text-sm text-indigo-800 dark:text-indigo-200 leading-relaxed break-words">
                     This form must be completed in order to mark this transaction as complete. Once submitted, the buyer will have 24 hours to accept or deny.
                   </p>
                 </div>
               </div>
             </section>
 
-            <section className="grid gap-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <div>
+            <section className="grid gap-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4 overflow-hidden">
+              <div className="min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Item</p>
-                <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                <p className="text-base font-semibold text-gray-900 dark:text-gray-100 break-words overflow-hidden">
                   {prefill?.item_title || '—'}
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-gray-500 dark:text-gray-400">Buyer</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{prefill?.buyer_name || '—'}</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100 break-words overflow-hidden">{prefill?.buyer_name || '—'}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-gray-500 dark:text-gray-400">Meeting</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                  <p className="font-medium text-gray-900 dark:text-gray-100 break-words overflow-hidden">
                     {formatDateTime(prefill?.meeting_at)}
                   </p>
                 </div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Pickup Location</p>
-                <p className="font-medium text-gray-900 dark:text-gray-100">{prefill?.meet_location || '—'}</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100 break-words break-all overflow-hidden">{prefill?.meet_location || '—'}</p>
               </div>
               {prefill?.description && (
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-gray-500 dark:text-gray-400">Notes from scheduling</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{prefill.description}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words overflow-hidden">{prefill.description}</p>
                 </div>
               )}
             </section>
@@ -295,16 +337,32 @@ export default function ConfirmPurchasePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="block text-sm text-gray-700 dark:text-gray-200">
                   Final price (optional)
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={finalPrice}
-                    disabled={disableForm}
-                    onChange={(e) => setFinalPrice(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
-                    placeholder="0.00"
-                  />
+                  <div className="relative mt-1">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max={PRICE_LIMITS.max}
+                      value={finalPrice}
+                      disabled={disableForm}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                          setFinalPrice('');
+                          return;
+                        }
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue) && numValue <= PRICE_LIMITS.max) {
+                          setFinalPrice(value);
+                        }
+                      }}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/40 pl-10 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </label>
                 <div className="text-sm text-gray-500 dark:text-gray-300">
                   Previously agreed price:{' '}
@@ -346,7 +404,7 @@ export default function ConfirmPurchasePage() {
                   </label>
 
                   <label className="block text-sm text-gray-700 dark:text-gray-200">
-                    Add details (optional unless "Other")
+                    Add details (optional unless "Other" was selected)
                     <textarea
                       rows={3}
                       disabled={disableForm}

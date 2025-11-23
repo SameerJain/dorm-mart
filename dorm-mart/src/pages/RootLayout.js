@@ -1,14 +1,20 @@
-import { Outlet, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState, useContext } from "react";
 import MainNav from "../components/MainNav/MainNav";
 import { fetch_me } from "../utils/handle_auth.js";
 import { loadUserTheme } from "../utils/load_theme.js";
+import { ChatContext } from "../context/ChatContext.js";
 
 // once user logs in, load websocket
 function RootLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const isChatPage = location.pathname.startsWith("/app/chat");
+  const chatContext = useContext(ChatContext);
+  // Check if we're viewing a conversation (activeConvId exists) or the list (no activeConvId)
+  const isViewingConversation = chatContext?.activeConvId != null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -58,7 +64,10 @@ function RootLayout() {
 
   return (
     <>
-      <MainNav />
+      {/* Show navbar on mobile for chat list, hide for individual conversations */}
+      <div className={isChatPage && isViewingConversation ? "hidden md:block" : ""}>
+        <MainNav />
+      </div>
       <Outlet />
     </>
   );

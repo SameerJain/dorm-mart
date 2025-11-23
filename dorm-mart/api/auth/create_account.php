@@ -33,27 +33,30 @@ use PHPMailer\PHPMailer\Exception;
 
 
 
-function generatePassword(int $length = 12): string
+function generatePassword(int $length = 8): string
 {
-    if ($length < 8) $length = 8;
+    // Fixed length of 8 characters
+    $length = 8;
 
     $uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $lowers = 'abcdefghijklmnopqrstuvwxyz';
     $digits = '0123456789';
     $special = '!@#$%^&*()-_=+[]{};:,.?/';
 
-    // ensure each required class is present
+    // Generate exactly 1 special character
     $password = [
-        $uppers[random_int(0, strlen($uppers) - 1)],
-        $lowers[random_int(0, strlen($lowers) - 1)],
-        $digits[random_int(0, strlen($digits) - 1)],
         $special[random_int(0, strlen($special) - 1)],
     ];
 
-    // fill the rest
-    $all = $uppers . $lowers . $digits . $special;
+    // Ensure at least 1 uppercase, 1 lowercase, and 1 digit (remaining 7 characters)
+    $password[] = $uppers[random_int(0, strlen($uppers) - 1)];
+    $password[] = $lowers[random_int(0, strlen($lowers) - 1)];
+    $password[] = $digits[random_int(0, strlen($digits) - 1)];
+
+    // Fill the remaining 4 characters from uppercase, lowercase, or digits only (no special)
+    $nonSpecial = $uppers . $lowers . $digits;
     for ($i = count($password); $i < $length; $i++) {
-        $password[] = $all[random_int(0, strlen($all) - 1)];
+        $password[] = $nonSpecial[random_int(0, strlen($nonSpecial) - 1)];
     }
 
     // secure shuffle (Fisher–Yates)
@@ -445,7 +448,7 @@ try {
     // new user and immediately hash it with password_hash(), which automatically
     // generates a unique SALT and embeds it into the returned hash (bcrypt here).
     // The database only stores this salted, one-way hash (column: hash_pass).
-    $tempPassword = generatePassword(12);
+    $tempPassword = generatePassword(8);
     $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
     // 3) Insert user
