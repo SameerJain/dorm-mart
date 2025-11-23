@@ -208,11 +208,11 @@ function BuyerRatingModal({
       }}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Rate Buyer
           </h2>

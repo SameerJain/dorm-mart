@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { withFallbackImage } from '../../utils/imageFallback';
 import ReviewModal from '../Reviews/ReviewModal';
@@ -10,6 +10,7 @@ const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replac
 
 function SellerDashboardPage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [selectedStatus, setSelectedStatus] = useState('All Status');
     const [selectedSort, setSelectedSort] = useState('Newest First');
     const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -287,6 +288,21 @@ function SellerDashboardPage() {
             fetchBuyerRatings();
         }
     }, [listings]);
+
+    // Check for navigation state to auto-open buyer rating modal
+    useEffect(() => {
+        const navState = location.state && typeof location.state === "object" ? location.state : null;
+        if (navState?.openBuyerRating && navState.productId && navState.buyerId) {
+            setSelectedBuyerRatingProduct({
+                id: navState.productId,
+                title: navState.productTitle || "Product",
+                buyerId: navState.buyerId,
+            });
+            setBuyerRatingModalOpen(true);
+            // Clear the state to prevent reopening on re-render
+            navigate(location.pathname, { replace: true, state: null });
+        }
+    }, [location.state, location.pathname, navigate]);
 
     const handleViewReview = (productId, productTitle) => {
         const review = productReviews[productId];

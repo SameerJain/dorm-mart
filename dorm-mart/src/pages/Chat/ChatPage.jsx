@@ -8,6 +8,7 @@ import NextStepsMessageCard from "./components/NextStepsMessageCard";
 import ImageModal from "./components/ImageModal";
 import ConfirmMessageCard from "./components/ConfirmMessageCard";
 import ReviewPromptMessageCard from "./components/ReviewPromptMessageCard";
+import BuyerRatingPromptMessageCard from "./components/BuyerRatingPromptMessageCard";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -312,6 +313,9 @@ export default function ChatPage() {
     return (msgType === 'confirm_accepted' || msgType === 'confirm_auto_accepted');
   });
   const shouldShowReviewPrompt = !isSellerPerspective && hasAcceptedConfirm && activeConversation?.productId;
+
+  /** Check if seller should see buyer rating prompt */
+  const shouldShowBuyerRatingPrompt = isSellerPerspective && hasAcceptedConfirm && activeConversation?.productId && activeReceiverId;
 
   /** Header background color based on buyer vs seller perspective */
   const headerBgColor = isSellerPerspective
@@ -810,6 +814,13 @@ export default function ChatPage() {
                 <ReviewPromptMessageCard
                   productId={activeConversation.productId}
                   productTitle={activeConversation.productTitle}
+                />
+              )}
+              {shouldShowBuyerRatingPrompt && (
+                <BuyerRatingPromptMessageCard
+                  productId={activeConversation.productId}
+                  productTitle={activeConversation.productTitle}
+                  buyerId={activeReceiverId}
                 />
               )}
             </div>
