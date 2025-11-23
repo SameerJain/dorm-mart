@@ -555,6 +555,19 @@ function OngoingPurchasesPage() {
                                 Cancel
                             </button>
                         )}
+
+                        {/* Review button for completed purchases (buyer only) */}
+                        {isBuyer && isCompleted && req.inventory_product_id && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigate(`/app/purchase-history?review=${encodeURIComponent(req.inventory_product_id)}`);
+                                }}
+                                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600"
+                            >
+                                Leave a Review
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

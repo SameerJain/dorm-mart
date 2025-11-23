@@ -5,7 +5,7 @@ import ReviewModal from "../../pages/Reviews/ReviewModal";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 
-function PurchasedItem({ id, title, seller, date, image }) {
+function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false }) {
   const productIdParam = id !== undefined && id !== null ? encodeURIComponent(id) : "";
   const detailPath = `/app/viewReceipt?id=${productIdParam}`;
   const displayImage = withFallbackImage(image);
@@ -15,6 +15,7 @@ function PurchasedItem({ id, title, seller, date, image }) {
   const [existingReview, setExistingReview] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingReview, setIsLoadingReview] = useState(true);
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
 
   // Fetch review status on mount
   useEffect(() => {
@@ -46,6 +47,14 @@ function PurchasedItem({ id, title, seller, date, image }) {
 
     fetchReviewStatus();
   }, [id]);
+
+  // Auto-open review modal if autoOpenReview prop is true and review status is loaded
+  useEffect(() => {
+    if (autoOpenReview && !isLoadingReview && !hasAutoOpened) {
+      setIsModalOpen(true);
+      setHasAutoOpened(true);
+    }
+  }, [autoOpenReview, isLoadingReview, hasAutoOpened]);
 
   const handleReviewButtonClick = () => {
     setIsModalOpen(true);

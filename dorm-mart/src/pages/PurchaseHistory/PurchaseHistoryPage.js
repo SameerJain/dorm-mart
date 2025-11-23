@@ -1,5 +1,5 @@
 import PurchasedItem from "../../components/Products/PurchasedItem";
-import { Outlet } from "react-router-dom";
+import { Outlet, useSearchParams } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 
 async function fetchPurchasedItems(filters, signal) {
@@ -25,10 +25,14 @@ function PurchaseHistoryPage() {
   const [purchasedItems, setPurchasedItems] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Filter states
   const [selectedSort, setSelectedSort] = useState('Newest First');
   const [dateRange, setDateRange] = useState('All Time');
+
+  // Get review product ID from URL parameter
+  const reviewProductId = searchParams.get('review');
 
   useEffect(() => {
     setIsFetching(true);
@@ -181,6 +185,7 @@ function PurchaseHistoryPage() {
                   seller={item.sold_by}
                   date={item.transacted_at}
                   image={item.image_url}
+                  autoOpenReview={reviewProductId && String(item.item_id) === String(reviewProductId)}
                 />
               ))}
             </ul>
