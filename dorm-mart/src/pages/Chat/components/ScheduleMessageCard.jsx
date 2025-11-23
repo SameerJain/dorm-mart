@@ -167,6 +167,20 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     return `$${price.toFixed(2)}`;
   };
 
+  // Conditionally format message content for seller perspective
+  const getDisplayMessage = () => {
+    let content = message.content || '';
+    
+    // If this is a schedule_request from seller's perspective, remove "Please Accept or Deny" text
+    if (isMine && messageType === 'schedule_request') {
+      // Remove "Please Accept or Deny" (case-insensitive, with or without period)
+      content = content.replace(/\s*Please\s+Accept\s+or\s+Deny\.?\s*/gi, '').trim();
+    }
+    
+    return content;
+  };
+
+  const displayMessage = getDisplayMessage();
 
   return (
     <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.textColor} overflow-hidden`}>
@@ -182,7 +196,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
           </svg>
           )}
           <p className={`font-bold text-base ${config.textColor}`}>
-            {message.content}
+            {displayMessage}
           </p>
         </div>
         
