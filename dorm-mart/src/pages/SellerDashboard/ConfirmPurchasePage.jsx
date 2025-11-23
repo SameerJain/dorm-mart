@@ -45,7 +45,6 @@ export default function ConfirmPurchasePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
-  const [formSuccess, setFormSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isSuccessful, setIsSuccessful] = useState(true);
@@ -123,7 +122,6 @@ export default function ConfirmPurchasePage() {
     event.preventDefault();
     if (!prefill) return;
     setFormError('');
-    setFormSuccess('');
 
     if (finalPrice !== '' && Number.isNaN(Number(finalPrice))) {
       setFormError('Final price must be a valid number.');
@@ -166,7 +164,6 @@ export default function ConfirmPurchasePage() {
         const msg = payload.error || 'Failed to send confirmation to the buyer.';
         throw new Error(msg);
       }
-      setFormSuccess('Sent! The buyer now has 24 hours to accept or deny this confirmation.');
       setFormError('');
       // Redirect to chat page with the conversation ID
       navigate('/app/chat', { state: { convId: navState.convId } });
@@ -366,11 +363,6 @@ export default function ConfirmPurchasePage() {
               {formError && (
                 <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-3 text-sm text-red-700 dark:text-red-300">
                   {formError}
-                </div>
-              )}
-              {formSuccess && (
-                <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 p-3 text-sm text-green-700 dark:text-green-300">
-                  {formSuccess}
                 </div>
               )}
 
