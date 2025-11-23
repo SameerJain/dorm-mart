@@ -192,7 +192,8 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   const formattedExpires = formatDate(expiresAt);
   const formattedResponded = formatDate(respondedAt);
 
-  // Early return if critical metadata is missing - prevents empty div rendering
+  // Safety fallback: Early return if critical metadata is missing - prevents empty div rendering
+  // Note: Validation should happen in ChatPage.jsx before rendering, so this should rarely trigger
   // Must be after all hooks to comply with React hooks rules
   if (!messageType || (messageType === 'confirm_request' && !confirmRequestId)) {
     return null;

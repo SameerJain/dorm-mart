@@ -698,10 +698,12 @@ export default function ChatPage() {
                                             messageType === 'schedule_denied' ||
                                             messageType === 'schedule_cancelled';
                   // Only treat as confirm message if it has valid confirm message type AND required metadata
-                  // For confirm_request, require confirm_request_id to be present
-                  const hasValidConfirmMetadata = messageType === 'confirm_request' 
-                    ? (metadata?.confirm_request_id != null)
-                    : true; // Other confirm types don't require confirm_request_id
+                  // Must have messageType and for confirm_request, require confirm_request_id to be present
+                  const hasValidConfirmMetadata = messageType && (
+                    messageType === 'confirm_request' 
+                      ? (metadata?.confirm_request_id != null)
+                      : true // Other confirm types just need messageType to exist
+                  );
                   const isConfirmMessage = hasValidConfirmMetadata && (
                     messageType === 'confirm_request' ||
                     messageType === 'confirm_accepted' ||
