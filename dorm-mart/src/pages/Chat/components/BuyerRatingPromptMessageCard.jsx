@@ -83,7 +83,7 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
     <div className="flex justify-center my-2">
       <div className={containerClasses}>
         <div className="p-4">
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2 min-w-0">
             {hasRating ? (
               <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -93,11 +93,11 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             )}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0 max-w-full overflow-hidden">
               <p className={titleClasses}>
                 {hasRating ? "Buyer Rated" : "Next Steps: Rate Buyer"}
               </p>
-              <p className={textClasses}>
+              <p className={`${textClasses} break-words`}>
                 {hasRating
                   ? `Thank you for rating the buyer for ${productTitle || "this item"}! You can view or edit your rating anytime.`
                   : `Your purchase has been completed! Help other sellers by rating the buyer for ${productTitle || "this item"}.`}

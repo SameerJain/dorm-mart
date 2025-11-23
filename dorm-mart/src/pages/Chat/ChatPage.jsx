@@ -598,9 +598,9 @@ export default function ChatPage() {
             }
           >
             {/* Header */}
-            <div className={`relative border-4 ${headerBgColor} px-5 py-4`}>
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
+            <div className={`relative border-4 ${headerBgColor} px-5 py-4 overflow-hidden`}>
+              <div className="flex items-center justify-between min-w-0">
+                <div className="flex flex-col flex-shrink-0">
                   {activeReceiverId ? (
                     <button
                       type="button"
@@ -620,8 +620,8 @@ export default function ChatPage() {
                 </div>
 
                 {(activeConversation?.productTitle || activeConversation?.productId) && (
-                  <div className="flex-1 flex flex-col items-center text-center">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <div className="flex-1 flex flex-col items-center text-center min-w-0 px-2">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate block w-full">
                       {activeConversation.productTitle || `Item #${activeConversation.productId}`}
                     </h2>
                   </div>

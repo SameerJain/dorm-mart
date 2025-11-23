@@ -123,9 +123,9 @@ export default function ItemCardNew({
       </div>
 
       {/* BODY */}
-      <div className="flex flex-col gap-0.5 px-3 py-2">
+      <div className="flex flex-col gap-0.5 px-3 py-2 min-w-0">
         {/* title */}
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 break-words overflow-hidden">
           {title}
         </h3>
 

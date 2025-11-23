@@ -194,25 +194,25 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   return (
     <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.textColor} overflow-hidden`}>
       <div className="p-4 space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {(messageType === 'schedule_cancelled' || localResponseStatus === 'declined') ? (
-            <svg className={`w-5 h-5 ${config.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 ${config.iconColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           ) : (
-          <svg className={`w-5 h-5 ${config.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-5 h-5 ${config.iconColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           )}
-          <p className={`font-bold text-base ${config.textColor}`}>
+          <p className={`font-bold text-base ${config.textColor} truncate block min-w-0 flex-1`}>
             {displayMessage}
           </p>
         </div>
         
         {/* Product title and price for schedule_request messages */}
         {messageType === 'schedule_request' && productTitle && (
-          <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor}`}>
-            <p className={`text-sm font-semibold ${config.textColor}`}>
+          <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor} overflow-hidden`}>
+            <p className={`text-sm font-semibold ${config.textColor} truncate block`}>
               <span className="font-bold">Item:</span> {productTitle}
             </p>
             {displayPrice !== null && !isTrade && (
@@ -273,8 +273,8 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               </div>
             )}
             {description && (
-              <p className={`text-sm ${config.textColor} break-words`}>
-                <span className="font-semibold">Description:</span> {description}
+              <p className={`text-sm ${config.textColor} break-words overflow-hidden`}>
+                <span className="font-semibold">Description:</span> <span className="break-all">{description}</span>
               </p>
             )}
             {verificationCode && (
