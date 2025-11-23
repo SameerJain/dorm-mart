@@ -324,7 +324,7 @@ try {
             // If purchase was accepted, send a separate "Next Steps" message
             // Note: This message does NOT increment unread count (no notification for either party)
             if ($action === 'accept') {
-                $nextStepsContent = 'Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities!';
+                $nextStepsContent = 'Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities! Once the exchange is done, the seller will send the Confirm Purchase form.';
                 $nextStepsMetadata = json_encode([
                     'type' => 'next_steps',
                     'request_id' => $requestId,

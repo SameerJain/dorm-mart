@@ -502,7 +502,7 @@ function SchedulePurchasePage() {
                                 }`}
                             >
                                 <option value="" disabled>Select An Option</option>
-                                {MEET_LOCATION_OPTIONS.map((option) => {
+                                {MEET_LOCATION_OPTIONS.filter(option => option.value !== '').map((option) => {
                                     // Compare meet location - handle both predefined options and custom locations
                                     const itemLocation = selectedListing?.meet_location;
                                     const isItemLocation = itemLocation && 
@@ -628,9 +628,6 @@ function SchedulePurchasePage() {
                                     </select>
                                 </div>
                             </div>
-                            {dateTimeError && (
-                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{dateTimeError}</p>
-                            )}
                         </div>
 
                         {/* Price negotiation field - only show if item is price negotiable */}
@@ -646,7 +643,7 @@ function SchedulePurchasePage() {
                                 )}
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex-1">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-lg">
                                             $
                                         </span>
                                         <input
@@ -666,7 +663,7 @@ function SchedulePurchasePage() {
                                                     setNegotiatedPrice(value);
                                                 }
                                             }}
-                                            placeholder="Enter negotiated price"
+                                            placeholder=""
                                             disabled={isTrade}
                                             className={`w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isTrade ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         />
@@ -790,8 +787,20 @@ function SchedulePurchasePage() {
                             </p>
                         </div>
 
-                        {formError && (
-                            <div className="text-sm text-red-600 dark:text-red-400">{formError}</div>
+                        {/* Error messages at bottom - mobile friendly */}
+                        {(formError || dateTimeError) && (
+                            <div className="mt-4 space-y-2">
+                                {formError && (
+                                    <div className="text-sm text-red-600 dark:text-red-400 break-words px-1">
+                                        {formError}
+                                    </div>
+                                )}
+                                {dateTimeError && (
+                                    <div className="text-sm text-red-600 dark:text-red-400 break-words px-1">
+                                        {dateTimeError}
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                         <div className="pt-2 flex justify-between items-center">
@@ -805,7 +814,7 @@ function SchedulePurchasePage() {
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
                             >
                                 {isSubmitting ? 'Scheduling...' : 'Schedule Purchase'}
                             </button>

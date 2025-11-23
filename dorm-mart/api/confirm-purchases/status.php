@@ -104,7 +104,7 @@ try {
             'data' => [
                 'can_confirm' => false,
                 'reason_code' => 'missing_schedule',
-                'message' => 'A Scheduled Purchase must be accepted before confirming the sale.',
+                'message' => 'First, send the Schedule Purchase form. Then once the exchange is complete, send the Confirm Purchase form.',
             ],
         ]);
         return;

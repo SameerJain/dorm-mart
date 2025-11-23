@@ -8,6 +8,12 @@ import BuyerRatingModal from './BuyerRatingModal';
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
+/** Truncate product title to max length (default 50 characters) */
+function truncateProductTitle(title, maxLength = 50) {
+  if (!title || title.length <= maxLength) return title;
+  return title.substring(0, maxLength) + '...';
+}
+
 function SellerDashboardPage() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -569,24 +575,24 @@ function SellerDashboardPage() {
                     <div className="space-y-4">
                         {/* TODO: Replace with actual listing cards */}
                         {getSortedListings().map((listing) => (
-                            <div key={listing.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                    <div className="flex items-center space-x-3 sm:space-x-4">
+                            <div key={listing.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6 overflow-hidden">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 min-w-0">
+                                    <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
                                         <button
                                             type="button"
                                             onClick={() => openViewProduct(listing.id)}
                                             className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden hover:ring-2 hover:ring-blue-300 transition"
-                                            aria-label={`Open ${listing.title}`}
+                                            aria-label={`Open ${truncateProductTitle(listing.title)}`}
                                         >
-                                            <img src={withFallbackImage(listing.image)} alt={listing.title} className="w-full h-full object-cover" />
+                                            <img src={withFallbackImage(listing.image)} alt={truncateProductTitle(listing.title)} className="w-full h-full object-cover" />
                                         </button>
-                                        <div className="min-w-0 flex-1">
+                                        <div className="min-w-0 flex-1 max-w-full overflow-hidden">
                                             <button
                                                 type="button"
                                                 onClick={() => openViewProduct(listing.id)}
-                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline break-words overflow-hidden w-full"
+                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline w-full block"
                                             >
-                                                {listing.title}
+                                                {truncateProductTitle(listing.title)}
                                             </button>
                                             {listing.price > 0 && <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">${listing.price}</p>}
                                             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">

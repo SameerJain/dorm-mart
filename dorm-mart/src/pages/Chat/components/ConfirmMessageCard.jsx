@@ -41,8 +41,19 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   const confirmRequestId = metadata.confirm_request_id;
 
   const [localStatus, setLocalStatus] = useState(() => {
+    // Check enriched metadata first (from backend enrichment)
+    const enrichedStatus = metadata.confirm_purchase_status;
+    if (enrichedStatus === 'buyer_accepted' || enrichedStatus === 'auto_accepted') return 'accepted';
+    if (enrichedStatus === 'buyer_declined') return 'declined';
+    // Fall back to message type if no enriched status
     if (messageType === 'confirm_accepted' || messageType === 'confirm_auto_accepted') return 'accepted';
     if (messageType === 'confirm_denied') return 'declined';
+    // Check if buyer_response_at exists in metadata (indicates response was made)
+    if (metadata.buyer_response_at) {
+      // If there's a response timestamp but no status, check the status again
+      // This handles edge cases where status might not be set but response exists
+      return null; // Will be determined by enriched status on next render
+    }
     return null;
   });
   const [isResponding, setIsResponding] = useState(false);
@@ -66,8 +77,11 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   const hasPriceChange = finalPrice !== null && listingPrice !== null && 
     parseFloat(finalPrice) !== parseFloat(listingPrice);
 
+  // Check if buttons should be shown - don't show if status indicates response was already made
+  const enrichedStatus = metadata.confirm_purchase_status;
+  const hasResponded = enrichedStatus && (enrichedStatus === 'buyer_accepted' || enrichedStatus === 'buyer_declined' || enrichedStatus === 'auto_accepted');
   const isActionableRequest =
-    messageType === 'confirm_request' && !isMine && localStatus === null && !!confirmRequestId;
+    messageType === 'confirm_request' && !isMine && localStatus === null && !!confirmRequestId && !hasResponded;
 
   const statusDescriptor = useMemo(() => {
     if (messageType === 'confirm_accepted') return { label: 'Buyer accepted', tone: 'success' };
@@ -77,6 +91,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     if (messageType === 'confirm_request' && localStatus === 'declined') return { label: 'Response sent', tone: 'danger' };
     if (messageType === 'confirm_request' && isMine) return { label: 'Waiting for buyer', tone: 'info' };
     if (messageType === 'confirm_request' && !isMine) return { label: 'Action required', tone: 'warning' };
+    // Fallback to ensure we always return a valid object
     return { label: 'Update', tone: 'info' };
   }, [isMine, localStatus, messageType]);
 
@@ -111,7 +126,9 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     },
   };
 
-  const visual = toneClasses[statusDescriptor.tone] || toneClasses.info;
+  // Ensure statusDescriptor and visual are always valid
+  const safeStatusDescriptor = statusDescriptor || { label: 'Update', tone: 'info' };
+  const visual = toneClasses[safeStatusDescriptor.tone] || toneClasses.info;
 
   // Get icon based on status
   const getIcon = () => {
@@ -175,22 +192,33 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   const formattedExpires = formatDate(expiresAt);
   const formattedResponded = formatDate(respondedAt);
 
+  // Early return if critical metadata is missing - prevents empty div rendering
+  // Must be after all hooks to comply with React hooks rules
+  if (!messageType || (messageType === 'confirm_request' && !confirmRequestId)) {
+    return null;
+  }
+
   return (
     <div className="flex justify-center my-2">
       <div className={`max-w-[85%] rounded-2xl ${visual.container} ${visual.textColor} overflow-hidden`}>
         <div className="p-4 space-y-3">
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2 min-w-0">
             {getIcon()}
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <p className={`text-sm font-semibold ${visual.titleColor}`}>
+            <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+              <div className="flex items-center justify-between gap-2 mb-1 min-w-0">
+                <p className={`text-sm font-semibold ${visual.titleColor} truncate block`}>
                   Confirm Purchase: {isSuccessful ? 'Marked Successful' : 'Marked Unsuccessful'}
                 </p>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${visual.badge}`}>
-                  {statusDescriptor.label}
+                <span className={`text-xs font-semibold flex-shrink-0 ${
+                  safeStatusDescriptor.tone === 'success' ? 'text-green-800 dark:text-green-200' :
+                  safeStatusDescriptor.tone === 'danger' ? 'text-red-800 dark:text-red-200' :
+                  safeStatusDescriptor.tone === 'warning' ? 'text-yellow-800 dark:text-yellow-100' :
+                  'text-blue-800 dark:text-blue-100'
+                }`}>
+                  {safeStatusDescriptor.label}
                 </span>
               </div>
-              <p className={`text-xs ${visual.textColor} opacity-90 mb-2`}>{productTitle}</p>
+              <p className={`text-xs ${visual.textColor} opacity-90 mb-2 truncate block`}>{productTitle}</p>
             </div>
           </div>
 
