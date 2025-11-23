@@ -533,13 +533,24 @@ function SchedulePurchasePage() {
                                 />
                             )}
                             {selectedListing?.meet_location && (
-                                (meetLocationChoice === selectedListing.meet_location || 
-                                 (meetLocationChoice === MEET_LOCATION_OTHER_VALUE && 
-                                  customMeetLocation.trim() === selectedListing.meet_location)) && (
-                                    <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                                        ✓ This location matches the one listed on your item form
-                                    </p>
-                                )
+                                <>
+                                    {(meetLocationChoice === selectedListing.meet_location || 
+                                     (meetLocationChoice === MEET_LOCATION_OTHER_VALUE && 
+                                      customMeetLocation.trim() === selectedListing.meet_location)) ? (
+                                        <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                            ✓ This location matches the one listed on your item form
+                                        </p>
+                                    ) : meetLocationChoice && (
+                                        <div className="mt-1 flex items-start gap-2">
+                                            <svg className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <p className="text-sm text-orange-600 dark:text-orange-400">
+                                                Please note that this location is different from the one listed on your item form ({selectedListing.meet_location})
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
 
@@ -682,16 +693,36 @@ function SchedulePurchasePage() {
                                         </label>
                                     )}
                                 </div>
-                                {/* Warning message if negotiated price is higher than listed price */}
+                                {/* Price comparison messages */}
                                 {negotiatedPrice.trim() && selectedListing?.price && (() => {
                                     const negotiatedPriceValue = parseFloat(negotiatedPrice);
                                     const listedPriceValue = parseFloat(selectedListing.price);
-                                    if (!isNaN(negotiatedPriceValue) && !isNaN(listedPriceValue) && negotiatedPriceValue > listedPriceValue) {
-                                        return (
-                                            <p className="mt-2 text-sm text-orange-600 dark:text-orange-400">
-                                                Please note that this is higher than the listed price
-                                            </p>
-                                        );
+                                    if (!isNaN(negotiatedPriceValue) && !isNaN(listedPriceValue)) {
+                                        if (negotiatedPriceValue > listedPriceValue) {
+                                            // Orange warning for higher price
+                                            return (
+                                                <div className="mt-2 flex items-start gap-2">
+                                                    <svg className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    </svg>
+                                                    <p className="text-sm text-orange-600 dark:text-orange-400">
+                                                        Please note that this is higher than the listed price
+                                                    </p>
+                                                </div>
+                                            );
+                                        } else if (negotiatedPriceValue < listedPriceValue) {
+                                            // Blue indication for lower price
+                                            return (
+                                                <div className="mt-2 flex items-start gap-2">
+                                                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                                    </svg>
+                                                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                                                        This is lower than the listed price
+                                                    </p>
+                                                </div>
+                                            );
+                                        }
                                     }
                                     return null;
                                 })()}

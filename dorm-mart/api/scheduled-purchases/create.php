@@ -346,6 +346,7 @@ try {
             'product_title' => $itemRow['title'] ?? '',
             'meeting_at' => $meetingAt->format(DateTime::ATOM),
             'meet_location' => $meetLocation,
+            'original_meet_location' => $snapshotMeetLocation,
             'verification_code' => $verificationCode,
             'description' => $description,
             'negotiated_price' => $negotiatedPrice,

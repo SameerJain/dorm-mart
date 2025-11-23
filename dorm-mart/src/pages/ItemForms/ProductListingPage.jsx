@@ -336,7 +336,8 @@ function ProductListingPage() {
   const handleInputChange = (field, value, setter) => {
     if (field === "title" && value.length > LIMITS.title) return;
     if (field === "description" && value.length > LIMITS.description) return;
-    if (field === "price" && value > LIMITS.price) return;
+    // For price, only validate numeric limit if value is not empty and is a valid number
+    if (field === "price" && value !== "" && !isNaN(parseFloat(value)) && parseFloat(value) > LIMITS.price) return;
     setter(value);
     if (errors[field]) {
       setErrors((prev) => {
@@ -1171,13 +1172,9 @@ function ProductListingPage() {
                     value={price}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (value === "")
-                        handleInputChange("price", "", setPrice);
-                      else {
-                        const numValue = parseFloat(value);
-                        if (!isNaN(numValue))
-                          handleInputChange("price", numValue, setPrice);
-                      }
+                      // Store raw string value to preserve exact user input
+                      // Only convert to number when needed (validation/submission)
+                      handleInputChange("price", value, setPrice);
                     }}
                     className={`w-full pl-8 pr-4 py-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.price
