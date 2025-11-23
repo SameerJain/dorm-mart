@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import BuyerReviewsModal from "./BuyerReviewsModal";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
@@ -87,6 +88,7 @@ function PublicProfilePage() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [buyerReviewsModalOpen, setBuyerReviewsModalOpen] = useState(false);
 
   useEffect(() => {
     if (!usernameParam) {
@@ -199,6 +201,7 @@ function PublicProfilePage() {
     avgRating: profileData.avg_rating ?? 0,
     reviewCount: profileData.review_count ?? reviews.length,
     imageUrl: profileData.image_url || FALLBACK_AVATAR,
+    userId: profileData.user_id,
   };
 
   return (
@@ -301,6 +304,15 @@ function PublicProfilePage() {
                 {reviews.length} review{reviews.length === 1 ? "" : "s"} received
               </p>
             </div>
+            {profile.userId && (
+              <button
+                type="button"
+                onClick={() => setBuyerReviewsModalOpen(true)}
+                className="rounded-full border border-blue-600 bg-white px-4 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-50 dark:bg-gray-800 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-gray-700"
+              >
+                View Buyer Reviews
+              </button>
+            )}
           </div>
           {reviews.length > 0 ? (
             <div className="mt-4 flex flex-col gap-4">
@@ -312,6 +324,15 @@ function PublicProfilePage() {
             <p className="mt-4 text-sm text-slate-500">No reviews yet.</p>
           )}
         </section>
+
+        {/* Buyer Reviews Modal */}
+        {profile.userId && (
+          <BuyerReviewsModal
+            isOpen={buyerReviewsModalOpen}
+            onClose={() => setBuyerReviewsModalOpen(false)}
+            buyerUserId={profile.userId}
+          />
+        )}
       </div>
     </div>
   );

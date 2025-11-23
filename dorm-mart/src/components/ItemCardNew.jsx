@@ -131,9 +131,9 @@ export default function ItemCardNew({
 
         {/* seller */}
         {seller ? (
-          <p className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            {seller}
+          <p className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1 min-w-0">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+            <span className="truncate">Sold by {seller}</span>
           </p>
         ) : null}
 

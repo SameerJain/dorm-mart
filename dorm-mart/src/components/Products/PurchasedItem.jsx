@@ -104,19 +104,19 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
         </Link>
 
         {/* Middle: details */}
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           {/* Top: title + seller */}
-          <div className="mt-2 sm:mt-0">
-            <h3 className="text-base sm:text-lg font-semibold line-clamp-2 text-gray-900 dark:text-gray-100">
+          <div className="mt-2 sm:mt-0 overflow-hidden">
+            <h3 className="text-base sm:text-lg font-semibold line-clamp-2 break-words break-all overflow-hidden text-gray-900 dark:text-gray-100">
               <Link
                 to={detailPath}
                 state={detailState}
-                className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm"
+                className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-sm break-words break-all"
               >
                 {title}
               </Link>
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Sold by {seller}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">Sold by {seller}</p>
           </div>
 
           {/* Bottom: date */}

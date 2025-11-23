@@ -657,9 +657,9 @@ export default function ChatPage() {
                   <button
                     onClick={() => { setIsMobileList(true); clearActiveConversation(); }}
                     className="md:hidden rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:shadow transition-all duration-200"
-                    aria-label="View Chats"
+                    aria-label="Back"
                   >
-                    View Chats
+                    Back
                   </button>
                 </div>
               </div>
@@ -697,23 +697,29 @@ export default function ChatPage() {
                                             messageType === 'schedule_accepted' ||
                                             messageType === 'schedule_denied' ||
                                             messageType === 'schedule_cancelled';
-                  // Only treat as confirm message if it has valid confirm message type AND required metadata
-                  // Must have messageType and for confirm_request, require confirm_request_id to be present
-                  const hasValidConfirmMetadata = messageType && (
-                    messageType === 'confirm_request' 
-                      ? (metadata?.confirm_request_id != null)
-                      : true // Other confirm types just need messageType to exist
-                  );
-                  const isConfirmMessage = hasValidConfirmMetadata && (
-                    messageType === 'confirm_request' ||
-                    messageType === 'confirm_accepted' ||
-                    messageType === 'confirm_denied' ||
-                    messageType === 'confirm_auto_accepted'
-                  );
+                  // Check if this is a confirm message type
+                  const isConfirmMessageType = messageType === 'confirm_request' ||
+                                              messageType === 'confirm_accepted' ||
+                                              messageType === 'confirm_denied' ||
+                                              messageType === 'confirm_auto_accepted';
+                  
+                  // Validate confirm message metadata - must match ConfirmMessageCard's early return logic exactly
+                  // ConfirmMessageCard returns null if: !messageType || (messageType === 'confirm_request' && !confirmRequestId)
+                  const confirmRequestId = metadata?.confirm_request_id;
+                  const wouldConfirmCardReturnNull = !messageType || (messageType === 'confirm_request' && !confirmRequestId);
+                  
+                  // Only treat as valid confirm message if it's a confirm type AND would not return null
+                  const isConfirmMessage = isConfirmMessageType && !wouldConfirmCardReturnNull;
                   const isNextStepsMessage = messageType === 'next_steps';
 
                   // Ensure message has parsed metadata
                   const messageWithMetadata = metadata ? { ...m, metadata } : m;
+                  
+                  // Skip rendering entirely if this is an invalid confirm message (would return null)
+                  // This prevents wrapper div creation and whitespace
+                  if (isConfirmMessageType && wouldConfirmCardReturnNull) {
+                    return null;
+                  }
                   
                   return (
                     <div key={m.message_id}>

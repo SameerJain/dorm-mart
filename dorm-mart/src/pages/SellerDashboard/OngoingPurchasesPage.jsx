@@ -356,7 +356,7 @@ function OngoingPurchasesPage() {
                         <div className="flex-1">
                             <p className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-0.5">Next Steps</p>
                             <p className="text-sm text-orange-700 dark:text-orange-300">
-                                Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities!
+                                Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities! Once the exchange is done, the seller will send the Confirm Purchase form.
                             </p>
                         </div>
                     </div>
