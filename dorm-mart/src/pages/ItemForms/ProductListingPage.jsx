@@ -1440,7 +1440,7 @@ function ProductListingPage() {
                 onClick={() => navigate("/app/seller-dashboard")}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
               >
-                Go back to Dashboard
+                {location.state?.fromDashboard === true ? "Go back to Dashboard" : "View Dashboard"}
               </button>
             </div>
           </div>

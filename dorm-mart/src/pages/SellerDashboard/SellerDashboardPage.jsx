@@ -74,7 +74,7 @@ function SellerDashboardPage() {
     }, [confirmOpen]);
 
     const handleCreateNewListing = () => {
-        navigate('/app/product-listing/new');
+        navigate('/app/product-listing/new', { state: { fromDashboard: true } });
     };
 
     const openViewProduct = (id) => {
