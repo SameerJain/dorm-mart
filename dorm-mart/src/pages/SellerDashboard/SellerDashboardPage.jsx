@@ -44,6 +44,11 @@ function SellerDashboardPage() {
         totalViews: 0
     });
 
+    // Scroll to top when component mounts or location changes
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [location.pathname]);
+
     // Prevent body scroll when delete confirmation modal is open
     useEffect(() => {
         if (confirmOpen) {
@@ -449,7 +454,7 @@ function SellerDashboardPage() {
                         </div>
 
                         <div className="flex items-center w-full sm:w-auto">
-                            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Category</label>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Category</label>
                             <div className="relative ml-1 flex-1 sm:flex-none">
                                 <select
                                     value={selectedCategory}
@@ -470,7 +475,7 @@ function SellerDashboardPage() {
                         </div>
 
                         <div className="flex items-center w-full sm:w-auto">
-                            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Sort By</label>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Sort By</label>
                             <div className="relative ml-1 flex-1 sm:flex-none">
                                 <select
                                     value={selectedSort}
@@ -636,7 +641,7 @@ function SellerDashboardPage() {
                                                     }}
                                                     className={`font-medium text-sm sm:text-base ${
                                                         buyerRatings[listing.id]
-                                                            ? 'text-gray-500 hover:text-gray-700'
+                                                            ? 'text-blue-600 hover:text-blue-800'
                                                             : 'text-green-600 hover:text-green-800'
                                                     }`}
                                                 >
@@ -656,7 +661,7 @@ function SellerDashboardPage() {
                                         </div>
                                         <div className="flex items-center gap-3 flex-wrap">
                                             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
-                                                (listing.wishlisted || 0) === 0
+                                                (listing.wishlisted || 0) === 0 || String(listing.status || '').toLowerCase() === 'sold'
                                                     ? "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
                                                     : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                                             }`}>

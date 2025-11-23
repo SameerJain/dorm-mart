@@ -51,6 +51,7 @@ function ProductListingPage() {
   const [images, setImages] = useState([]); // [{file, url}, ...]
   const fileInputRef = useRef();
   const formTopRef = useRef(null);
+  const scrollPositionRef = useRef(0);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverMsg, setServerMsg] = useState(null);
@@ -75,7 +76,7 @@ function ProductListingPage() {
   const CATEGORIES_MAX = 3;
 
   const LIMITS = {
-    title: 70,
+    title: 50,
     description: 1000,
     price: 9999.99,
     priceMin: 0.01,
@@ -115,22 +116,25 @@ function ProductListingPage() {
   // Prevent body scroll when cropper modal is open
   useEffect(() => {
     if (showCropper) {
-      const scrollY = window.scrollY;
+      // Store current scroll position
+      scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
+      document.body.style.top = `-${scrollPositionRef.current}px`;
       document.body.style.width = '100%';
     } else {
-      const scrollY = document.body.style.top;
+      // Restore scroll position
+      const scrollY = scrollPositionRef.current;
       document.documentElement.style.overflow = '';
       document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
+      // Use requestAnimationFrame to ensure DOM is updated before scrolling
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+      });
     }
     return () => {
       document.documentElement.style.overflow = '';
@@ -1311,7 +1315,13 @@ function ProductListingPage() {
                 className="hidden"
               />
               <button
-                onClick={() => fileInputRef.current.click()}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Store scroll position before opening file dialog
+                  scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
+                  fileInputRef.current.click();
+                }}
                 className={`w-full py-4 px-6 border-2 border-dashed rounded-lg font-medium transition-colors ${
                   errors.images
                     ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400 hover:border-red-600 dark:hover:border-red-500"
@@ -1437,7 +1447,10 @@ function ProductListingPage() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/app/seller-dashboard")}
+                onClick={() => {
+                  window.scrollTo(0, 0);
+                  navigate("/app/seller-dashboard");
+                }}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
               >
                 {location.state?.fromDashboard === true ? "Go back to Dashboard" : "View Dashboard"}

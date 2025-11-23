@@ -200,17 +200,17 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
   }
 
   return (
-    <div className="flex justify-center my-2">
-      <div className={`max-w-[85%] rounded-2xl ${visual.container} ${visual.textColor} overflow-hidden`}>
-        <div className="p-4 space-y-3">
+    <div className="flex justify-center my-2 min-w-0 w-full overflow-x-hidden">
+      <div className={`w-full max-w-full sm:max-w-[90%] md:max-w-[85%] rounded-2xl ${visual.container} ${visual.textColor} overflow-hidden`}>
+        <div className="p-3 sm:p-4 space-y-3 min-w-0">
           <div className="flex items-start gap-2 min-w-0">
             {getIcon()}
-            <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <div className="flex items-center justify-between gap-2 mb-1 min-w-0">
-                <p className={`text-sm font-semibold ${visual.titleColor} truncate block`}>
+                <p className={`text-sm font-semibold ${visual.titleColor} truncate flex-1 min-w-0`}>
                   Confirm Purchase: {isSuccessful ? 'Marked Successful' : 'Marked Unsuccessful'}
                 </p>
-                <span className={`text-xs font-semibold flex-shrink-0 ${
+                <span className={`text-xs font-semibold flex-shrink-0 whitespace-nowrap ${
                   safeStatusDescriptor.tone === 'success' ? 'text-green-800 dark:text-green-200' :
                   safeStatusDescriptor.tone === 'danger' ? 'text-red-800 dark:text-red-200' :
                   safeStatusDescriptor.tone === 'warning' ? 'text-yellow-800 dark:text-yellow-100' :
@@ -247,22 +247,22 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
               </p>
             )}
             {meetLocation && (
-              <p className={`text-sm ${visual.textColor} break-words overflow-hidden`}>
+              <p className={`text-sm ${visual.textColor} break-words overflow-hidden min-w-0`}>
                 <span className="font-semibold">Location:</span> <span className="break-all">{meetLocation}</span>
               </p>
             )}
             {sellerNotes && (
-              <div>
+              <div className="overflow-hidden">
                 <p className={`text-xs font-semibold ${visual.textColor} mb-0.5`}>Notes</p>
-                <p className={`text-sm whitespace-pre-wrap ${visual.textColor} opacity-90`}>{sellerNotes}</p>
+                <p className={`text-sm whitespace-pre-wrap break-words break-all overflow-hidden ${visual.textColor} opacity-90`}>{sellerNotes}</p>
               </div>
             )}
             {!isSuccessful && failureReasonLabel && (
-              <div>
+              <div className="overflow-hidden">
                 <p className={`text-xs font-semibold ${visual.textColor} mb-0.5`}>Reason</p>
                 <p className={`text-sm font-medium ${visual.textColor}`}>{failureReasonLabel}</p>
                 {failureReasonNotes && (
-                  <p className={`text-sm whitespace-pre-wrap ${visual.textColor} opacity-90 mt-0.5`}>{failureReasonNotes}</p>
+                  <p className={`text-sm whitespace-pre-wrap break-words break-all overflow-hidden ${visual.textColor} opacity-90 mt-0.5`}>{failureReasonNotes}</p>
                 )}
               </div>
             )}

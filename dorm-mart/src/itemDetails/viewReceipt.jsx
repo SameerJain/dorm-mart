@@ -87,12 +87,43 @@ export default function ViewReceipt() {
           queryParams.set("id", productId);
         }
         const endpoint = `${API_BASE}/receipt/view_receipt.php?${queryParams.toString()}`;
+        console.log('[ViewReceipt] Fetching receipt from:', endpoint);
         const r = await fetch(endpoint, {
           signal: controller.signal,
           credentials: "include",
         });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        console.log('[ViewReceipt] Response status:', r.status, r.statusText);
+        if (!r.ok) {
+          // Try to parse error response from API
+          let errorMessage = `HTTP ${r.status}`;
+          try {
+            const contentType = r.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorJson = await r.json();
+              console.error('[ViewReceipt] API error response:', errorJson);
+              if (errorJson?.error) {
+                errorMessage = errorJson.error;
+              } else if (errorJson?.message) {
+                errorMessage = errorJson.message;
+              }
+            } else {
+              const text = await r.text();
+              console.error('[ViewReceipt] Non-JSON error response:', text);
+              if (text) {
+                errorMessage = text.substring(0, 200); // Limit error message length
+              }
+            }
+          } catch (parseError) {
+            // If JSON parsing fails, use default error message
+            console.error("[ViewReceipt] Failed to parse error response:", parseError);
+          }
+          throw new Error(errorMessage);
+        }
         const json = await r.json();
+        console.log('[ViewReceipt] API response:', json);
+        if (!json.success && json.error) {
+          throw new Error(json.error);
+        }
         const payload = json?.data ?? json ?? null;
         const productPayload = payload?.product ?? payload?.product_details ?? payload?.item ?? payload;
         const receiptPayload =
@@ -429,7 +460,20 @@ export default function ViewReceipt() {
         {loading ? (
           <p className="text-center text-sm text-gray-400 dark:text-gray-500">Loading receipt…</p>
         ) : error ? (
-          <p className="text-center text-sm text-red-500 dark:text-red-400">Couldn't load receipt.</p>
+          <div className="text-center">
+            <p className="text-sm text-red-500 dark:text-red-400 font-medium mb-2">Couldn't load receipt.</p>
+            {error.message && !error.message.startsWith('HTTP ') && (
+              <p className="text-xs text-red-400 dark:text-red-500">{error.message}</p>
+            )}
+            {error.message && error.message.startsWith('HTTP ') && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Error code: {error.message}
+              </p>
+            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Please check your connection and try again.
+            </p>
+          </div>
         ) : !normalized ? (
           <p className="text-center text-sm text-gray-400 dark:text-gray-500">No product found.</p>
         ) : (
@@ -540,13 +584,13 @@ export default function ViewReceipt() {
               <section className="flex flex-col gap-4 min-w-0">
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug">{normalized.title}</h2>
 
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Sold by</span>
+                <div className="flex flex-wrap items-center gap-2 text-sm min-w-0">
+                  <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">Sold by</span>
                   <ProfileLink
                     username={normalized.sellerUsername}
                     email={normalized.sellerEmail}
                     fallback={normalized.sellerName}
-                    className="font-medium text-gray-800 dark:text-gray-200"
+                    className="font-medium text-gray-800 dark:text-gray-200 truncate min-w-0"
                     hoverClass="hover:text-blue-600"
                   >
                     {normalized.sellerName}
@@ -790,7 +834,7 @@ function NoteBlock({ title, text, isSuccessful }) {
       }`}>
         {title}
       </p>
-      <p className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">{text}</p>
+      <p className="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">{text}</p>
     </div>
   );
 }

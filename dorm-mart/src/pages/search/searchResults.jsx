@@ -176,10 +176,10 @@ export default function SearchResults() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back</button>
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">{titleText}</h1>
-        <div />
+      <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between gap-2">
+        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex-shrink-0">Back</button>
+        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 break-words min-w-0 flex-1 text-center">{titleText}</h1>
+        <div className="flex-shrink-0" />
       </div>
 
       <div className="w-full px-2 md:px-4 py-4">
@@ -501,19 +501,45 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
         <div className="mt-2 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <span>Min</span>
-            <input type="text" inputMode="decimal" value={minPrice || ""} onChange={(e) => {
-              setMinPrice(e.target.value);
-              // Clear error when user starts typing
-              if (priceError) setPriceError("");
-            }} placeholder="Min" className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            <input 
+              type="text" 
+              inputMode="decimal" 
+              maxLength={7}
+              pattern="[0-9.]*"
+              value={minPrice || ""} 
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow numbers and decimal point
+                if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                  setMinPrice(value);
+                  // Clear error when user starts typing
+                  if (priceError) setPriceError("");
+                }
+              }} 
+              placeholder="Min" 
+              className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" 
+            />
           </div>
           <div className="flex items-center gap-2">
             <span>Max</span>
-            <input type="text" inputMode="decimal" value={maxPrice || ""} onChange={(e) => {
-              setMaxPrice(e.target.value);
-              // Clear error when user starts typing
-              if (priceError) setPriceError("");
-            }} placeholder="Max" className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            <input 
+              type="text" 
+              inputMode="decimal" 
+              maxLength={7}
+              pattern="[0-9.]*"
+              value={maxPrice || ""} 
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow numbers and decimal point
+                if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                  setMaxPrice(value);
+                  // Clear error when user starts typing
+                  if (priceError) setPriceError("");
+                }
+              }} 
+              placeholder="Max" 
+              className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" 
+            />
           </div>
         </div>
         {priceError && (

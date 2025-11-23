@@ -461,13 +461,13 @@ export default function ViewProduct() {
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words overflow-hidden">{normalized.title}</h2>
 
               {/* Meta row */}
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Sold by</span>
+                <div className="flex flex-wrap items-center gap-2 text-sm min-w-0">
+                  <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">Sold by</span>
                   <ProfileLink
                     username={normalized.sellerUsername}
                     email={normalized.sellerEmail}
                     fallback={normalized.sellerName}
-                    className="font-medium text-gray-800 dark:text-gray-200"
+                    className="font-medium text-gray-800 dark:text-gray-200 truncate min-w-0"
                     hoverClass="hover:text-blue-600"
                   >
                     {normalized.sellerName}
@@ -575,7 +575,7 @@ export default function ViewProduct() {
               {normalized.description ? (
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">About this item</h3>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line break-words overflow-hidden">{normalized.description}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line break-words break-all overflow-hidden min-w-0">{normalized.description}</p>
                 </div>
               ) : null}
 
