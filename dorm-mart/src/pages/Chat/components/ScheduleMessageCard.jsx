@@ -151,6 +151,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   const config = getMessageConfig();
   const meetingAt = metadata.meeting_at ? formatMeetingTime(metadata.meeting_at) : null;
   const meetLocation = metadata.meet_location || null;
+  const originalMeetLocation = metadata.original_meet_location || metadata.listing_meet_location || null;
   const description = metadata.description || null;
   const verificationCode = metadata.verification_code || null;
   const productTitle = metadata.product_title || null;
@@ -160,6 +161,14 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   
   // Determine display price: use negotiated price if available and different from listing, otherwise use listing price
   const displayPrice = (negotiatedPrice !== null && negotiatedPrice !== listingPrice) ? negotiatedPrice : listingPrice;
+  
+  // Check if price differs from listing price and whether it's higher or lower
+  const hasPriceChange = negotiatedPrice !== null && listingPrice !== null && negotiatedPrice !== listingPrice;
+  const isPriceHigher = hasPriceChange && negotiatedPrice > listingPrice;
+  const isPriceLower = hasPriceChange && negotiatedPrice < listingPrice;
+  
+  // Check if meet location differs from original listing location
+  const hasLocationChange = meetLocation && originalMeetLocation && meetLocation.trim() !== originalMeetLocation.trim();
   
   // Format price for display
   const formatPrice = (price) => {
@@ -207,12 +216,29 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               <span className="font-bold">Item:</span> {productTitle}
             </p>
             {displayPrice !== null && !isTrade && (
-              <p className={`text-sm font-semibold ${config.textColor} mt-1`}>
-                <span className="font-bold">Cost:</span> {formatPrice(displayPrice)}
-                {negotiatedPrice !== null && negotiatedPrice !== listingPrice && (
-                  <span className="text-xs ml-1 opacity-75">(negotiated)</span>
-                )}
-              </p>
+              <div className={`mt-1 ${isPriceHigher ? 'px-2 py-1.5 rounded-md bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-700' : isPriceLower ? 'px-2 py-1.5 rounded-md bg-green-50 dark:bg-green-900/30 border border-green-400 dark:border-green-700' : ''}`}>
+                <div className="flex items-center gap-2">
+                  {isPriceHigher && (
+                    <svg className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  )}
+                  {isPriceLower && (
+                    <svg className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  )}
+                  <p className={`text-sm font-semibold ${isPriceHigher ? 'text-orange-600 dark:text-orange-300' : isPriceLower ? 'text-green-600 dark:text-green-300' : config.textColor}`}>
+                    <span className="font-bold">Cost:</span> {formatPrice(displayPrice)}
+                    {hasPriceChange && listingPrice !== null && (
+                      <span className="text-xs ml-1 opacity-75">(was {formatPrice(listingPrice)})</span>
+                    )}
+                    {!hasPriceChange && negotiatedPrice !== null && negotiatedPrice !== listingPrice && (
+                      <span className="text-xs ml-1 opacity-75">(negotiated)</span>
+                    )}
+                  </p>
+                </div>
+              </div>
             )}
             {isTrade && metadata.trade_item_description && (
               <p className={`text-sm font-semibold ${config.textColor} mt-1`}>
@@ -230,9 +256,21 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               </p>
             )}
             {meetLocation && (
-              <p className={`text-sm ${config.textColor}`}>
-                <span className="font-semibold">Location:</span> {meetLocation}
-              </p>
+              <div className={hasLocationChange ? 'px-2 py-1.5 rounded-md bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-700' : ''}>
+                <div className="flex items-center gap-2">
+                  {hasLocationChange && (
+                    <svg className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  )}
+                  <p className={`text-sm ${hasLocationChange ? 'text-orange-600 dark:text-orange-300' : config.textColor}`}>
+                    <span className="font-semibold">Location:</span> {meetLocation}
+                    {hasLocationChange && originalMeetLocation && (
+                      <span className="text-xs ml-1 opacity-75">(was {originalMeetLocation})</span>
+                    )}
+                  </p>
+                </div>
+              </div>
             )}
             {description && (
               <p className={`text-sm ${config.textColor} break-words`}>
