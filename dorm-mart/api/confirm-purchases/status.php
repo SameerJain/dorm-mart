@@ -45,6 +45,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $convStmt = $conn->prepare('
         SELECT c.conv_id, c.product_id, inv.seller_id, inv.title AS item_title
         FROM conversations c
@@ -79,6 +80,7 @@ try {
         return;
     }
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
         SELECT *
         FROM scheduled_purchase_requests
@@ -125,6 +127,7 @@ try {
         'meeting_at' => $meetingIso,
     ];
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $confirmStmt = $conn->prepare('
         SELECT *
         FROM confirm_purchase_requests

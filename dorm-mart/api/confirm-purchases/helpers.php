@@ -17,6 +17,7 @@ function get_user_display_names(mysqli $conn, array $userIds): array
     $placeholders = implode(',', array_fill(0, count($userIds), '?'));
     $types = str_repeat('i', count($userIds));
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare(
         sprintf('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (%s)', $placeholders)
     );
@@ -64,6 +65,7 @@ function insert_confirm_chat_message(
         throw new RuntimeException('Failed to encode metadata');
     }
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $msgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
     if (!$msgStmt) {
         throw new RuntimeException('Failed to prepare message insert');
@@ -73,6 +75,7 @@ function insert_confirm_chat_message(
     $msgId = (int)$msgStmt->insert_id;
     $msgStmt->close();
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
     if ($updateStmt) {
         $updateStmt->bind_param('iii', $msgId, $conversationId, $receiverId);
@@ -90,6 +93,7 @@ function insert_confirm_chat_message(
  */
 function record_purchase_history(mysqli $conn, int $userId, int $productId, array $payload): void
 {
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectStmt = $conn->prepare('SELECT history_id, items FROM purchase_history WHERE user_id = ? LIMIT 1');
     if (!$selectStmt) {
         throw new RuntimeException('Failed to prepare purchase history lookup');
@@ -119,6 +123,7 @@ function record_purchase_history(mysqli $conn, int $userId, int $productId, arra
             throw new RuntimeException('Failed to encode purchase history items');
         }
 
+        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
         $updateStmt = $conn->prepare('UPDATE purchase_history SET items = ?, updated_at = NOW() WHERE history_id = ? LIMIT 1');
         if (!$updateStmt) {
             throw new RuntimeException('Failed to prepare purchase history update');
@@ -132,6 +137,7 @@ function record_purchase_history(mysqli $conn, int $userId, int $productId, arra
             throw new RuntimeException('Failed to encode purchase history items');
         }
 
+        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
         $insertStmt = $conn->prepare('INSERT INTO purchase_history (user_id, items) VALUES (?, ?)');
         if (!$insertStmt) {
             throw new RuntimeException('Failed to prepare purchase history insert');
@@ -165,6 +171,7 @@ function resolve_confirm_final_price(mysqli $conn, array $row, array $snapshot):
         return null;
     }
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $priceStmt = $conn->prepare('SELECT listing_price FROM INVENTORY WHERE product_id = ? LIMIT 1');
     if (!$priceStmt) {
         return null;
@@ -202,6 +209,7 @@ function mark_inventory_as_sold(mysqli $conn, array $row): void
 
     $status = 'Sold';
     $updateSql = 'UPDATE INVENTORY SET item_status = ?, sold = 1, final_price = ?, date_sold = CURDATE(), sold_to = ? WHERE product_id = ?';
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare($updateSql);
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare inventory sold update');
@@ -232,6 +240,7 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
     }
 
     $confirmId = (int)$row['confirm_request_id'];
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $updateStmt = $conn->prepare("UPDATE confirm_purchase_requests SET status = 'auto_accepted', auto_processed_at = NOW(), buyer_response_at = NOW() WHERE confirm_request_id = ? AND status = 'pending' LIMIT 1");
     if (!$updateStmt) {
         throw new RuntimeException('Failed to prepare auto-finalize update');
@@ -245,7 +254,7 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
         return $row;
     }
 
-    // Reload row to get fresh timestamps/status
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $selectStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1');
     if (!$selectStmt) {
         throw new RuntimeException('Failed to prepare confirm lookup');

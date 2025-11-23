@@ -128,6 +128,31 @@ export default function ConfirmPurchasePage() {
     if (!prefill) return;
     setFormError('');
 
+    // XSS PROTECTION: Check for XSS patterns in sellerNotes and failureReasonNotes
+    const xssPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /onerror=/i,
+      /onload=/i,
+      /onclick=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i,
+      /<img[^>]*on/i,
+      /<svg[^>]*on/i,
+      /vbscript:/i
+    ];
+
+    if (sellerNotes.trim() && xssPatterns.some(pattern => pattern.test(sellerNotes))) {
+      setFormError('Invalid characters in seller notes.');
+      return;
+    }
+
+    if (failureReasonNotes.trim() && xssPatterns.some(pattern => pattern.test(failureReasonNotes))) {
+      setFormError('Invalid characters in failure reason notes.');
+      return;
+    }
+
     if (finalPrice !== '' && Number.isNaN(Number(finalPrice))) {
       setFormError('Final price must be a valid number.');
       return;

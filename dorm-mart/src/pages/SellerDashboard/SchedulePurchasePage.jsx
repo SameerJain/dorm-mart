@@ -402,6 +402,39 @@ function SchedulePurchasePage() {
             return;
         }
 
+        // XSS PROTECTION: Check for XSS patterns in description, customMeetLocation, and tradeItemDescription
+        const xssPatterns = [
+            /<script/i,
+            /javascript:/i,
+            /onerror=/i,
+            /onload=/i,
+            /onclick=/i,
+            /<iframe/i,
+            /<object/i,
+            /<embed/i,
+            /<img[^>]*on/i,
+            /<svg[^>]*on/i,
+            /vbscript:/i
+        ];
+
+        if (description.trim() && xssPatterns.some(pattern => pattern.test(description))) {
+            setFormError('Invalid characters in description.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        if (customMeetLocation.trim() && xssPatterns.some(pattern => pattern.test(customMeetLocation))) {
+            setFormError('Invalid characters in meet location.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        if (isTrade && tradeItemDescription.trim() && xssPatterns.some(pattern => pattern.test(tradeItemDescription))) {
+            setFormError('Invalid characters in trade item description.');
+            setIsSubmitting(false);
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const negotiatedPriceValue = negotiatedPrice.trim() ? parseFloat(negotiatedPrice) : null;

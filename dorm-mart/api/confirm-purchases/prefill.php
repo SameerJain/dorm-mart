@@ -44,7 +44,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Ensure the conversation belongs to the seller for this listing
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $convStmt = $conn->prepare('
         SELECT c.conv_id, c.product_id, inv.seller_id
         FROM conversations c
@@ -103,6 +103,7 @@ try {
         ORDER BY COALESCE(spr.updated_at, spr.buyer_response_at) DESC, spr.request_id DESC
         LIMIT 1
     SQL;
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare($schedSql);
     if (!$schedStmt) {
         throw new RuntimeException('Failed to prepare scheduled purchase lookup');
