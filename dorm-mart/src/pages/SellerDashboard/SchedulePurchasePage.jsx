@@ -526,8 +526,8 @@ function SchedulePurchasePage() {
                                 <input
                                     type="text"
                                     value={customMeetLocation}
-                                    onChange={(e) => setCustomMeetLocation(e.target.value)}
-                                    maxLength={255}
+                                    onChange={(e) => setCustomMeetLocation(e.target.value.slice(0, 30))}
+                                    maxLength={30}
                                     placeholder="Enter meet location"
                                     className="mt-2 w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />

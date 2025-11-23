@@ -256,17 +256,17 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               </p>
             )}
             {meetLocation && (
-              <div className={hasLocationChange ? 'px-2 py-1.5 rounded-md bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-700' : ''}>
-                <div className="flex items-center gap-2">
+              <div className={`${hasLocationChange ? 'px-2 py-1.5 rounded-md bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-700' : ''} overflow-hidden`}>
+                <div className="flex items-center gap-2 min-w-0">
                   {hasLocationChange && (
                     <svg className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   )}
-                  <p className={`text-sm ${hasLocationChange ? 'text-orange-600 dark:text-orange-300' : config.textColor}`}>
-                    <span className="font-semibold">Location:</span> {meetLocation}
+                  <p className={`text-sm ${hasLocationChange ? 'text-orange-600 dark:text-orange-300' : config.textColor} min-w-0 flex-1 break-words`}>
+                    <span className="font-semibold">Location:</span> <span className="break-all">{meetLocation}</span>
                     {hasLocationChange && originalMeetLocation && (
-                      <span className="text-xs ml-1 opacity-75">(was {originalMeetLocation})</span>
+                      <span className="text-xs ml-1 opacity-75 break-all">(was {originalMeetLocation})</span>
                     )}
                   </p>
                 </div>

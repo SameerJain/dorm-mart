@@ -82,7 +82,7 @@ try {
         exit;
     }
 
-    if (strlen($meetLocation) > 255) {
+    if (strlen($meetLocation) > 30) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Meet location is too long']);
         exit;

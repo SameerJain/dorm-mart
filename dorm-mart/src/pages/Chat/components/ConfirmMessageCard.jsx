@@ -246,8 +246,8 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
               </p>
             )}
             {meetLocation && (
-              <p className={`text-sm ${visual.textColor}`}>
-                <span className="font-semibold">Location:</span> {meetLocation}
+              <p className={`text-sm ${visual.textColor} break-words overflow-hidden`}>
+                <span className="font-semibold">Location:</span> <span className="break-all">{meetLocation}</span>
               </p>
             )}
             {sellerNotes && (
