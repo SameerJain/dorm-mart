@@ -50,9 +50,9 @@ function SettingsLayout({ children }) {
   ];
 
   return (
-    // NOTE: `relative` so overlay is scoped *under* the main nav above
+    // Back to normal: no `relative`, still using the height minus nav
     <div
-      className="w-full flex flex-col bg-gray-50 dark:bg-gray-900 relative"
+      className="w-full flex flex-col bg-gray-50 dark:bg-gray-900"
       style={{ height: "calc(100vh - 64px)" }}
     >
       {/* Mobile hamburger menu button - only visible on mobile */}
@@ -108,9 +108,9 @@ function SettingsLayout({ children }) {
           </nav>
         </aside>
 
-        {/* Mobile Sidebar Overlay – slides in from the left, doesn't cover the nav */}
+        {/* Mobile Sidebar Overlay – now FIXED so it covers nav bar too */}
         <div
-          className={`lg:hidden absolute inset-0 z-40 flex transition-opacity duration-300 ${
+          className={`lg:hidden fixed inset-0 z-40 flex transition-opacity duration-300 ${
             showMobileMenu ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         >
