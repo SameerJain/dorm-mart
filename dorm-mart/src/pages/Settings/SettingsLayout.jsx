@@ -110,7 +110,7 @@ function SettingsLayout({ children }) {
 
         {/* Mobile Sidebar Overlay – slides in from the left, doesn't cover the nav */}
         <div
-          className={`lg:hidden absolute inset-0 z-50 flex transition-opacity duration-300 ${
+          className={`lg:hidden absolute inset-0 z-40 flex transition-opacity duration-300 ${
             showMobileMenu ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         >
