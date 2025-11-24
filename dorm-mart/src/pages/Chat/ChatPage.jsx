@@ -887,8 +887,10 @@ export default function ChatPage() {
                   // Filter out duplicate confirm_request messages if a response exists
                   // Build a map of confirm_request_id to response messages
                   const confirmResponses = new Map();
+                  const confirmRequestIds = new Set(); // Track all confirm_request_ids we've seen
                   let latestConfirmAcceptedTs = null;
                   
+                  // First pass: identify all confirm_request messages and their IDs
                   messages.forEach((m) => {
                     const metadata = typeof m.metadata === 'string' ? (() => {
                       try { return JSON.parse(m.metadata); } catch { return null; }
@@ -896,6 +898,20 @@ export default function ChatPage() {
                     const messageType = metadata?.type;
                     const confirmRequestId = metadata?.confirm_request_id;
                     
+                    if (messageType === 'confirm_request' && confirmRequestId) {
+                      confirmRequestIds.add(confirmRequestId);
+                    }
+                  });
+                  
+                  // Second pass: identify response messages and map them to request IDs
+                  messages.forEach((m) => {
+                    const metadata = typeof m.metadata === 'string' ? (() => {
+                      try { return JSON.parse(m.metadata); } catch { return null; }
+                    })() : (m.metadata || null);
+                    const messageType = metadata?.type;
+                    const confirmRequestId = metadata?.confirm_request_id;
+                    
+                    // Check if this is a response message
                     if (confirmRequestId && (
                       messageType === 'confirm_accepted' ||
                       messageType === 'confirm_denied' ||
@@ -911,9 +927,62 @@ export default function ChatPage() {
                         }
                       }
                     }
+                    
+                    // Also check enriched metadata for confirm_purchase_status
+                    // This handles cases where backend enriches messages with status
+                    const enrichedStatus = metadata?.confirm_purchase_status;
+                    if (confirmRequestId && enrichedStatus && (
+                      enrichedStatus === 'buyer_accepted' ||
+                      enrichedStatus === 'buyer_declined' ||
+                      enrichedStatus === 'auto_accepted'
+                    )) {
+                      confirmResponses.set(confirmRequestId, true);
+                      
+                      if ((enrichedStatus === 'buyer_accepted' || enrichedStatus === 'auto_accepted') && m.ts) {
+                        if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
+                          latestConfirmAcceptedTs = m.ts;
+                        }
+                      }
+                    }
                   });
                   
                   // Filter messages: hide confirm_request if a response exists for the same confirm_request_id
+                  // Also deduplicate: if multiple response messages exist for the same confirm_request_id, keep only the latest one
+                  const responseMessagesByRequestId = new Map(); // Track confirm_request_id -> array of response messages
+                  
+                  // First, collect all response messages grouped by confirm_request_id
+                  messages.forEach((m) => {
+                    const metadata = typeof m.metadata === 'string' ? (() => {
+                      try { return JSON.parse(m.metadata); } catch { return null; }
+                    })() : (m.metadata || null);
+                    const messageType = metadata?.type;
+                    const confirmRequestId = metadata?.confirm_request_id;
+                    
+                    if (confirmRequestId && (
+                      messageType === 'confirm_accepted' ||
+                      messageType === 'confirm_denied' ||
+                      messageType === 'confirm_auto_accepted'
+                    )) {
+                      if (!responseMessagesByRequestId.has(confirmRequestId)) {
+                        responseMessagesByRequestId.set(confirmRequestId, []);
+                      }
+                      responseMessagesByRequestId.get(confirmRequestId).push(m);
+                    }
+                  });
+                  
+                  // For each confirm_request_id with responses, find the latest one
+                  const latestResponseByRequestId = new Map();
+                  responseMessagesByRequestId.forEach((responseMessages, confirmRequestId) => {
+                    // Sort by timestamp descending and take the first (latest) one
+                    const sorted = responseMessages.sort((a, b) => {
+                      const tsA = a.ts || 0;
+                      const tsB = b.ts || 0;
+                      return tsB - tsA; // Descending order
+                    });
+                    latestResponseByRequestId.set(confirmRequestId, sorted[0]);
+                  });
+                  
+                  // Now filter messages
                   let filteredMessages = messages.filter((m) => {
                     const metadata = typeof m.metadata === 'string' ? (() => {
                       try { return JSON.parse(m.metadata); } catch { return null; }
@@ -922,9 +991,22 @@ export default function ChatPage() {
                     const confirmRequestId = metadata?.confirm_request_id;
                     
                     // If this is a confirm_request and we have a response for it, hide it
+                    // This ensures only the response message (confirm_accepted/confirm_denied) is shown
                     if (messageType === 'confirm_request' && confirmRequestId && confirmResponses.has(confirmRequestId)) {
                       return false; // Hide this message
                     }
+                    
+                    // If this is a response message, only show it if it's the latest one for this confirm_request_id
+                    if (confirmRequestId && (
+                      messageType === 'confirm_accepted' ||
+                      messageType === 'confirm_denied' ||
+                      messageType === 'confirm_auto_accepted'
+                    )) {
+                      const latestResponse = latestResponseByRequestId.get(confirmRequestId);
+                      // Only show this message if it's the latest one (same message object reference)
+                      return latestResponse === m;
+                    }
+                    
                     return true; // Show this message
                   });
                   
