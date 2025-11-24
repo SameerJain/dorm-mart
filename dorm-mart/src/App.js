@@ -5,6 +5,7 @@ import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import RootLayout from "./pages/RootLayout";
 // auth
 import LoginPage from "./pages/LoginPage";
+import WelcomePage from "./pages/WelcomePage";
 import LandingPage from "./pages/HomePage/LandingPage";
 import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
 import ResetPasswordConfirmation from './pages/ResetPassword/ResetPasswordConfirmation.jsx';
@@ -17,6 +18,7 @@ import ProductListingPage from "./pages/ItemForms/ProductListingPage.jsx";
 import CreateAccount from "./pages/AccountCreation/index.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import MyProfilePage from "./pages/Settings/MyProfile.jsx";
+import BuyerReviewsPage from "./pages/Settings/BuyerReviewsPage.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
@@ -37,8 +39,8 @@ import ChatPage from "./pages/Chat/ChatPage.jsx";
 import NotificationPage from "./pages/Notification/NotificationPage.jsx";
 
 export const router = createHashRouter([
-  // redirect default hash `#/` to `#/login`
-  { path: "/", element: <Navigate to="/login" replace /> },
+  // Welcome page
+  { path: "/", element: <WelcomePage /> },
 
   // Auth
   { path: "/login", element: <LoginPage /> },
@@ -140,6 +142,7 @@ export const router = createHashRouter([
           { index: true, element: <Navigate to="/app/setting/my-profile" replace /> },
           { path: "my-profile", element: <MyProfilePage /> },
           { path: "change-password", element: <ChangePasswordPage /> },
+          { path: "buyer-reviews", element: <BuyerReviewsPage /> },
           // User Preferences
           { path: "user-preferences", element: <UserPreferences /> },
           // Stubs for yet-to-be-implemented pages (intentionally 404)

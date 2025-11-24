@@ -38,12 +38,26 @@ try {
     $meetingAtRaw = isset($payload['meeting_at']) ? trim((string)$payload['meeting_at']) : '';
     $description = isset($payload['description']) ? trim((string)$payload['description']) : '';
     
+    // XSS PROTECTION: Check for XSS patterns in description
+    if ($description !== '' && containsXSSPattern($description)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid characters in description']);
+        exit;
+    }
+    
     // New fields for price negotiation and trades
     $negotiatedPrice = isset($payload['negotiated_price']) && $payload['negotiated_price'] !== null 
         ? (float)$payload['negotiated_price'] : null;
     $isTrade = isset($payload['is_trade']) ? (bool)$payload['is_trade'] : false;
     $tradeItemDescription = isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
         ? trim((string)$payload['trade_item_description']) : null;
+
+    // XSS PROTECTION: Check for XSS patterns in tradeItemDescription
+    if ($tradeItemDescription !== null && $tradeItemDescription !== '' && containsXSSPattern($tradeItemDescription)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid characters in trade item description']);
+        exit;
+    }
 
     $meetLocationChoice = isset($payload['meet_location_choice'])
         ? trim((string)$payload['meet_location_choice'])
@@ -54,6 +68,13 @@ try {
     $meetLocation = isset($payload['meet_location'])
         ? trim((string)$payload['meet_location'])
         : '';
+
+    // XSS PROTECTION: Check for XSS patterns in customMeetLocation
+    if ($customMeetLocation !== '' && containsXSSPattern($customMeetLocation)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid characters in meet location']);
+        exit;
+    }
 
     $allowedMeetLocationChoices = ['', 'North Campus', 'South Campus', 'Ellicott', 'Other'];
 
@@ -82,7 +103,7 @@ try {
         exit;
     }
 
-    if (strlen($meetLocation) > 255) {
+    if (strlen($meetLocation) > 30) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Meet location is too long']);
         exit;
@@ -119,7 +140,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Verify inventory belongs to seller and get snapshot values
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $itemStmt = $conn->prepare('SELECT product_id, title, seller_id, price_nego, trades, item_location, listing_price FROM INVENTORY WHERE product_id = ? LIMIT 1');
     if (!$itemStmt) {
         throw new RuntimeException('Failed to prepare inventory query');
@@ -143,7 +164,7 @@ try {
     $snapshotTrades = isset($itemRow['trades']) ? ((int)$itemRow['trades'] === 1) : false;
     $snapshotMeetLocation = isset($itemRow['item_location']) ? trim((string)$itemRow['item_location']) : null;
 
-    // Verify conversation belongs to seller and get buyer id
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $convStmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
     if (!$convStmt) {
         throw new RuntimeException('Failed to prepare conversation query');
@@ -241,6 +262,7 @@ try {
         // But convert empty/whitespace to null for consistency
     }
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare('INSERT INTO scheduled_purchase_requests (inventory_product_id, seller_user_id, buyer_user_id, conversation_id, meet_location, meeting_at, verification_code, description, negotiated_price, is_trade, trade_item_description, snapshot_price_nego, snapshot_trades, snapshot_meet_location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare insert');
@@ -296,7 +318,7 @@ try {
     
     // Create special message in chat
     if ($conversationId > 0) {
-        // Get seller name
+        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
         $sellerStmt = $conn->prepare('SELECT first_name, last_name FROM user_accounts WHERE user_id = ? LIMIT 1');
         $sellerStmt->bind_param('i', $sellerId);
         $sellerStmt->execute();
@@ -319,7 +341,7 @@ try {
         $msgSenderId = $sellerId;
         $msgReceiverId = $buyerId;
         
-        // Get names for message
+        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
         $nameStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
         $nameStmt->bind_param('ii', $msgSenderId, $msgReceiverId);
         $nameStmt->execute();
@@ -355,13 +377,14 @@ try {
             'trade_item_description' => $tradeItemDescription,
         ], JSON_UNESCAPED_SLASHES);
         
+        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
         $msgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
         $msgStmt->bind_param('iiissss', $conversationId, $msgSenderId, $msgReceiverId, $senderName, $receiverName, $messageContent, $metadata);
         $msgStmt->execute();
         $msgId = $msgStmt->insert_id;
         $msgStmt->close();
         
-        // Update unread count
+        // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
         $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
         $updateStmt->bind_param('iii', $msgId, $conversationId, $msgReceiverId);
         $updateStmt->execute();
@@ -395,6 +418,7 @@ function generateUniqueCode(mysqli $conn): string
     $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     $length = strlen($alphabet) - 1;
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $checkStmt = $conn->prepare('SELECT request_id FROM scheduled_purchase_requests WHERE verification_code = ? LIMIT 1');
     if (!$checkStmt) {
         throw new RuntimeException('Failed to prepare code check');

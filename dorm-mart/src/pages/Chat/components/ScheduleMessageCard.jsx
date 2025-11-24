@@ -194,25 +194,25 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
   return (
     <div className={`max-w-[85%] rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.textColor} overflow-hidden`}>
       <div className="p-4 space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {(messageType === 'schedule_cancelled' || localResponseStatus === 'declined') ? (
-            <svg className={`w-5 h-5 ${config.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 ${config.iconColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           ) : (
-          <svg className={`w-5 h-5 ${config.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-5 h-5 ${config.iconColor} flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           )}
-          <p className={`font-bold text-base ${config.textColor}`}>
+          <p className={`font-bold text-base ${config.textColor} truncate block min-w-0 flex-1`}>
             {displayMessage}
           </p>
         </div>
         
         {/* Product title and price for schedule_request messages */}
         {messageType === 'schedule_request' && productTitle && (
-          <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor}`}>
-            <p className={`text-sm font-semibold ${config.textColor}`}>
+          <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor} overflow-hidden min-w-0`}>
+            <p className={`text-sm font-semibold ${config.textColor} truncate block`}>
               <span className="font-bold">Item:</span> {productTitle}
             </p>
             {displayPrice !== null && !isTrade && (
@@ -241,8 +241,8 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               </div>
             )}
             {isTrade && metadata.trade_item_description && (
-              <p className={`text-sm font-semibold ${config.textColor} mt-1`}>
-                <span className="font-bold">Trade:</span> {metadata.trade_item_description}
+              <p className={`text-sm font-semibold ${config.textColor} mt-1 min-w-0 break-words break-all overflow-wrap-anywhere`} style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                <span className="font-bold">Trade:</span> <span className="break-all">{metadata.trade_item_description}</span>
               </p>
             )}
           </div>
@@ -256,25 +256,25 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               </p>
             )}
             {meetLocation && (
-              <div className={hasLocationChange ? 'px-2 py-1.5 rounded-md bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-700' : ''}>
-                <div className="flex items-center gap-2">
+              <div className={`${hasLocationChange ? 'px-2 py-1.5 rounded-md bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-700' : ''} overflow-hidden`}>
+                <div className="flex items-center gap-2 min-w-0">
                   {hasLocationChange && (
                     <svg className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   )}
-                  <p className={`text-sm ${hasLocationChange ? 'text-orange-600 dark:text-orange-300' : config.textColor}`}>
-                    <span className="font-semibold">Location:</span> {meetLocation}
+                  <p className={`text-sm ${hasLocationChange ? 'text-orange-600 dark:text-orange-300' : config.textColor} min-w-0 flex-1 break-words`}>
+                    <span className="font-semibold">Location:</span> <span className="break-all">{meetLocation}</span>
                     {hasLocationChange && originalMeetLocation && (
-                      <span className="text-xs ml-1 opacity-75">(was {originalMeetLocation})</span>
+                      <span className="text-xs ml-1 opacity-75 break-all">(was {originalMeetLocation})</span>
                     )}
                   </p>
                 </div>
               </div>
             )}
             {description && (
-              <p className={`text-sm ${config.textColor} break-words`}>
-                <span className="font-semibold">Description:</span> {description}
+              <p className={`text-sm ${config.textColor} break-words overflow-hidden`}>
+                <span className="font-semibold">Description:</span> <span className="break-all">{description}</span>
               </p>
             )}
             {verificationCode && (

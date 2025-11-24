@@ -369,11 +369,14 @@ function ReviewModal({
       }}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        style={{ 
+          maxHeight: '90vh'
+        }}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {mode === "create" ? "Leave a Review" : "Review"}
           </h2>
@@ -399,7 +402,7 @@ function ReviewModal({
         </div>
 
         {/* Content */}
-        <div className="px-6 py-6">
+        <div className="px-6 py-6 overflow-y-auto flex-1 min-h-0" style={{ minWidth: 0 }}>
           <div className="mb-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Product: <span className="font-medium text-gray-900 dark:text-gray-100">{productTitle}</span>
@@ -453,16 +456,34 @@ function ReviewModal({
                 <label htmlFor="review-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Review <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  id="review-text"
-                  value={reviewText}
-                  onChange={handleReviewTextChange}
-                  placeholder="Share your experience with this product..."
-                  rows={6}
-                  maxLength={maxChars}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  required
-                />
+                <div 
+                  className="overflow-hidden border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
+                  style={{
+                    borderRadius: '0.5rem',
+                    borderTopLeftRadius: '0.5rem',
+                    borderTopRightRadius: '0.5rem',
+                    borderBottomLeftRadius: '0.5rem',
+                    borderBottomRightRadius: '0.5rem'
+                  }}
+                >
+                  <textarea
+                    id="review-text"
+                    value={reviewText}
+                    onChange={handleReviewTextChange}
+                    placeholder="Share your experience with this product..."
+                    rows={6}
+                    maxLength={maxChars}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    style={{
+                      border: 'none',
+                      borderRadius: '0',
+                      overflow: 'auto',
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: 'rgba(156, 163, 175, 0.5) transparent'
+                    }}
+                    required
+                  />
+                </div>
                 <div className="mt-1 flex items-center justify-between">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {charCount} / {maxChars} characters
@@ -596,8 +617,16 @@ function ReviewModal({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Review
                 </label>
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                <div 
+                  className="review-text-rounded p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                  style={{
+                    borderRadius: '0.5rem',
+                    WebkitBorderRadius: '0.5rem',
+                    MozBorderRadius: '0.5rem',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all">
                     {reviewText}
                   </p>
                 </div>

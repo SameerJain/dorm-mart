@@ -26,6 +26,50 @@
   .all-\[unset\] {
     all: unset;
   }
+  
+  .review-text-rounded {
+    border-radius: 0.5rem !important;
+    -webkit-border-radius: 0.5rem !important;
+    -moz-border-radius: 0.5rem !important;
+    overflow: hidden !important;
+    isolation: isolate !important;
+  }
+  
+  #review-text {
+    border-radius: 0.5rem !important;
+    -webkit-border-radius: 0.5rem !important;
+    -moz-border-radius: 0.5rem !important;
+    border-top-left-radius: 0.5rem !important;
+    border-top-right-radius: 0.5rem !important;
+    border-bottom-left-radius: 0.5rem !important;
+    border-bottom-right-radius: 0.5rem !important;
+    -webkit-border-top-left-radius: 0.5rem !important;
+    -webkit-border-top-right-radius: 0.5rem !important;
+    -webkit-border-bottom-left-radius: 0.5rem !important;
+    -webkit-border-bottom-right-radius: 0.5rem !important;
+    -moz-border-radius-topleft: 0.5rem !important;
+    -moz-border-radius-topright: 0.5rem !important;
+    -moz-border-radius-bottomleft: 0.5rem !important;
+    -moz-border-radius-bottomright: 0.5rem !important;
+  }
+  
+  #review-text::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  #review-text::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+  
+  #review-text::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.5);
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+  
+  #review-text::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.7);
+  }
 }
 
 html, body, #root {

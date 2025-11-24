@@ -248,8 +248,11 @@ export default function LandingPage() {
 
   // dedupe into interests and explore
   const { itemsByInterest, exploreItems } = useMemo(() => {
+    const MAX_TOTAL_ITEMS = 50;
+
     if (!interests.length) {
-      return { itemsByInterest: {}, exploreItems: allItems };
+      // No interests: all items go to explore, limit to 50
+      return { itemsByInterest: {}, exploreItems: allItems.slice(0, MAX_TOTAL_ITEMS) };
     }
 
     const byInterest = {};
@@ -305,9 +308,19 @@ export default function LandingPage() {
       byInterest[cat].sort(cmp(cat));
     });
 
+    // Count total items in interest categories
+    const interestItemCount = Object.values(byInterest).flat().length;
+    
+    // Calculate remaining slots for explore items
+    const remainingSlots = Math.max(0, MAX_TOTAL_ITEMS - interestItemCount);
+    
+    // Get explore items and limit to remaining slots
+    const allExploreItems = allItems.filter((it) => !used.has(it.id));
+    const limitedExploreItems = allExploreItems.slice(0, remainingSlots);
+
     return {
       itemsByInterest: byInterest,
-      exploreItems: allItems.filter((it) => !used.has(it.id)),
+      exploreItems: limitedExploreItems,
     };
   }, [allItems, interests]);
 

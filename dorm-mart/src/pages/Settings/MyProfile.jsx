@@ -498,12 +498,12 @@ function MyProfilePage() {
                   onChange={handleAvatarChange}
                   className="hidden"
                 />
-                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
+                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6 min-w-0">
                   <button
                     type="button"
                     onClick={handleAvatarClick}
                     disabled={avatarUploading}
-                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-2 sm:ring-4 ring-blue-100 transition hover:brightness-105 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
+                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-2 sm:ring-4 ring-blue-100 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
                   >
                     {avatarPreview ? (
                       <img src={avatarPreview} alt="Profile" className="h-full w-full rounded-full object-cover" />
@@ -514,8 +514,8 @@ function MyProfilePage() {
                       {avatarUploading ? "Uploading..." : "Edit"}
                     </span>
                   </button>
-                  <div className="space-y-1 text-center sm:text-left text-slate-900">
-                    <p className="text-xl sm:text-2xl font-serif font-semibold break-words">{profile?.name}</p>
+                  <div className="space-y-1 text-center sm:text-left text-slate-900 min-w-0 max-w-full overflow-hidden flex-1">
+                    <p className="text-xl sm:text-2xl font-serif font-semibold truncate block">{profile?.name}</p>
                     <p className="text-xs sm:text-sm break-all">@{profile?.username}</p>
                     <p className="text-xs sm:text-sm break-all">{profile?.email}</p>
                   </div>
@@ -642,6 +642,13 @@ function MyProfilePage() {
                   <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Reviews</h2>
                   <p className="text-xs sm:text-sm text-slate-500">{reviewList.length} recorded review{reviewList.length === 1 ? "" : "s"}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/app/setting/buyer-reviews")}
+                  className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                >
+                  View how sellers have rated you
+                </button>
               </div>
               <div className="mt-4 flex-1 xl:overflow-y-auto xl:pr-1">
                 {reviewList.length === 0 ? (

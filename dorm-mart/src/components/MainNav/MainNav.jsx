@@ -173,6 +173,7 @@ function MainNav() {
                             placeholder="Search..."
                             value={searchText}
                             ref={inputRef}
+                            maxLength={50}
                             onChange={(e) => setSearchText(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {

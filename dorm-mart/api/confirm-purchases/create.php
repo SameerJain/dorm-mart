@@ -65,6 +65,12 @@ try {
         echo json_encode(['success' => false, 'error' => 'Notes cannot exceed 2000 characters']);
         exit;
     }
+    // XSS PROTECTION: Check for XSS patterns in sellerNotes
+    if ($sellerNotes !== '' && containsXSSPattern($sellerNotes)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid characters in seller notes']);
+        exit;
+    }
 
     $failureReason = isset($payload['failure_reason']) ? trim((string)$payload['failure_reason']) : null;
     $failureReasonNotes = isset($payload['failure_reason_notes']) ? trim((string)$payload['failure_reason_notes']) : null;
@@ -94,6 +100,12 @@ try {
             echo json_encode(['success' => false, 'error' => 'Failure notes cannot exceed 1000 characters']);
             exit;
         }
+        // XSS PROTECTION: Check for XSS patterns in failureReasonNotes
+        if ($failureReasonNotes !== null && $failureReasonNotes !== '' && containsXSSPattern($failureReasonNotes)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Invalid characters in failure reason notes']);
+            exit;
+        }
     }
 
     if ($scheduledRequestId <= 0 || $conversationId <= 0 || $productId <= 0) {
@@ -105,7 +117,7 @@ try {
     $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // Ensure scheduled request belongs to seller, conversation, and is accepted
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
         SELECT
             spr.request_id,
@@ -157,7 +169,9 @@ try {
         exit;
     }
 
-    // Prevent duplicate pending confirmations
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // Check for any pending confirm purchase requests (block creation if pending)
+    // Note: buyer_declined status allows new confirm purchases to be created
     $pendingStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE scheduled_request_id = ? AND status = \'pending\' ORDER BY confirm_request_id DESC LIMIT 1');
     $pendingStmt->bind_param('i', $scheduledRequestId);
     $pendingStmt->execute();
@@ -172,6 +186,21 @@ try {
             echo json_encode(['success' => false, 'error' => 'There is already a pending confirmation for this scheduled purchase']);
             exit;
         }
+    }
+    
+    // Also check for already accepted/confirmed status (block creation if already confirmed)
+    // This prevents creating new confirm purchases after a successful confirmation
+    $latestStmt = $conn->prepare('SELECT status FROM confirm_purchase_requests WHERE scheduled_request_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
+    $latestStmt->bind_param('i', $scheduledRequestId);
+    $latestStmt->execute();
+    $latestRes = $latestStmt->get_result();
+    $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
+    $latestStmt->close();
+    
+    if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted'], true)) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'error' => 'This transaction has already been confirmed']);
+        exit;
     }
 
     $buyerId = (int)$schedRow['buyer_user_id'];
@@ -204,6 +233,7 @@ try {
         throw new RuntimeException('Failed to encode snapshot');
     }
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $insertStmt = $conn->prepare('
         INSERT INTO confirm_purchase_requests
             (scheduled_request_id, inventory_product_id, seller_user_id, buyer_user_id, conversation_id, is_successful,

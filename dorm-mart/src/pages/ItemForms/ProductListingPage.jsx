@@ -51,6 +51,7 @@ function ProductListingPage() {
   const [images, setImages] = useState([]); // [{file, url}, ...]
   const fileInputRef = useRef();
   const formTopRef = useRef(null);
+  const scrollPositionRef = useRef(0);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverMsg, setServerMsg] = useState(null);
@@ -75,7 +76,7 @@ function ProductListingPage() {
   const CATEGORIES_MAX = 3;
 
   const LIMITS = {
-    title: 70,
+    title: 50,
     description: 1000,
     price: 9999.99,
     priceMin: 0.01,
@@ -91,27 +92,49 @@ function ProductListingPage() {
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const [cropImgEl, setCropImgEl] = useState(null);
   const [pendingFileName, setPendingFileName] = useState("");
-  const previewBoxSize = 480;
+  
+  // Responsive preview box size - smaller on mobile
+  const [previewBoxSize, setPreviewBoxSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const isMobile = window.innerWidth < 768;
+      return isMobile ? Math.min(480, window.innerWidth - 80) : 480;
+    }
+    return 480;
+  });
+
+  // Update preview box size on window resize
+  useEffect(() => {
+    const updatePreviewSize = () => {
+      const isMobile = window.innerWidth < 768;
+      setPreviewBoxSize(isMobile ? Math.min(480, window.innerWidth - 80) : 480);
+    };
+
+    window.addEventListener('resize', updatePreviewSize);
+    return () => window.removeEventListener('resize', updatePreviewSize);
+  }, []);
 
   // Prevent body scroll when cropper modal is open
   useEffect(() => {
     if (showCropper) {
-      const scrollY = window.scrollY;
+      // Store current scroll position
+      scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
+      document.body.style.top = `-${scrollPositionRef.current}px`;
       document.body.style.width = '100%';
     } else {
-      const scrollY = document.body.style.top;
+      // Restore scroll position
+      const scrollY = scrollPositionRef.current;
       document.documentElement.style.overflow = '';
       document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
+      // Use requestAnimationFrame to ensure DOM is updated before scrolling
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+      });
     }
     return () => {
       document.documentElement.style.overflow = '';
@@ -596,7 +619,10 @@ function ProductListingPage() {
   function startDrag(e) {
     e.preventDefault();
     draggingRef.current = true;
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    // Handle both mouse and touch events
+    const clientX = e.clientX ?? (e.touches?.[0]?.clientX ?? 0);
+    const clientY = e.clientY ?? (e.touches?.[0]?.clientY ?? 0);
+    dragStartRef.current = { x: clientX, y: clientY };
     selectionStartRef.current = {
       x: selectionRef.current.x,
       y: selectionRef.current.y,
@@ -611,8 +637,12 @@ function ProductListingPage() {
     const dragStart = dragStartRef.current;
     const size = selectionRef.current.size;
 
-    let newX = selStart.x + (e.clientX - dragStart.x);
-    let newY = selStart.y + (e.clientY - dragStart.y);
+    // Handle both mouse and touch events
+    const clientX = e.clientX ?? (e.touches?.[0]?.clientX ?? 0);
+    const clientY = e.clientY ?? (e.touches?.[0]?.clientY ?? 0);
+
+    let newX = selStart.x + (clientX - dragStart.x);
+    let newY = selStart.y + (clientY - dragStart.y);
 
     const minX = di.dx;
     const minY = di.dy;
@@ -629,7 +659,11 @@ function ProductListingPage() {
     setSelection(newSel);
   }
 
-  function onCropMouseUp() {
+  function onCropMouseUp(e) {
+    // Prevent default touch behavior
+    if (e) {
+      e.preventDefault();
+    }
     draggingRef.current = false;
   }
 
@@ -1281,7 +1315,13 @@ function ProductListingPage() {
                 className="hidden"
               />
               <button
-                onClick={() => fileInputRef.current.click()}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Store scroll position before opening file dialog
+                  scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
+                  fileInputRef.current.click();
+                }}
                 className={`w-full py-4 px-6 border-2 border-dashed rounded-lg font-medium transition-colors ${
                   errors.images
                     ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400 hover:border-red-600 dark:hover:border-red-500"
@@ -1407,10 +1447,13 @@ function ProductListingPage() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/app/seller-dashboard")}
+                onClick={() => {
+                  window.scrollTo(0, 0);
+                  navigate("/app/seller-dashboard");
+                }}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
               >
-                Go back to Dashboard
+                {location.state?.fromDashboard === true ? "Go back to Dashboard" : "View Dashboard"}
               </button>
             </div>
           </div>
@@ -1420,7 +1463,7 @@ function ProductListingPage() {
       {/* Cropper Modal */}
       {showCropper && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl max-w-3xl w-full p-5">
+          <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl max-w-3xl w-full p-3 md:p-5">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
               Crop Image
             </h2>
@@ -1428,17 +1471,21 @@ function ProductListingPage() {
               Drag the square to choose the area you want. The square size is fixed.
             </p>
 
-            <div
-              ref={cropContainerRef}
-              onMouseMove={onCropMouseMove}
-              onMouseUp={onCropMouseUp}
-              onMouseLeave={onCropMouseUp}
-              className="relative mx-auto bg-gray-100 dark:bg-gray-900 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 select-none"
-              style={{
-                width: `${previewBoxSize}px`,
-                height: `${previewBoxSize}px`,
-              }}
-            >
+            <div className="flex justify-center">
+              <div
+                ref={cropContainerRef}
+                onMouseMove={onCropMouseMove}
+                onMouseUp={onCropMouseUp}
+                onMouseLeave={onCropMouseUp}
+                onTouchMove={onCropMouseMove}
+                onTouchEnd={onCropMouseUp}
+                className="relative bg-gray-100 dark:bg-gray-900 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 select-none"
+                style={{
+                  width: `${previewBoxSize}px`,
+                  height: `${previewBoxSize}px`,
+                  touchAction: 'none',
+                }}
+              >
               {cropImageSrc ? (
                 <>
                   <img
@@ -1452,6 +1499,7 @@ function ProductListingPage() {
                   {/* fixed-size draggable selection */}
                   <div
                     onMouseDown={startDrag}
+                    onTouchStart={startDrag}
                     style={{
                       position: "absolute",
                       left: `${selection.x}px`,
@@ -1465,6 +1513,7 @@ function ProductListingPage() {
                       cursor: "move",
                       // ensure this box can be clicked/dragged
                       pointerEvents: "auto",
+                      touchAction: "none",
                     }}
                   />
                 </>
@@ -1473,6 +1522,7 @@ function ProductListingPage() {
                   Loading...
                 </div>
               )}
+              </div>
             </div>
 
             {/* hidden canvas */}

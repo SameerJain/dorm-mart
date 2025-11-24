@@ -24,6 +24,8 @@ function BuyerRatingModal({
   onRatingSubmitted = null,
 }) {
   const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [charCount, setCharCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [existingRating, setExistingRating] = useState(null);
@@ -31,6 +33,8 @@ function BuyerRatingModal({
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmCallback, setConfirmCallback] = useState(null);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+
+  const maxChars = 250;
 
   // Fetch existing rating when modal opens
   useEffect(() => {
@@ -40,6 +44,8 @@ function BuyerRatingModal({
       // Reset state when modal closes
       setExistingRating(null);
       setRating(0);
+      setReviewText("");
+      setCharCount(0);
       setError(null);
       setShowConfirmModal(false);
       setConfirmMessage("");
@@ -63,19 +69,27 @@ function BuyerRatingModal({
         if (result.success && result.has_rating) {
           setExistingRating(result.rating);
           setRating(result.rating.rating || 0);
+          setReviewText(result.rating.review_text || "");
+          setCharCount((result.rating.review_text || "").length);
         } else {
           setExistingRating(null);
           setRating(0);
+          setReviewText("");
+          setCharCount(0);
         }
       } else {
         // Reset on error
         setExistingRating(null);
         setRating(0);
+        setReviewText("");
+        setCharCount(0);
       }
     } catch (error) {
       console.error("Error fetching buyer rating:", error);
       setExistingRating(null);
       setRating(0);
+      setReviewText("");
+      setCharCount(0);
     }
   };
 
@@ -83,9 +97,19 @@ function BuyerRatingModal({
   useEffect(() => {
     if (isOpen && !existingRating) {
       setRating(0);
+      setReviewText("");
+      setCharCount(0);
       setError(null);
     }
   }, [isOpen, existingRating]);
+
+  const handleReviewTextChange = (e) => {
+    const text = e.target.value;
+    if (text.length <= maxChars) {
+      setReviewText(text);
+      setCharCount(text.length);
+    }
+  };
 
   // Prevent background scroll when modal is open
   useEffect(() => {
@@ -171,6 +195,7 @@ function BuyerRatingModal({
           product_id: productId,
           buyer_user_id: buyerId,
           rating: rating,
+          review_text: reviewText.trim(),
         }),
       });
 
@@ -259,6 +284,27 @@ function BuyerRatingModal({
                   </span>
                 </div>
               </div>
+              {/* Review Text Display */}
+              {existingRating.review_text && (
+                <div className="mb-6 min-w-0">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Review
+                  </label>
+                  <div 
+                    className="review-text-rounded p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
+                    style={{
+                      borderRadius: '0.5rem',
+                      WebkitBorderRadius: '0.5rem',
+                      MozBorderRadius: '0.5rem',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                      {existingRating.review_text}
+                    </p>
+                  </div>
+                </div>
+              )}
               {existingRating.created_at && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                   Rated on {new Date(existingRating.created_at).toLocaleDateString()}
@@ -291,6 +337,50 @@ function BuyerRatingModal({
                   <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                     {rating.toFixed(1)}
                   </span>
+                </div>
+              </div>
+
+              {/* Review Text Section */}
+              <div className="mb-6">
+                <label htmlFor="buyer-review-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Review (Optional)
+                </label>
+                <div 
+                  className="overflow-hidden border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 min-w-0"
+                  style={{
+                    borderRadius: '0.5rem',
+                    borderTopLeftRadius: '0.5rem',
+                    borderTopRightRadius: '0.5rem',
+                    borderBottomLeftRadius: '0.5rem',
+                    borderBottomRightRadius: '0.5rem'
+                  }}
+                >
+                  <textarea
+                    id="buyer-review-text"
+                    value={reviewText}
+                    onChange={handleReviewTextChange}
+                    placeholder="Share your experience with this buyer..."
+                    rows={6}
+                    maxLength={maxChars}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none break-words break-all overflow-wrap-anywhere"
+                    style={{
+                      border: 'none',
+                      borderRadius: '0',
+                      overflow: 'auto',
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: 'rgba(156, 163, 175, 0.5) transparent',
+                      wordBreak: 'break-all',
+                      overflowWrap: 'anywhere'
+                    }}
+                  />
+                </div>
+                <div className="mt-1 flex items-center justify-between">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {charCount} / {maxChars} characters
+                  </p>
+                  {charCount >= maxChars && (
+                    <p className="text-xs text-red-500">Maximum character limit reached</p>
+                  )}
                 </div>
               </div>
 

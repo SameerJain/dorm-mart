@@ -37,6 +37,7 @@ function PurchaseHistoryPage() {
   useEffect(() => {
     setIsFetching(true);
     const controller = new AbortController();
+    let timeoutId = null;
 
     async function loadPurchasedItems() {
       try {
@@ -48,7 +49,7 @@ function PurchaseHistoryPage() {
         setError(false);
         setPurchasedItems(res.data || []);
 
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           setIsFetching(false);
         }, 500);
       } catch (err) {
@@ -59,7 +60,10 @@ function PurchaseHistoryPage() {
       }
     }
     loadPurchasedItems();
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [dateRange, selectedSort]);
 
   // Sort items

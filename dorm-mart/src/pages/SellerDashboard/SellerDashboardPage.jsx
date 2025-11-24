@@ -8,6 +8,12 @@ import BuyerRatingModal from './BuyerRatingModal';
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
+/** Truncate product title to max length (default 50 characters) */
+function truncateProductTitle(title, maxLength = 50) {
+  if (!title || title.length <= maxLength) return title;
+  return title.substring(0, maxLength) + '...';
+}
+
 function SellerDashboardPage() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -37,6 +43,11 @@ function SellerDashboardPage() {
         savedDrafts: 0,
         totalViews: 0
     });
+
+    // Scroll to top when component mounts or location changes
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [location.pathname]);
 
     // Prevent body scroll when delete confirmation modal is open
     useEffect(() => {
@@ -68,7 +79,7 @@ function SellerDashboardPage() {
     }, [confirmOpen]);
 
     const handleCreateNewListing = () => {
-        navigate('/app/product-listing/new');
+        navigate('/app/product-listing/new', { state: { fromDashboard: true } });
     };
 
     const openViewProduct = (id) => {
@@ -129,12 +140,9 @@ function SellerDashboardPage() {
             }
             const result = await response.json();
 
-            console.log('Seller dashboard API response:', result); // Debug log
-
             if (result.success) {
                 // Ensure result.data is an array
                 const dataArray = Array.isArray(result.data) ? result.data : [];
-                console.log('Fetched listings count:', dataArray.length); // Debug log
                 
                 // Transform backend data to match frontend expectations
                 const transformedListings = dataArray.map(item => {
@@ -157,12 +165,6 @@ function SellerDashboardPage() {
                     };
                 });
                 setListings(transformedListings);
-
-                // Debug: Log items with accepted scheduled purchases
-                const itemsWithAccepted = transformedListings.filter(l => l.has_accepted_scheduled_purchase);
-                if (itemsWithAccepted.length > 0) {
-                    console.log('Items with accepted scheduled purchases:', itemsWithAccepted);
-                }
 
                 // Calculate and set summary metrics
                 const metrics = calculateSummaryMetrics(transformedListings);
@@ -452,7 +454,7 @@ function SellerDashboardPage() {
                         </div>
 
                         <div className="flex items-center w-full sm:w-auto">
-                            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Category</label>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Category</label>
                             <div className="relative ml-1 flex-1 sm:flex-none">
                                 <select
                                     value={selectedCategory}
@@ -473,7 +475,7 @@ function SellerDashboardPage() {
                         </div>
 
                         <div className="flex items-center w-full sm:w-auto">
-                            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Sort By</label>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Sort By</label>
                             <div className="relative ml-1 flex-1 sm:flex-none">
                                 <select
                                     value={selectedSort}
@@ -512,7 +514,7 @@ function SellerDashboardPage() {
                     </div>
 
                     {/* Metrics - Centered layout with 3 active statistics */}
-                    <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-12 md:flex-1 md:justify-center">
+                    <div className="flex flex-wrap md:flex-nowrap items-center justify-center gap-4 md:gap-12 md:flex-1">
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.activeListings}</div>
                             <div className="text-sm text-blue-100">Active Listings</div>
@@ -569,24 +571,24 @@ function SellerDashboardPage() {
                     <div className="space-y-4">
                         {/* TODO: Replace with actual listing cards */}
                         {getSortedListings().map((listing) => (
-                            <div key={listing.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                    <div className="flex items-center space-x-3 sm:space-x-4">
+                            <div key={listing.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6 overflow-hidden">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 min-w-0">
+                                    <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
                                         <button
                                             type="button"
                                             onClick={() => openViewProduct(listing.id)}
                                             className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden hover:ring-2 hover:ring-blue-300 transition"
-                                            aria-label={`Open ${listing.title}`}
+                                            aria-label={`Open ${truncateProductTitle(listing.title)}`}
                                         >
-                                            <img src={withFallbackImage(listing.image)} alt={listing.title} className="w-full h-full object-cover" />
+                                            <img src={withFallbackImage(listing.image)} alt={truncateProductTitle(listing.title)} className="w-full h-full object-cover" />
                                         </button>
-                                        <div className="min-w-0 flex-1">
+                                        <div className="min-w-0 flex-1 max-w-full overflow-hidden">
                                             <button
                                                 type="button"
                                                 onClick={() => openViewProduct(listing.id)}
-                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline break-words overflow-hidden w-full"
+                                                className="text-left text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate hover:underline w-full block"
                                             >
-                                                {listing.title}
+                                                {truncateProductTitle(listing.title)}
                                             </button>
                                             {listing.price > 0 && <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">${listing.price}</p>}
                                             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
@@ -639,7 +641,7 @@ function SellerDashboardPage() {
                                                     }}
                                                     className={`font-medium text-sm sm:text-base ${
                                                         buyerRatings[listing.id]
-                                                            ? 'text-gray-500 hover:text-gray-700'
+                                                            ? 'text-blue-600 hover:text-blue-800'
                                                             : 'text-green-600 hover:text-green-800'
                                                     }`}
                                                 >
@@ -659,7 +661,7 @@ function SellerDashboardPage() {
                                         </div>
                                         <div className="flex items-center gap-3 flex-wrap">
                                             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
-                                                (listing.wishlisted || 0) === 0
+                                                (listing.wishlisted || 0) === 0 || String(listing.status || '').toLowerCase() === 'sold'
                                                     ? "bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400"
                                                     : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                                             }`}>

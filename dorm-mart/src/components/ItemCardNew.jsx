@@ -123,17 +123,17 @@ export default function ItemCardNew({
       </div>
 
       {/* BODY */}
-      <div className="flex flex-col gap-0.5 px-3 py-2">
+      <div className="flex flex-col gap-0.5 px-3 py-2 min-w-0">
         {/* title */}
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 break-words overflow-hidden">
           {title}
         </h3>
 
         {/* seller */}
         {seller ? (
-          <p className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            {seller}
+          <p className="text-[11px] text-gray-500 dark:text-gray-300 flex items-center gap-1 min-w-0">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+            <span className="truncate">Sold by {seller}</span>
           </p>
         ) : null}
 

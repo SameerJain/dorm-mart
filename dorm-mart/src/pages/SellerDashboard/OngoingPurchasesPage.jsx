@@ -264,14 +264,14 @@ function OngoingPurchasesPage() {
         
         if (req.is_trade && req.trade_item_description) {
             return (
-                <div className={`${isTerminal ? 'bg-red-100 dark:bg-red-900/50 border-red-500' : isCompleted ? 'bg-gray-100 dark:bg-gray-800/50 border-gray-400 dark:border-gray-600' : 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-700'} border-4 rounded-lg p-2 my-1.5 shadow-lg`}>
+                <div className={`${isTerminal ? 'bg-red-100 dark:bg-red-900/50 border-red-500' : isCompleted ? 'bg-gray-100 dark:bg-gray-800/50 border-gray-400 dark:border-gray-600' : 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-700'} border-4 rounded-lg p-2 my-1.5 shadow-lg min-w-0 overflow-hidden`}>
                     <div className="flex items-center gap-1.5 mb-1">
                         <svg className={`w-5 h-5 ${isTerminal ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-amber-600 dark:text-amber-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
                         <span className={`text-sm font-bold uppercase tracking-wide ${isTerminal ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-amber-700 dark:text-amber-200'}`}>TRADE</span>
                     </div>
-                    <p className={`text-sm font-semibold ${isTerminal ? 'text-red-800 dark:text-red-100' : isCompleted ? 'text-gray-700 dark:text-gray-300' : 'text-amber-800 dark:text-amber-100'}`}>{req.trade_item_description}</p>
+                    <p className={`text-sm font-semibold min-w-0 break-words break-all overflow-wrap-anywhere ${isTerminal ? 'text-red-800 dark:text-red-100' : isCompleted ? 'text-gray-700 dark:text-gray-300' : 'text-amber-800 dark:text-amber-100'}`} style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{req.trade_item_description}</p>
                 </div>
             );
         } else if (req.negotiated_price !== null && req.negotiated_price !== undefined) {
@@ -356,7 +356,7 @@ function OngoingPurchasesPage() {
                         <div className="flex-1">
                             <p className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-0.5">Next Steps</p>
                             <p className="text-sm text-orange-700 dark:text-orange-300">
-                                Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities!
+                                Meet in-person at this agreed upon time and location to complete the exchange. Remember to use the verification code to verify identities! Once the exchange is done, the seller will send the Confirm Purchase form.
                             </p>
                         </div>
                     </div>
@@ -418,8 +418,8 @@ function OngoingPurchasesPage() {
         const meetingTextBold = 'text-white';
 
         return (
-            <div className={`${cardBgColor} border-2 ${cardBorderColor} rounded-lg p-2 shadow-sm ${isInactive ? 'opacity-75' : ''}`}>
-                <div className="flex flex-col gap-1.5">
+            <div className={`${cardBgColor} border-2 ${cardBorderColor} rounded-lg p-2 shadow-sm ${isInactive ? 'opacity-75' : ''} min-w-0 overflow-hidden`}>
+                <div className="flex flex-col gap-1.5 min-w-0">
                     {/* Header with perspective badge and status */}
                     <div className="flex items-center justify-between flex-wrap gap-1.5">
                         <div className="flex items-center gap-1.5 flex-wrap">

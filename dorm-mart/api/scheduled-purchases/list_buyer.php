@@ -72,6 +72,7 @@ try {
         ORDER BY spr.created_at DESC
     SQL;
 
+    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare query');

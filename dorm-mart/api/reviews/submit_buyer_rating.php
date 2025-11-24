@@ -63,6 +63,14 @@ try {
         exit;
     }
 
+    // Validate review_text (optional, max 250 chars if provided)
+    $reviewText = isset($payload['review_text']) ? trim((string)$payload['review_text']) : '';
+    if (strlen($reviewText) > 250) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Review text must be 250 characters or less']);
+        exit;
+    }
+
     $conn = db();
     $conn->set_charset('utf8mb4');
 
@@ -131,13 +139,13 @@ try {
 
     // Insert the buyer rating
     $stmt = $conn->prepare(
-        'INSERT INTO buyer_ratings (product_id, seller_user_id, buyer_user_id, rating) 
-         VALUES (?, ?, ?, ?)'
+        'INSERT INTO buyer_ratings (product_id, seller_user_id, buyer_user_id, rating, review_text) 
+         VALUES (?, ?, ?, ?, ?)'
     );
     if (!$stmt) {
         throw new RuntimeException('Failed to prepare buyer rating insert');
     }
-    $stmt->bind_param('iiid', $productId, $userId, $buyerId, $rating);
+    $stmt->bind_param('iiids', $productId, $userId, $buyerId, $rating, $reviewText);
     $success = $stmt->execute();
     $ratingId = $stmt->insert_id;
     $stmt->close();
@@ -160,7 +168,7 @@ try {
 
     // Get the created rating
     $stmt = $conn->prepare(
-        'SELECT rating_id, product_id, seller_user_id, buyer_user_id, rating, created_at, updated_at
+        'SELECT rating_id, product_id, seller_user_id, buyer_user_id, rating, review_text, created_at, updated_at
          FROM buyer_ratings WHERE rating_id = ? LIMIT 1'
     );
     if (!$stmt) {
@@ -182,6 +190,7 @@ try {
             'seller_user_id' => (int)$ratingData['seller_user_id'],
             'buyer_user_id' => (int)$ratingData['buyer_user_id'],
             'rating' => (float)$ratingData['rating'],
+            'review_text' => $ratingData['review_text'],
             'created_at' => $ratingData['created_at'],
             'updated_at' => $ratingData['updated_at'],
         ],
