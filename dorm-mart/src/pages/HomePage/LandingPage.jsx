@@ -66,6 +66,16 @@ export default function LandingPage() {
   const [loadingItems, setLoadingItems] = useState(false);
   const [errorUser, setErrorUser] = useState(false);
   const [errorItems, setErrorItems] = useState(false);
+  const [activeTab, setActiveTab] = useState("forYou");
+  const computeExploreLimit = () => {
+    if (typeof window === "undefined") return 12;
+    const width = window.innerWidth;
+    if (width >= 1536) return 15; // 5 columns x 3 rows
+    if (width >= 1280) return 12; // 4 columns x 3 rows
+    if (width >= 768) return 9; // 3 columns x 3 rows
+    return 6; // 2 columns x 3 rows
+  };
+  const [exploreLimit, setExploreLimit] = useState(computeExploreLimit);
 
   // rotating statement in blue
   const rotatingLines = [
@@ -90,6 +100,13 @@ export default function LandingPage() {
     );
     return () => clearInterval(id);
   }, [rotatingLines.length]);
+
+  // keep tab aligned with interest availability
+  useEffect(() => {
+    if (!interests.length) {
+      setActiveTab("explore");
+    }
+  }, [interests.length]);
 
   // fetch user
   useEffect(() => {
@@ -129,6 +146,13 @@ export default function LandingPage() {
       }
     })();
     return () => controller.abort();
+  }, []);
+
+  // track viewport to respect the 3-row explore limit
+  useEffect(() => {
+    const handler = () => setExploreLimit(computeExploreLimit());
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
   }, []);
 
   // fetch items
@@ -249,10 +273,11 @@ export default function LandingPage() {
   // dedupe into interests and explore
   const { itemsByInterest, exploreItems } = useMemo(() => {
     const MAX_TOTAL_ITEMS = 50;
+    const exploreCap = Math.min(MAX_TOTAL_ITEMS, exploreLimit);
 
     if (!interests.length) {
-      // No interests: all items go to explore, limit to 50
-      return { itemsByInterest: {}, exploreItems: allItems.slice(0, MAX_TOTAL_ITEMS) };
+      // No interests: all items go to explore, limited to row cap
+      return { itemsByInterest: {}, exploreItems: allItems.slice(0, exploreCap) };
     }
 
     const byInterest = {};
@@ -284,7 +309,10 @@ export default function LandingPage() {
       }
 
       if (best) {
-        byInterest[best.ic].push(item);
+        const bucket = byInterest[best.ic];
+        if (bucket.length < 10) {
+          bucket.push(item);
+        }
         used.add(item.id);
       }
     });
@@ -316,15 +344,41 @@ export default function LandingPage() {
     
     // Get explore items and limit to remaining slots
     const allExploreItems = allItems.filter((it) => !used.has(it.id));
-    const limitedExploreItems = allExploreItems.slice(0, remainingSlots);
+    const limitedExploreItems = allExploreItems.slice(0, Math.min(remainingSlots, exploreCap));
 
     return {
       itemsByInterest: byInterest,
       exploreItems: limitedExploreItems,
     };
-  }, [allItems, interests]);
+  }, [allItems, interests, exploreLimit]);
 
   const isLoading = loadingUser || loadingItems;
+  const quickFilterCategories = useMemo(() => {
+    if (allCategories.length) return allCategories;
+    const derived = Array.from(
+      new Set(
+        allItems
+          .flatMap((item) => [
+            item.category,
+            ...(Array.isArray(item.tags) ? item.tags : []),
+          ])
+          .filter(Boolean)
+          .map((c) => String(c))
+      )
+    );
+    return derived.length
+      ? derived
+      : ["Electronics", "Kitchen", "Furniture", "Dorm Essentials"];
+  }, [allCategories, allItems]);
+
+  const randomizedExploreItems = useMemo(() => {
+    const arr = [...exploreItems];
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [exploreItems]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
@@ -379,19 +433,42 @@ export default function LandingPage() {
               </button>
             ))
           ) : (
-            <span className="text-sm text-gray-400 dark:text-gray-500 italic">
-              No interests set
-            </span>
+            <button
+              onClick={() => navigate("/app/setting/user-preferences")}
+              className="inline-flex items-center rounded-full bg-blue-600 text-white px-4 py-1.5 text-sm font-medium shadow hover:bg-blue-700 transition"
+            >
+              Set Interested Categories
+            </button>
           )}
         </div>
       </div>
 
-      {/* HERO + METRICS */}
+      {/* HERO */}
       <div className="w-full px-1 sm:px-2 md:px-3 pt-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.35fr,0.65fr] gap-3">
-          {/* hero */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm px-4 py-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[0.32fr,1fr] gap-3 items-stretch">
+          {/* Quick Search */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4 flex flex-col gap-3">
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Quick Search
+            </p>
+            <div className="flex flex-wrap gap-2 max-h-[7.5rem] overflow-y-auto pr-1">
+              {quickFilterCategories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() =>
+                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`)
+                  }
+                  className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition"
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Personalized Feed */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 shadow-sm px-4 py-4 flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="uppercase text-xs md:text-sm text-gray-400 dark:text-gray-500 tracking-[0.35em] mb-1">
                   personalized feed
@@ -403,63 +480,47 @@ export default function LandingPage() {
                   Real UB students • on-campus meetups • no shipping
                 </p>
               </div>
-              <div className="hidden sm:flex">
+              <div className="hidden sm:flex items-start">
                 <button
                   onClick={() => navigate("/app/product-listing/new")}
-                  className="px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition"
+                  className="px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition whitespace-nowrap"
                 >
                   List an item
                 </button>
               </div>
             </div>
-            <div className="flex gap-2 mt-1">
-              <button className="px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-medium border border-blue-100 dark:border-blue-700">
-                For you
-              </button>
-              <button
-                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?sort=new`)}
-                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200"
-              >
-                Newest
-              </button>
-              <button
-                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?maxPrice=20`)}
-                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-              >
-                Under $20
-              </button>
-              <button
-                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?minPrice=100`)}
-                className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-              >
-                Luxury
-              </button>
-            </div>
-          </div>
-
-          {/* metrics */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 px-4 py-4 flex flex-col gap-4">
-                          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 tracking-tight">
-              Today’s snapshot
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
-                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">New listings</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">+8</p>
-                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">in last 24h</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 mt-1">
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full p-1 w-fit">
+                <button
+                  onClick={() => setActiveTab("forYou")}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                    activeTab === "forYou"
+                      ? "bg-blue-600 text-white shadow"
+                      : "text-gray-700 dark:text-gray-200"
+                  }`}
+                  title={
+                    interests.length
+                      ? undefined
+                      : "You need to set your interested categories to access a for you page"
+                  }
+                  disabled={!interests.length}
+                >
+                  For You
+                </button>
+                <button
+                  onClick={() => setActiveTab("explore")}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                    activeTab === "explore"
+                      ? "bg-blue-600 text-white shadow"
+                      : "text-gray-700 dark:text-gray-200"
+                  }`}
+                >
+                  Explore More
+                </button>
               </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
-                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">Near you</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">12</p>
-                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">North Campus</p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
-                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">Interested</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">
-                  {interests.length ? interests.length : "0"}
-                </p>
-                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">categories</p>
-              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 text-left">
+                Switch views: personalized feed or a fresh randomized mix.
+              </p>
             </div>
           </div>
         </div>
@@ -467,134 +528,117 @@ export default function LandingPage() {
 
       {/* MAIN GRID */}
       <div className="w-full flex-1 px-1 sm:px-2 md:px-3 py-5 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[0.22fr,1fr,0.22fr] gap-3 items-start">
-          {/* LEFT */}
-          <aside className="hidden lg:flex flex-col gap-3 sticky top-20">
-            <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4">
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                Quick filters
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(allCategories.length ? allCategories : ["Electronics","Kitchen","Furniture","Dorm Essentials"]).map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() =>
-                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`)
-                    }
-                    className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800 p-4">
-              <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
-                Tips
-              </p>
-              <p className="text-sm text-blue-500 dark:text-blue-400">
-                Items posted in the last 48h show “NEW”. Check these first.
-              </p>
-            </div>
-          </aside>
-
+        <div className="grid grid-cols-1 gap-3 items-start">
           {/* CENTER */}
           <main className="flex flex-col gap-6 min-w-0">
             {/* For you */}
-            {interests.length ? (
-              <section className="space-y-4">
-                <header className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-semibold text-blue-600 dark:text-blue-400">
-                      For you
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Based on your categories
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => navigate('/app/setting/user-preferences')}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Manage interests
-                  </button>
-                </header>
+            {activeTab === "forYou" ? (
+              interests.length ? (
+                <section className="space-y-4">
+                  <header className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-semibold text-blue-600 dark:text-blue-400">
+                        For you
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Based on your categories
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/app/setting/user-preferences')}
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Manage interests
+                    </button>
+                  </header>
 
-                <div className="space-y-5">
-                  {interests.map((cat) => {
-                    const catItems = itemsByInterest[cat] || [];
-                    return (
-                      <div key={cat} className="space-y-3">
-                        <h4 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">
-                          {cat}
-                        </h4>
-                        <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200 dark:scrollbar-thumb-blue-700 w-full max-w-full min-w-0">
-                          {catItems.length ? (
-                            catItems.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex-shrink-0"
-                              >
-                                <ItemCardNew
-                                  id={item.id}
-                                  title={item.title}
-                                  price={item.price}
-                                  tags={item.tags}
-                                  image={item.img || undefined}
-                                  status={item.status}
-                                  seller={item.seller}
-                                  sellerUsername={item.sellerUsername}
-                                  sellerEmail={item.sellerEmail}
-                                  isWishlisted={wishlistedIds.has(item.id)}
-                                  fixedWidth={true}
-                                />
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-400 dark:text-gray-500 italic">
-                              No items in this category yet.
-                            </p>
-                          )}
+                  <div className="space-y-5">
+                    {interests.map((cat) => {
+                      const catItems = itemsByInterest[cat] || [];
+                      return (
+                        <div key={cat} className="space-y-3">
+                          <h4 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">
+                            {cat}
+                          </h4>
+                          <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200 dark:scrollbar-thumb-blue-700 w-full max-w-full min-w-0">
+                            {catItems.length ? (
+                              catItems.slice(0, 10).map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex-shrink-0"
+                                >
+                                  <ItemCardNew
+                                    id={item.id}
+                                    title={item.title}
+                                    price={item.price}
+                                    tags={item.tags}
+                                    image={item.img || undefined}
+                                    status={item.status}
+                                    seller={item.seller}
+                                    sellerUsername={item.sellerUsername}
+                                    sellerEmail={item.sellerEmail}
+                                    isWishlisted={wishlistedIds.has(item.id)}
+                                    fixedWidth={true}
+                                  />
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+                                No items in this category yet.
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : (
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200/70 dark:border-gray-700/70 p-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-200 mb-2">
+                    Add interested categories to see your personalized feed.
+                  </p>
+                  <button
+                    onClick={() => navigate("/app/setting/user-preferences")}
+                    className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                  >
+                    Set interested categories
+                  </button>
                 </div>
-              </section>
+              )
             ) : null}
 
             {/* Explore */}
-            <section className="space-y-4">
-              <header>
-                <h3 className="text-base font-semibold text-blue-600 dark:text-blue-400">
-                  {interests.length ? "Explore more" : "Recommended for you"}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {interests.length
-                    ? "Other listings on Dorm Mart."
-                    : "Popular items from UB students."}
-                </p>
-              </header>
+            {activeTab === "explore" ? (
+              <section className="space-y-4">
+                <header>
+                  <h3 className="text-base font-semibold text-blue-600 dark:text-blue-400">
+                    Explore more
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Randomized picks from across campus.
+                  </p>
+                </header>
 
-              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 overflow-x-hidden min-w-0">
-                {exploreItems.map((item, idx) => (
-                  <ItemCardNew
-                    key={item.id ?? idx}
-                    id={item.id}
-                    title={item.title}
-                    price={item.price}
-                    tags={item.tags}
-                    image={item.img || undefined}
-                    status={item.status}
-                    seller={item.seller}
-                    sellerUsername={item.sellerUsername}
-                    sellerEmail={item.sellerEmail}
-                    isWishlisted={wishlistedIds.has(item.id)}
-                  />
-                ))}
-              </div>
-            </section>
+                <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(210px,1fr))] overflow-x-hidden min-w-0">
+                  {randomizedExploreItems.map((item, idx) => (
+                    <ItemCardNew
+                      key={item.id ?? idx}
+                      id={item.id}
+                      title={item.title}
+                      price={item.price}
+                      tags={item.tags}
+                      image={item.img || undefined}
+                      status={item.status}
+                      seller={item.seller}
+                      sellerUsername={item.sellerUsername}
+                      sellerEmail={item.sellerEmail}
+                      isWishlisted={wishlistedIds.has(item.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             {/* status */}
             <div className="space-y-1">
@@ -615,67 +659,6 @@ export default function LandingPage() {
               ) : null}
             </div>
           </main>
-
-          {/* RIGHT */}
-          <aside className="hidden lg:flex flex-col gap-3 sticky top-20">
-            <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200/70 dark:border-gray-700/70 shadow-sm p-4">
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Trending now
-              </p>
-              <ul className="space-y-2">
-                <li className="flex items-center justify-between gap-2">
-                  <button
-                    onClick={() =>
-                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Electronics`)
-                    }
-                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                  >
-                    Electronics
-                  </button>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                    5 new
-                  </span>
-                </li>
-                <li className="flex items-center justify-between gap-2">
-                  <button
-                    onClick={() =>
-                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Kitchen`)
-                    }
-                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                  >
-                    Kitchen
-                  </button>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                    2 new
-                  </span>
-                </li>
-                <li className="flex items-center justify-between gap-2">
-                  <button
-                    onClick={() =>
-                      openExternalRoute(
-                        `${PUBLIC_BASE}/#/app/listings?category=Dorm%20Essentials`
-                      )
-                    }
-                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                  >
-                    Dorm essentials
-                  </button>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                    hot
-                  </span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800 p-4">
-              <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
-                Your campus
-              </p>
-              <p className="text-sm text-blue-600 dark:text-blue-400">
-                North Campus is most active 3–6pm. Post then for faster replies.
-              </p>
-            </div>
-          </aside>
         </div>
       </div>
     </div>
