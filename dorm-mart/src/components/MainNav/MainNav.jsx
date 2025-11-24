@@ -8,7 +8,6 @@ import marketIcon from '../../assets/icons/icons8-market-96.png';
 import searchIcon from '../../assets/icons/icons8-search-96.png';
 import homeIcon from '../../assets/icons/icons8-home-96.png';
 import Icon from './Icon'
-// filter icon removed; filters move to search page
 import { ChatContext } from "../../context/ChatContext";
 import { useContext } from 'react';
 
@@ -19,12 +18,16 @@ function MainNav() {
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
     const mobileMenuRef = useRef(null);
-    // no filter panel in nav
     const location = useLocation();
 
     const ctx = useContext(ChatContext);
     const { unreadMsgTotal, unreadNotificationTotal } = ctx;
-    // no filters state in nav
+
+    // helper: close mobile menu + market submenu together
+    const closeMobileMenuAndMarket = () => {
+      setShowMobileMenu(false);
+      setShowMobileMarketDropdown(false);
+    };
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -35,8 +38,7 @@ function MainNav() {
                 mobileMenuRef.current &&
                 !mobileMenuRef.current.contains(event.target)
             ) {
-                setShowMobileMenu(false);
-                setShowMobileMarketDropdown(false); // also close mobile market submenu
+                closeMobileMenuAndMarket();
             }
         };
 
@@ -72,7 +74,6 @@ function MainNav() {
 
     const handleSearchSubmit = (value) => {
         const term = (value || "").trim();
-        // Determine include-description preference from current URL or localStorage
         let includeDesc = false;
         try {
             const spCurrent = new URLSearchParams(location.search || "");
@@ -87,7 +88,6 @@ function MainNav() {
         const sp = new URLSearchParams();
         if (term) sp.set('search', term);
         if (includeDesc) sp.set('desc', '1');
-        // Navigate to listings; allow empty term to show all
         const qs = sp.toString();
         navigate(qs ? `/app/listings?${qs}` : "/app/listings");
     };
@@ -112,102 +112,107 @@ function MainNav() {
                             maxLength={50}
                             onChange={(e) => setSearchText(e.target.value)}
                             onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleSearchSubmit(searchText);
-                            }
+                              if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleSearchSubmit(searchText);
+                              }
                             }}
                             className="h-full w-full px-2 sm:px-3 text-sm md:text-base text-slate-900 placeholder-slate-400 focus:outline-none min-w-0"
                         />
 
-                        {/* Clear button shows only when text present */}
                         {searchText ? (
                             <button
-                            type="button"
-                            onClick={() => {
-                                setSearchText("");
-                                inputRef.current?.focus();
-                            }}
-                            aria-label="Clear search"
-                            className="px-3 h-full text-slate-500 hover:text-slate-700"
+                              type="button"
+                              onClick={() => {
+                                  setSearchText("");
+                                  inputRef.current?.focus();
+                              }}
+                              aria-label="Clear search"
+                              className="px-3 h-full text-slate-500 hover:text-slate-700"
                             >
-                            ×
+                              ×
                             </button>
                         ) : null}
 
-                        {/* Search icon on the right */}
                         <button
                             type="button"
                             onClick={(e) => {
-                            e.preventDefault();
-                            handleSearchSubmit(searchText);
+                              e.preventDefault();
+                              handleSearchSubmit(searchText);
                             }}
                             className="flex h-full w-10 sm:w-12 md:w-16 lg:w-20 items-center justify-center border-l border-slate-200 border-black flex-shrink-0"
                         >
                             <img
-                            src={searchIcon}
-                            alt=""
-                            className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8"
+                              src={searchIcon}
+                              alt=""
+                              className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8"
                             />
                         </button>
-                        </div>
+                    </div>
                 </div>
 
                 {/* Desktop navigation - hidden on mobile */}
                 <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
-                        <Icon to="/app" src={homeIcon} alt="Home" />
+                    <Icon to="/app" src={homeIcon} alt="Home" />
+                    <Icon to="/app/notification" src={notificationIcon} alt="Notification" badge={unreadNotificationTotal} />
+                    <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadMsgTotal} />
 
-                        <Icon to="/app/notification" src={notificationIcon} alt="Notification" badge={unreadNotificationTotal} />
+                    <Icon
+                        to="#"
+                        src={marketIcon}
+                        alt="Market menu"
+                        liRef={dropdownRef}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setShowDropdown((prev) => !prev);
+                        }}
+                    >
+                        {showDropdown && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
+                              <button
+                                onClick={() => { handleSellerDashboard(); setShowDropdown(false); }}
+                                className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                              >
+                                Seller Dashboard
+                              </button>
+                              <button
+                                onClick={() => { handleWishlist(); setShowDropdown(false); }}
+                                className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                              >
+                                My Wishlist
+                              </button>
+                              <button
+                                onClick={() => { handleOngoingPurchases(); setShowDropdown(false); }}
+                                className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                              >
+                                Ongoing Purchases
+                              </button>
+                              <button
+                                onClick={() => { handlePurchaseHistory(); setShowDropdown(false); }}
+                                className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                              >
+                                Purchase History
+                              </button>
+                            </div>
+                        )}
+                    </Icon>
 
-                        <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadMsgTotal} />
-
-                        <Icon
-                            to="#"
-                            src={marketIcon}
-                            alt="Market menu"
-                            liRef={dropdownRef} // reuse existing ref for click-outside
-                            onClick={(e) => {
-                                e.preventDefault();          // prevent navigation to "#"
-                                setShowDropdown((prev) => !prev);
-                            }}
-                            >
-                            {showDropdown && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
-                                <button
-                                    onClick={() => { handleSellerDashboard(); setShowDropdown(false); }}
-                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                                >
-                                    Seller Dashboard
-                                </button>
-                                <button
-                                    onClick={() => { handleWishlist(); setShowDropdown(false); }}
-                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                                >
-                                    My Wishlist
-                                </button>
-                                <button
-                                    onClick={() => { handleOngoingPurchases(); setShowDropdown(false); }}
-                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                                >
-                                    Ongoing Purchases
-                                </button>
-                                <button
-                                    onClick={() => { handlePurchaseHistory(); setShowDropdown(false); }}
-                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                                >
-                                    Purchase History
-                                </button>
-                                </div>
-                            )}
-                        </Icon>
-                        <Icon to="/app/setting" src={settingIcon} alt="Setting" />
-
+                    <Icon to="/app/setting" src={settingIcon} alt="Setting" />
                 </ul>
 
                 {/* Mobile hamburger menu - visible only on mobile */}
                 <div className="mr-2 md:hidden relative" ref={mobileMenuRef}>
                     <button
-                        onClick={() => setShowMobileMenu(!showMobileMenu)}
+                        onClick={() => {
+                          setShowMobileMenu((prev) => {
+                            const next = !prev;
+                            if (!next) {
+                              // when closing, also close market dropdown
+                              setShowMobileMarketDropdown(false);
+                            }
+                            return next;
+                          });
+                        }}
                         className="flex flex-col justify-center items-center w-8 h-8 gap-1.5"
                         aria-label="Menu"
                     >
@@ -216,13 +221,12 @@ function MainNav() {
                         <span className="w-6 h-0.5 bg-white"></span>
                     </button>
 
-                    {/* Mobile menu dropdown */}
                     {showMobileMenu && (
                         <div className="absolute right-0 mt-2 w-56 bg-blue-600 rounded-lg shadow-lg py-2 z-50 border-2 border-blue-400">
                             <button
                                 onClick={() => {
                                     navigate("/app");
-                                    setShowMobileMenu(false);
+                                    closeMobileMenuAndMarket();
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
@@ -232,7 +236,7 @@ function MainNav() {
                             <button
                                 onClick={() => {
                                     navigate("/app/notification");
-                                    setShowMobileMenu(false);
+                                    closeMobileMenuAndMarket();
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
@@ -253,24 +257,24 @@ function MainNav() {
                             <button
                                 onClick={() => {
                                     navigate("/app/chat");
-                                    setShowMobileMenu(false);
+                                    closeMobileMenuAndMarket();
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                                {/* relative wrapper so the badge can be positioned on the icon */}
                                 <span className="relative inline-block">
                                     <img src={chatIcon} alt="" className="h-6 w-6" />
                                     {unreadMsgTotal > 0 && (
-                                    <span
-                                        className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
-                                        aria-label={`${unreadMsgTotal} unread`}
-                                    >
-                                        {unreadMsgTotal > 99 ? "99+" : unreadMsgTotal}
-                                    </span>
+                                      <span
+                                          className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
+                                          aria-label={`${unreadMsgTotal} unread`}
+                                      >
+                                          {unreadMsgTotal > 99 ? "99+" : unreadMsgTotal}
+                                      </span>
                                     )}
                                 </span>
                                 <span>Chat</span>
                             </button>
+
                             {/* "Market" dropdown (mobile) */}
                             <div className="relative">
                                 <button
@@ -281,7 +285,6 @@ function MainNav() {
                                         <img src={marketIcon} alt="" className="h-6 w-6" />
                                         <span>Market</span>
                                     </span>
-                                    {/* simple chevron indicator */}
                                     <span className={`transform transition-transform ${showMobileMarketDropdown ? "rotate-90" : ""}`}>
                                         ▶
                                     </span>
@@ -292,8 +295,7 @@ function MainNav() {
                                         <button
                                             onClick={() => {
                                                 handleSellerDashboard();
-                                                setShowMobileMenu(false);
-                                                setShowMobileMarketDropdown(false);
+                                                closeMobileMenuAndMarket();
                                             }}
                                             className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors rounded-t-md"
                                         >
@@ -302,8 +304,7 @@ function MainNav() {
                                         <button
                                             onClick={() => {
                                                 handleWishlist();
-                                                setShowMobileMenu(false);
-                                                setShowMobileMarketDropdown(false);
+                                                closeMobileMenuAndMarket();
                                             }}
                                             className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors"
                                         >
@@ -312,8 +313,7 @@ function MainNav() {
                                         <button
                                             onClick={() => {
                                                 handleOngoingPurchases();
-                                                setShowMobileMenu(false);
-                                                setShowMobileMarketDropdown(false);
+                                                closeMobileMenuAndMarket();
                                             }}
                                             className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors"
                                         >
@@ -322,8 +322,7 @@ function MainNav() {
                                         <button
                                             onClick={() => {
                                                 handlePurchaseHistory();
-                                                setShowMobileMenu(false);
-                                                setShowMobileMarketDropdown(false);
+                                                closeMobileMenuAndMarket();
                                             }}
                                             className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors rounded-b-md"
                                         >
@@ -336,7 +335,7 @@ function MainNav() {
                             <button
                                 onClick={() => {
                                     navigate("/app/setting");
-                                    setShowMobileMenu(false);
+                                    closeMobileMenuAndMarket();
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
