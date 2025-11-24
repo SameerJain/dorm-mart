@@ -62,7 +62,7 @@ export default function ChatPage() {
   const typingStatusTimeoutRef = useRef(null);
   const currentConvIdRef = useRef(null); // Track current active conversation
   const sendTypingAbortControllerRef = useRef(null); // For canceling send typing requests
-  const lastTypingStatusSentRef = useRef(false); // Track if we've already sent typing=true to avoid redundant calls
+  const lastTypingStatusSentRef = useRef(false); // Track last sent typing status for reference
   const isMountedRef = useRef(true); // Track if component is mounted
   
   // Prevent body scroll when delete confirmation modal is open
@@ -338,24 +338,16 @@ export default function ChatPage() {
         })
       });
       
-      if (response.ok) {
-        // Debug logging (can be removed later)
-        console.log(`[Typing Status] Sent typing=${isTyping} for conversation ${conversationId}`);
-        
-        // Track if we successfully sent typing=true
-        if (isTyping && currentConvIdRef.current === conversationId && isMountedRef.current) {
-          lastTypingStatusSentRef.current = true;
-        } else if (!isTyping && currentConvIdRef.current === conversationId && isMountedRef.current) {
-          lastTypingStatusSentRef.current = false;
-        }
-      } else {
-        console.warn('[Typing Status] Failed to send typing status:', response.status);
+      if (response.ok && currentConvIdRef.current === conversationId && isMountedRef.current) {
+        // Track if we successfully sent typing status
+        lastTypingStatusSentRef.current = isTyping;
       }
     } catch (error) {
-      // Ignore abort errors
-      if (error.name === 'AbortError') return;
-      // Silently fail - typing indicator is not critical
-      console.warn('Failed to send typing status:', error);
+      // Ignore abort errors - typing indicator is not critical, fail silently
+      if (error.name !== 'AbortError') {
+        // Only log non-abort errors for debugging
+        console.warn('Failed to send typing status:', error);
+      }
     }
   }, []);
 
