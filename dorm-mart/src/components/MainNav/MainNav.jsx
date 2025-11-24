@@ -1,52 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import chatIcon from '../../assets/icons/icons8-chat-96.png'
 import userIcon from '../../assets/icons/icons8-user-icon-96.png'
 import notificationIcon from '../../assets/icons/icons8-notification-96.png'
 import settingIcon from '../../assets/icons/icons8-setting-96.png'
-import Icon from './Icon'
+import marketIcon from '../../assets/icons/icons8-market-96.png';
 import searchIcon from '../../assets/icons/icons8-search-96.png';
+import homeIcon from '../../assets/icons/icons8-home-96.png';
+import Icon from './Icon'
 // filter icon removed; filters move to search page
-import { logout } from '../../utils/handle_auth';
 import { ChatContext } from "../../context/ChatContext";
 import { useContext } from 'react';
-
-// Home icon SVG component (matching icons8 style)
-const HomeIcon = ({ className }) => (
-    <svg 
-        className={className}
-        viewBox="0 0 96 96" 
-        fill="none" 
-        xmlns="http://www.w3.org/2000/svg"
-    >
-        <path 
-            d="M48 20L20 40V80H40V60H56V80H76V40L48 20Z" 
-            fill="currentColor" 
-            stroke="currentColor" 
-            strokeWidth="2"
-        />
-    </svg>
-);
-
-// Menu icon SVG component (list/menu icon for dropdown)
-const MenuIcon = ({ className }) => (
-    <svg 
-        className={className}
-        viewBox="0 0 96 96" 
-        fill="none" 
-        xmlns="http://www.w3.org/2000/svg"
-    >
-        {/* Three horizontal lines representing menu items */}
-        <rect x="20" y="28" width="56" height="8" rx="2" fill="currentColor" />
-        <rect x="20" y="44" width="56" height="8" rx="2" fill="currentColor" />
-        <rect x="20" y="60" width="56" height="8" rx="2" fill="currentColor" />
-    </svg>
-);
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
-    const [showMobileUserDropdown, setShowMobileUserDropdown] = useState(false);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
     const mobileMenuRef = useRef(null);
@@ -68,7 +36,6 @@ function MainNav() {
                 !mobileMenuRef.current.contains(event.target)
             ) {
                 setShowMobileMenu(false);
-                setShowMobileUserDropdown(false);
             }
             // no filter panel to close
         };
@@ -82,23 +49,12 @@ function MainNav() {
         };
     }, [showDropdown, showMobileMenu]);
 
-    const handleLogout = async () => {
-        // Call backend to clear server-side auth
-        await logout();
-        // Redirect to login page
-        navigate("/login");
-    };
-
     const handlePurchaseHistory = () => {
         navigate("/app/purchase-history");
     };
 
     const handleSellerDashboard = () => {
         navigate("/app/seller-dashboard");
-    };
-
-    const handleSchedulePurchase = () => {
-        navigate("/app/seller-dashboard/schedule-purchase");
     };
 
     const handleOngoingPurchases = () => {
@@ -140,11 +96,15 @@ function MainNav() {
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
                 {/* Home icon - visible on mobile only */}
                 <button
-                    onClick={() => navigate("/app")}
-                    className="md:hidden ml-1 sm:ml-2 flex-shrink-0"
-                    aria-label="Home"
+                onClick={() => navigate("/app")}
+                className="md:hidden ml-1 sm:ml-2 flex-shrink-0"
+                aria-label="Home"
                 >
-                    <HomeIcon className="h-8 w-8 text-slate-100" />
+                <img
+                    src={homeIcon}
+                    alt="Home"
+                    className="h-8 w-8"
+                />
                 </button>
                 {/* Dorm Mart logo - visible on desktop only */}
                 <button
@@ -202,28 +162,24 @@ function MainNav() {
 
                 {/* Desktop navigation - hidden on mobile */}
                 <ul className="mr-1 sm:mr-2 hidden md:flex items-center gap-1 sm:gap-2 md:gap-3 lg:gap-4 flex-shrink-0">
-                    {/* Home icon - left-most button */}
-                    <li>
-                        <Link to="/app" className="relative inline-block">
-                            <HomeIcon className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 lg:h-12 lg:w-12 text-slate-100" />
-                        </Link>
-                    </li>
-                    <Icon to="/app/notification" src={notificationIcon} alt="Notification" badge={unreadNotificationTotal} />
+                        <Icon to="/app" src={homeIcon} alt="Home" />
 
-                    <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadMsgTotal} />
+                        <Icon to="/app/notification" src={notificationIcon} alt="Notification" badge={unreadNotificationTotal} />
 
-                    {/* Menu icon with dropdown */}
-                    <li className="relative" ref={dropdownRef}>
-                        <button
-                            onClick={() => setShowDropdown(!showDropdown)}
-                            className="block"
-                        >
-                            <MenuIcon className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 lg:h-12 lg:w-12 text-slate-100" />
-                        </button>
+                        <Icon to="/app/chat" src={chatIcon} alt="Chat" badge={unreadMsgTotal} />
 
-                        {/* Dropdown menu */}
-                        {showDropdown && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
+                        <Icon
+                            to="#"
+                            src={marketIcon}
+                            alt="Market menu"
+                            liRef={dropdownRef} // reuse existing ref for click-outside
+                            onClick={(e) => {
+                                e.preventDefault();          // prevent navigation to "#"
+                                setShowDropdown((prev) => !prev);
+                            }}
+                            >
+                            {showDropdown && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
                                 <button
                                     onClick={() => { handleSellerDashboard(); setShowDropdown(false); }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
@@ -248,17 +204,13 @@ function MainNav() {
                                 >
                                     Purchase History
                                 </button>
-                                <button
-                                    onClick={() => { handleLogout(); setShowDropdown(false); }}
-                                    className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                                >
-                                    Log Out
-                                </button>
-                            </div>
-                        )}
-                    </li>
+                                </div>
+                            )}
+                        </Icon>
 
-                    <Icon to="/app/setting" src={settingIcon} alt="Setting" />
+
+                        <Icon to="/app/setting" src={settingIcon} alt="Setting" />
+
                 </ul>
 
                 {/* Mobile hamburger menu - visible only on mobile */}
@@ -280,11 +232,15 @@ function MainNav() {
                             <button
                                 onClick={() => {
                                     navigate("/app");
-                                    setShowMobileMenu(false);
+                                    setShowMobileMenu(false); // close menu after navigating
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                                <HomeIcon className="h-8 w-8 text-white" />
+                                <img
+                                    src={homeIcon}
+                                    alt=""
+                                    className="h-6 w-6"
+                                />
                                 <span>Home</span>
                             </button>
                             <button
@@ -336,7 +292,7 @@ function MainNav() {
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <img src={marketIcon} alt="" className="h-6 w-6" />
                                 <span>Seller Dashboard</span>
                             </button>
                             <button
@@ -346,7 +302,7 @@ function MainNav() {
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <img src={marketIcon} alt="" className="h-6 w-6" />
                                 <span>My Wishlist</span>
                             </button>
                             <button
@@ -356,7 +312,7 @@ function MainNav() {
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <img src={marketIcon} alt="" className="h-6 w-6" />
                                 <span>Ongoing Purchases</span>
                             </button>
                             <button
@@ -366,35 +322,9 @@ function MainNav() {
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                                <img src={userIcon} alt="" className="h-6 w-6" />
+                                <img src={marketIcon} alt="" className="h-6 w-6" />
                                 <span>Purchase History</span>
                             </button>
-                            <div className="relative">
-                                <button
-                                    onClick={() =>
-                                        setShowMobileUserDropdown(!showMobileUserDropdown)
-                                    }
-                                    className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
-                                >
-                                    <img src={userIcon} alt="" className="h-6 w-6" />
-                                    <span>User Profile</span>
-                                </button>
-                                {/* Nested dropdown for logout */}
-                                {showMobileUserDropdown && (
-                                    <div className="mt-1 mx-2 bg-blue-500 rounded-md shadow-inner">
-                                        <button
-                                            onClick={() => {
-                                                handleLogout();
-                                                setShowMobileMenu(false);
-                                                setShowMobileUserDropdown(false);
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors rounded-md"
-                                        >
-                                            Log Out
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
                             <button
                                 onClick={() => {
                                     navigate("/app/setting");
