@@ -108,8 +108,49 @@ $stmt->bind_param('ii', $convId, $userId);
 $stmt->execute();
 $stmt->close();
 
+// Get typing status for other user in conversation
+$typingStatus = [
+    'is_typing' => false,
+    'typing_user_first_name' => null
+];
+
+if ($convId > 0) {
+    // Verify user has access to this conversation and get other user's ID
+    $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
+    $convStmt->bind_param('i', $convId);
+    $convStmt->execute();
+    $convRes = $convStmt->get_result();
+    if ($convRes && $convRes->num_rows > 0) {
+        $convRow = $convRes->fetch_assoc();
+        $otherUserId = ((int)$convRow['user1_id'] === $userId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
+        
+        if ($otherUserId > 0) {
+            // Get typing status for other user with their name, only if updated within last 8 seconds
+            $typingStmt = $conn->prepare('SELECT ts.is_typing, ua.first_name 
+                                        FROM typing_status ts
+                                        INNER JOIN user_accounts ua ON ts.user_id = ua.user_id
+                                        WHERE ts.conversation_id = ? AND ts.user_id = ? 
+                                        AND ts.updated_at > DATE_SUB(NOW(), INTERVAL 8 SECOND)');
+            $typingStmt->bind_param('ii', $convId, $otherUserId);
+            $typingStmt->execute();
+            $typingRes = $typingStmt->get_result();
+            
+            if ($typingRes && $typingRes->num_rows > 0) {
+                $typingRow = $typingRes->fetch_assoc();
+                $typingStatus['is_typing'] = (bool)(int)$typingRow['is_typing'];
+                if ($typingStatus['is_typing'] && !empty($typingRow['first_name'])) {
+                    $typingStatus['typing_user_first_name'] = $typingRow['first_name'];
+                }
+            }
+            $typingStmt->close();
+        }
+    }
+    $convStmt->close();
+}
+
 echo json_encode([
     'success'  => true,
     'conv_id'  => $convId,
     'messages' => $messages, // array of only-new messages
+    'typing_status' => $typingStatus, // typing status for other user
 ], JSON_UNESCAPED_SLASHES);

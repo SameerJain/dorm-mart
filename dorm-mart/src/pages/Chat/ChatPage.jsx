@@ -37,6 +37,7 @@ export default function ChatPage() {
     activeConvId,
     messages,
     messagesByConv,
+    typingStatusByConv,
     convError,
     chatByConvError,
     unreadMsgByConv,
@@ -57,18 +58,12 @@ export default function ChatPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
-  const [isOtherPersonTyping, setIsOtherPersonTyping] = useState(false);
-  const [typingUserName, setTypingUserName] = useState(null);
   const typingTimeoutRef = useRef(null);
   const typingStatusTimeoutRef = useRef(null);
-  const typingStartTimesRef = useRef(new Map()); // Map<conversationId, timestamp>
   const currentConvIdRef = useRef(null); // Track current active conversation
-  const abortControllerRef = useRef(null); // For canceling fetch requests
   const sendTypingAbortControllerRef = useRef(null); // For canceling send typing requests
   const lastTypingStatusSentRef = useRef(false); // Track if we've already sent typing=true to avoid redundant calls
   const isMountedRef = useRef(true); // Track if component is mounted
-  const pollingIntervalIdRef = useRef(null); // Track interval ID for cleanup
-  const checkTypingStatusRef = useRef(null); // Ref to checkTypingStatus function for external calls
   
   // Prevent body scroll when delete confirmation modal is open
   useEffect(() => {
@@ -234,11 +229,14 @@ export default function ChatPage() {
     if (activeConvId) setIsMobileList(false);
   }, [activeConvId]);
 
+  // Derive typing status from context (comes from fetch_new_messages)
+  const typingStatus = activeConvId ? (typingStatusByConv[activeConvId] || { is_typing: false, typing_user_first_name: null }) : null;
+  const isOtherPersonTyping = typingStatus?.is_typing || false;
+  const typingUserName = typingStatus?.typing_user_first_name || null;
+
   /** Cleanup typing-related timeouts and requests when conversation changes */
   useEffect(() => {
     if (!activeConvId) {
-      setIsOtherPersonTyping(false);
-      setTypingUserName(null);
       currentConvIdRef.current = null;
       lastTypingStatusSentRef.current = false;
       return;
@@ -259,10 +257,6 @@ export default function ChatPage() {
       }
       
       // Cancel all in-flight requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
       if (sendTypingAbortControllerRef.current) {
         sendTypingAbortControllerRef.current.abort();
         sendTypingAbortControllerRef.current = null;
@@ -287,10 +281,6 @@ export default function ChatPage() {
       if (sendTypingAbortControllerRef.current) {
         sendTypingAbortControllerRef.current.abort();
         sendTypingAbortControllerRef.current = null;
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
       }
     };
   }, []);
@@ -317,151 +307,6 @@ export default function ChatPage() {
       return () => clearTimeout(timeoutId);
     }
   }, [isOtherPersonTyping]);
-
-  /** Poll for other person's typing status */
-  useEffect(() => {
-    if (!activeConvId || !isMountedRef.current) {
-      setIsOtherPersonTyping(false);
-      setTypingUserName(null);
-      currentConvIdRef.current = null;
-      // Clear any existing polling
-      if (pollingIntervalIdRef.current) {
-        clearInterval(pollingIntervalIdRef.current);
-        pollingIntervalIdRef.current = null;
-      }
-      return;
-    }
-
-    // Update current conversation ref
-    currentConvIdRef.current = activeConvId;
-    
-    // Cancel any previous fetch requests
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Create new AbortController for this conversation
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    // Continuous polling interval - simpler and more reliable
-    const POLL_INTERVAL = 3000; // 3 seconds - frequent enough to catch typing
-    
-    const convId = activeConvId; // Capture conversation ID
-
-    const checkTypingStatus = async () => {
-      // Verify conversation is still active and component is mounted before proceeding
-      if (currentConvIdRef.current !== convId || !isMountedRef.current) {
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `${API_BASE}/chat/typing_status.php?conversation_id=${convId}`,
-          {
-            method: 'GET',
-            credentials: 'include',
-            signal: abortController.signal
-          }
-        );
-        
-        // Verify conversation is still active after fetch
-        if (currentConvIdRef.current !== convId || !isMountedRef.current) {
-          return;
-        }
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            // Final check before state update
-            if (currentConvIdRef.current !== convId || !isMountedRef.current) {
-              return;
-            }
-
-            const isTyping = data.is_typing || false;
-            
-            // Debug logging (can be removed later)
-            if (isTyping) {
-              console.log('[Typing Status] Other person is typing:', data.typing_user_first_name);
-            }
-            
-            if (isTyping) {
-              // Get or create conversation-specific timestamp
-              if (!typingStartTimesRef.current.has(convId)) {
-                typingStartTimesRef.current.set(convId, Date.now());
-              }
-              
-              // Check if typing has been going on for more than 30 seconds
-              const startTime = typingStartTimesRef.current.get(convId);
-              const typingDuration = Date.now() - startTime;
-              if (typingDuration > 30000) {
-                // Hide indicator if typing for more than 30 seconds (anti-troll measure)
-                if (isMountedRef.current && currentConvIdRef.current === convId) {
-                  setIsOtherPersonTyping(false);
-                  setTypingUserName(null);
-                }
-                typingStartTimesRef.current.delete(convId);
-              } else {
-                // Update typing status and user name
-                if (isMountedRef.current && currentConvIdRef.current === convId) {
-                  setIsOtherPersonTyping(true);
-                  if (data.typing_user_first_name) {
-                    setTypingUserName(data.typing_user_first_name);
-                  } else {
-                    setTypingUserName(null);
-                  }
-                }
-              }
-            } else {
-              // Typing stopped, reset the timestamp and clear name for this conversation
-              typingStartTimesRef.current.delete(convId);
-              if (isMountedRef.current && currentConvIdRef.current === convId) {
-                setIsOtherPersonTyping(false);
-                setTypingUserName(null);
-              }
-            }
-          }
-        }
-      } catch (error) {
-        // Ignore abort errors
-        if (error.name === 'AbortError') return;
-        // Silently fail - typing indicator is not critical
-        console.warn('Failed to check typing status:', error);
-      }
-    };
-
-    // Store ref to checkTypingStatus so we can call it externally
-    checkTypingStatusRef.current = checkTypingStatus;
-
-    // Check immediately
-    checkTypingStatus();
-
-    // Start continuous polling every 3 seconds
-    const pollingIntervalId = setInterval(checkTypingStatus, POLL_INTERVAL);
-    pollingIntervalIdRef.current = pollingIntervalId;
-
-    return () => {
-      if (pollingIntervalIdRef.current) {
-        clearInterval(pollingIntervalIdRef.current);
-        pollingIntervalIdRef.current = null;
-      }
-      if (abortController) {
-        abortController.abort();
-      }
-      // Only update state if component is still mounted and conversation matches
-      if (isMountedRef.current && currentConvIdRef.current === convId) {
-        setIsOtherPersonTyping(false);
-        setTypingUserName(null);
-      }
-      // Capture convId for cleanup (already captured in closure)
-      const cleanupConvId = convId;
-      typingStartTimesRef.current.delete(cleanupConvId);
-      if (currentConvIdRef.current === cleanupConvId) {
-        currentConvIdRef.current = null;
-      }
-      checkTypingStatusRef.current = null;
-    };
-  }, [activeConvId]);
 
   /** Send typing status to backend */
   const sendTypingStatus = useCallback(async (conversationId, isTyping) => {
@@ -1050,6 +895,8 @@ export default function ChatPage() {
                   // Filter out duplicate confirm_request messages if a response exists
                   // Build a map of confirm_request_id to response messages
                   const confirmResponses = new Map();
+                  let latestConfirmAcceptedTs = null;
+                  
                   messages.forEach((m) => {
                     const metadata = typeof m.metadata === 'string' ? (() => {
                       try { return JSON.parse(m.metadata); } catch { return null; }
@@ -1064,11 +911,18 @@ export default function ChatPage() {
                     )) {
                       // Track that we have a response for this confirm_request_id
                       confirmResponses.set(confirmRequestId, true);
+                      
+                      // Track the latest confirm_accepted/confirm_auto_accepted timestamp
+                      if ((messageType === 'confirm_accepted' || messageType === 'confirm_auto_accepted') && m.ts) {
+                        if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
+                          latestConfirmAcceptedTs = m.ts;
+                        }
+                      }
                     }
                   });
                   
                   // Filter messages: hide confirm_request if a response exists for the same confirm_request_id
-                  return messages.filter((m) => {
+                  let filteredMessages = messages.filter((m) => {
                     const metadata = typeof m.metadata === 'string' ? (() => {
                       try { return JSON.parse(m.metadata); } catch { return null; }
                     })() : (m.metadata || null);
@@ -1081,6 +935,54 @@ export default function ChatPage() {
                     }
                     return true; // Show this message
                   });
+                  
+                  // Insert virtual messages for review/rating prompts right after the latest confirm_accepted message
+                  if (latestConfirmAcceptedTs !== null && hasAcceptedConfirm && activeConversation?.productId) {
+                    const virtualMessages = [];
+                    
+                    // Add review prompt for buyers
+                    if (shouldShowReviewPrompt) {
+                      virtualMessages.push({
+                        message_id: `review_prompt_${activeConversation.productId}`,
+                        sender: 'system',
+                        content: '',
+                        ts: latestConfirmAcceptedTs + 1, // Place right after confirm_accepted
+                        metadata: {
+                          type: 'review_prompt'
+                        }
+                      });
+                    }
+                    
+                    // Add buyer rating prompt for sellers
+                    if (shouldShowBuyerRatingPrompt && activeReceiverId) {
+                      virtualMessages.push({
+                        message_id: `buyer_rating_prompt_${activeConversation.productId}_${activeReceiverId}`,
+                        sender: 'system',
+                        content: '',
+                        ts: latestConfirmAcceptedTs + 2, // Place after review prompt if both exist
+                        metadata: {
+                          type: 'buyer_rating_prompt'
+                        }
+                      });
+                    }
+                    
+                    // Insert virtual messages into the array and sort by timestamp
+                    filteredMessages = [...filteredMessages, ...virtualMessages].sort((a, b) => {
+                      const tsA = a.ts || 0;
+                      const tsB = b.ts || 0;
+                      if (tsA !== tsB) return tsA - tsB;
+                      // If timestamps are equal, ensure virtual messages come after regular messages
+                      const aMsgId = String(a.message_id || '');
+                      const bMsgId = String(b.message_id || '');
+                      const aIsVirtual = aMsgId.startsWith('review_prompt_') || aMsgId.startsWith('buyer_rating_prompt_');
+                      const bIsVirtual = bMsgId.startsWith('review_prompt_') || bMsgId.startsWith('buyer_rating_prompt_');
+                      if (aIsVirtual && !bIsVirtual) return 1;
+                      if (!aIsVirtual && bIsVirtual) return -1;
+                      return 0;
+                    });
+                  }
+                  
+                  return filteredMessages;
                 })().map((m) => {
                   /** Categorize message type: basic, schedule, confirm, listing intro, or next steps */
                   // Handle metadata that might be a string or object
@@ -1106,6 +1008,8 @@ export default function ChatPage() {
                   // Only treat as valid confirm message if it's a confirm type AND would not return null
                   const isConfirmMessage = isConfirmMessageType && !wouldConfirmCardReturnNull;
                   const isNextStepsMessage = messageType === 'next_steps';
+                  const isReviewPrompt = messageType === 'review_prompt';
+                  const isBuyerRatingPrompt = messageType === 'buyer_rating_prompt';
 
                   // Ensure message has parsed metadata
                   const messageWithMetadata = metadata ? { ...m, metadata } : m;
@@ -1114,6 +1018,30 @@ export default function ChatPage() {
                   // This prevents wrapper div creation and whitespace
                   if (isConfirmMessageType && wouldConfirmCardReturnNull) {
                     return null;
+                  }
+                  
+                  // Handle virtual prompt messages
+                  if (isReviewPrompt) {
+                    return (
+                      <div key={m.message_id}>
+                        <ReviewPromptMessageCard
+                          productId={activeConversation?.productId}
+                          productTitle={activeConversation?.productTitle}
+                        />
+                      </div>
+                    );
+                  }
+                  
+                  if (isBuyerRatingPrompt) {
+                    return (
+                      <div key={m.message_id}>
+                        <BuyerRatingPromptMessageCard
+                          productId={activeConversation?.productId}
+                          productTitle={activeConversation?.productTitle}
+                          buyerId={activeReceiverId}
+                        />
+                      </div>
+                    );
                   }
                   
                   return (
@@ -1221,19 +1149,6 @@ export default function ChatPage() {
                     </div>
                   );
                 })
-              )}
-              {shouldShowReviewPrompt && (
-                <ReviewPromptMessageCard
-                  productId={activeConversation.productId}
-                  productTitle={activeConversation.productTitle}
-                />
-              )}
-              {shouldShowBuyerRatingPrompt && (
-                <BuyerRatingPromptMessageCard
-                  productId={activeConversation.productId}
-                  productTitle={activeConversation.productTitle}
-                  buyerId={activeReceiverId}
-                />
               )}
               {isOtherPersonTyping && activeConvId && (
                 <TypingIndicatorMessage 

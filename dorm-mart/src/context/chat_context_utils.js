@@ -49,15 +49,20 @@ export async function fetch_new_messages(activeConvId, ts, signal) {
 export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, signal) {
   const res = await fetch_new_messages(activeConvId, sinceSec, signal);
   const raw = res?.messages ?? [];
-  if (!raw.length) return [];
+  const typingStatus = res?.typing_status || { is_typing: false, typing_user_first_name: null };
 
   const myIdNum = Number(myId);
   if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
     console.error('Invalid myId in tick_fetch_new_messages:', myId);
-    return [];
+    return { messages: [], typingStatus };
   }
 
-  return raw.map((m) => {
+  // Always return typing status, even if no new messages
+  if (!raw.length) {
+    return { messages: [], typingStatus };
+  }
+
+  const messages = raw.map((m) => {
     const senderIdNum = Number(m.sender_id);
     const metadata = (() => {
       if (!m.metadata) return null;
@@ -84,6 +89,8 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
 
     return base;
   });
+
+  return { messages, typingStatus };
 }
 
 export async function fetch_unread_messages(signal) {
