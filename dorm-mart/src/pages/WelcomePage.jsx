@@ -1,8 +1,36 @@
 import { useNavigate } from 'react-router-dom';
-import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
+import { useEffect } from 'react';
+import { fetch_me } from '../utils/handle_auth.js';
+import PreLoginBranding from '../components/PreLoginBranding';
 
 function WelcomePage() {
   const navigate = useNavigate();
+
+  // Check if user is already authenticated on mount
+  useEffect(() => {
+    const controller = new AbortController();
+    
+    const checkAuth = async () => {
+      try {
+        await fetch_me(controller.signal);
+        // User is authenticated, redirect to app
+        navigate("/app", { replace: true });
+      } catch (error) {
+        // AbortError means component unmounted, don't navigate
+        if (error.name === 'AbortError') {
+          return;
+        }
+        // User is not authenticated, stay on welcome page
+      }
+    };
+
+    checkAuth();
+    
+    // Cleanup: abort fetch if component unmounts
+    return () => {
+      controller.abort();
+    };
+  }, [navigate]);
 
   const features = [
     { icon: '🛍️', title: 'Buy & Sell', description: 'Trade with students' },
@@ -13,64 +41,28 @@ function WelcomePage() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
-      <div className="hidden md:block md:w-1/2 relative min-h-screen">
-        {/* Background image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url(${backgroundImage})`,
-          }}
-        ></div>
-
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-
-        {/* Branding content */}
-        <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
-          <div className="text-center w-full px-4">
-            {/* Shopping cart icon */}
-            <div className="text-7xl mb-6 animate-bounce-slow">
-              🛒
-            </div>
-            
-            <h1 className="text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex flex-col lg:flex-row items-center justify-center lg:space-x-6 leading-tight lg:leading-normal animate-fade-in">
-              <span>Dorm</span>
-              <span>Mart</span>
-            </h1>
-            <h2 className="text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90 animate-fade-in-delay">
-              Wastage Who?
-            </h2>
-            <p className="text-lg lg:text-xl text-white opacity-80 mt-6 lg:mt-8 max-w-md mx-auto animate-fade-in-delay-2">
-              Your campus marketplace for buying and selling. Connect with fellow students and give items a second life.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PreLoginBranding animate={true} />
 
       {/* Right side - Action buttons (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen"
-        style={{ backgroundColor: "#364156" }}
+        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen pre-login-bg relative"
       >
         {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-6 text-center">
-          <h1 className="text-5xl font-serif text-white mb-2">Dorm Mart</h1>
-          <h2 className="text-xl font-light text-white opacity-90">
+        <div className="md:hidden mb-6 text-center relative z-10">
+          <h1 className="text-5xl font-serif text-gray-800 mb-2">Dorm Mart</h1>
+          <h2 className="text-xl font-light text-gray-600 opacity-90">
             Wastage Who?
           </h2>
         </div>
 
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md relative z-10">
           <div
-            className="p-4 sm:p-8 rounded-lg relative"
-            style={{ backgroundColor: "#3d3eb5" }}
+            className="p-4 sm:p-8 rounded-lg relative bg-blue-600"
           >
             {/* Torn paper effect */}
             <div
-              className="absolute inset-0 rounded-lg"
+              className="absolute inset-0 rounded-lg bg-blue-600"
               style={{
-                backgroundColor: "#3d3eb5",
                 clipPath:
                   "polygon(0 0, 100% 0, 100% 85%, 95% 90%, 100% 95%, 100% 100%, 0 100%)",
               }}
@@ -139,45 +131,6 @@ function WelcomePage() {
           </div>
         </div>
       </div>
-
-      {/* Add custom animations via style tag */}
-      <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes bounce-slow {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-15px);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out;
-        }
-        
-        .animate-fade-in-delay {
-          animation: fade-in 0.8s ease-out 0.2s both;
-        }
-        
-        .animate-fade-in-delay-2 {
-          animation: fade-in 0.8s ease-out 0.4s both;
-        }
-        
-        .animate-bounce-slow {
-          animation: bounce-slow 3s infinite ease-in-out;
-        }
-      `}</style>
     </div>
   );
 }
