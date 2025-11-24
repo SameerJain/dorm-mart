@@ -13,36 +13,20 @@ import BuyerRatingPromptMessageCard from "./components/BuyerRatingPromptMessageC
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
-// Typing indicator icon component (three animated dots)
-const TypingIndicatorIcon = ({ className }) => (
-  <svg 
-    className={className}
-    viewBox="0 0 96 96" 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="32" cy="48" r="8" fill="currentColor">
-      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0s" />
-    </circle>
-    <circle cx="48" cy="48" r="8" fill="currentColor">
-      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0.2s" />
-    </circle>
-    <circle cx="64" cy="48" r="8" fill="currentColor">
-      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0.4s" />
-    </circle>
-  </svg>
-);
-
 // Typing indicator message component (displays in messages area)
-const TypingIndicatorMessage = () => (
-  <div className="flex justify-start">
-    <div className="max-w-[80%] rounded-2xl px-3 py-2 bg-gray-100 text-gray-900 shadow">
-      <div className="flex items-center gap-1">
-        <TypingIndicatorIcon className="h-12 w-12 text-gray-600" />
+const TypingIndicatorMessage = ({ firstName }) => {
+  const displayName = firstName || "Someone";
+  
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[80%] rounded-2xl px-3 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 shadow">
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="text-sm italic truncate block">{displayName} is typing...</span>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 /** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
@@ -74,12 +58,17 @@ export default function ChatPage() {
   const [deleteError, setDeleteError] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
   const [isOtherPersonTyping, setIsOtherPersonTyping] = useState(false);
+  const [typingUserName, setTypingUserName] = useState(null);
   const typingTimeoutRef = useRef(null);
   const typingStatusTimeoutRef = useRef(null);
   const typingStartTimesRef = useRef(new Map()); // Map<conversationId, timestamp>
   const currentConvIdRef = useRef(null); // Track current active conversation
   const abortControllerRef = useRef(null); // For canceling fetch requests
   const sendTypingAbortControllerRef = useRef(null); // For canceling send typing requests
+  const lastTypingStatusSentRef = useRef(false); // Track if we've already sent typing=true to avoid redundant calls
+  const isMountedRef = useRef(true); // Track if component is mounted
+  const pollingIntervalIdRef = useRef(null); // Track interval ID for cleanup
+  const checkTypingStatusRef = useRef(null); // Ref to checkTypingStatus function for external calls
   
   // Prevent body scroll when delete confirmation modal is open
   useEffect(() => {
@@ -247,6 +236,17 @@ export default function ChatPage() {
 
   /** Cleanup typing-related timeouts and requests when conversation changes */
   useEffect(() => {
+    if (!activeConvId) {
+      setIsOtherPersonTyping(false);
+      setTypingUserName(null);
+      currentConvIdRef.current = null;
+      lastTypingStatusSentRef.current = false;
+      return;
+    }
+
+    currentConvIdRef.current = activeConvId;
+    lastTypingStatusSentRef.current = false; // Reset when conversation changes
+
     return () => {
       // Clear all timeouts
       if (typingTimeoutRef.current) {
@@ -269,6 +269,31 @@ export default function ChatPage() {
       }
     };
   }, [activeConvId]);
+
+  /** Component mount/unmount tracking */
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Cleanup all timeouts and abort controllers on unmount
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (typingStatusTimeoutRef.current) {
+        clearTimeout(typingStatusTimeoutRef.current);
+        typingStatusTimeoutRef.current = null;
+      }
+      if (sendTypingAbortControllerRef.current) {
+        sendTypingAbortControllerRef.current.abort();
+        sendTypingAbortControllerRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   /** Auto-scroll to bottom when active conversation or messages change */
   useEffect(() => {
@@ -295,9 +320,15 @@ export default function ChatPage() {
 
   /** Poll for other person's typing status */
   useEffect(() => {
-    if (!activeConvId) {
+    if (!activeConvId || !isMountedRef.current) {
       setIsOtherPersonTyping(false);
+      setTypingUserName(null);
       currentConvIdRef.current = null;
+      // Clear any existing polling
+      if (pollingIntervalIdRef.current) {
+        clearInterval(pollingIntervalIdRef.current);
+        pollingIntervalIdRef.current = null;
+      }
       return;
     }
 
@@ -313,13 +344,14 @@ export default function ChatPage() {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    let pollingInterval;
-    let isMounted = true;
+    // Continuous polling interval - simpler and more reliable
+    const POLL_INTERVAL = 3000; // 3 seconds - frequent enough to catch typing
+    
     const convId = activeConvId; // Capture conversation ID
 
     const checkTypingStatus = async () => {
-      // Verify conversation is still active before proceeding
-      if (currentConvIdRef.current !== convId || !isMounted) {
+      // Verify conversation is still active and component is mounted before proceeding
+      if (currentConvIdRef.current !== convId || !isMountedRef.current) {
         return;
       }
 
@@ -334,7 +366,7 @@ export default function ChatPage() {
         );
         
         // Verify conversation is still active after fetch
-        if (currentConvIdRef.current !== convId || !isMounted) {
+        if (currentConvIdRef.current !== convId || !isMountedRef.current) {
           return;
         }
         
@@ -342,11 +374,16 @@ export default function ChatPage() {
           const data = await response.json();
           if (data.success) {
             // Final check before state update
-            if (currentConvIdRef.current !== convId || !isMounted) {
+            if (currentConvIdRef.current !== convId || !isMountedRef.current) {
               return;
             }
 
             const isTyping = data.is_typing || false;
+            
+            // Debug logging (can be removed later)
+            if (isTyping) {
+              console.log('[Typing Status] Other person is typing:', data.typing_user_first_name);
+            }
             
             if (isTyping) {
               // Get or create conversation-specific timestamp
@@ -359,15 +396,29 @@ export default function ChatPage() {
               const typingDuration = Date.now() - startTime;
               if (typingDuration > 30000) {
                 // Hide indicator if typing for more than 30 seconds (anti-troll measure)
-                setIsOtherPersonTyping(false);
+                if (isMountedRef.current && currentConvIdRef.current === convId) {
+                  setIsOtherPersonTyping(false);
+                  setTypingUserName(null);
+                }
                 typingStartTimesRef.current.delete(convId);
               } else {
-                setIsOtherPersonTyping(true);
+                // Update typing status and user name
+                if (isMountedRef.current && currentConvIdRef.current === convId) {
+                  setIsOtherPersonTyping(true);
+                  if (data.typing_user_first_name) {
+                    setTypingUserName(data.typing_user_first_name);
+                  } else {
+                    setTypingUserName(null);
+                  }
+                }
               }
             } else {
-              // Typing stopped, reset the timestamp for this conversation
+              // Typing stopped, reset the timestamp and clear name for this conversation
               typingStartTimesRef.current.delete(convId);
-              setIsOtherPersonTyping(false);
+              if (isMountedRef.current && currentConvIdRef.current === convId) {
+                setIsOtherPersonTyping(false);
+                setTypingUserName(null);
+              }
             }
           }
         }
@@ -379,33 +430,42 @@ export default function ChatPage() {
       }
     };
 
+    // Store ref to checkTypingStatus so we can call it externally
+    checkTypingStatusRef.current = checkTypingStatus;
+
     // Check immediately
     checkTypingStatus();
 
-    // Poll every 3 seconds
-    pollingInterval = setInterval(checkTypingStatus, 3000);
+    // Start continuous polling every 3 seconds
+    const pollingIntervalId = setInterval(checkTypingStatus, POLL_INTERVAL);
+    pollingIntervalIdRef.current = pollingIntervalId;
 
     return () => {
-      isMounted = false;
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+      if (pollingIntervalIdRef.current) {
+        clearInterval(pollingIntervalIdRef.current);
+        pollingIntervalIdRef.current = null;
       }
       if (abortController) {
         abortController.abort();
       }
-      setIsOtherPersonTyping(false);
+      // Only update state if component is still mounted and conversation matches
+      if (isMountedRef.current && currentConvIdRef.current === convId) {
+        setIsOtherPersonTyping(false);
+        setTypingUserName(null);
+      }
       // Capture convId for cleanup (already captured in closure)
       const cleanupConvId = convId;
       typingStartTimesRef.current.delete(cleanupConvId);
       if (currentConvIdRef.current === cleanupConvId) {
         currentConvIdRef.current = null;
       }
+      checkTypingStatusRef.current = null;
     };
   }, [activeConvId]);
 
   /** Send typing status to backend */
   const sendTypingStatus = useCallback(async (conversationId, isTyping) => {
-    if (!conversationId) return;
+    if (!conversationId || !isMountedRef.current) return;
     
     // Verify conversation is still active
     if (currentConvIdRef.current !== conversationId) {
@@ -422,7 +482,7 @@ export default function ChatPage() {
     sendTypingAbortControllerRef.current = abortController;
     
     try {
-      await fetch(`${API_BASE}/chat/typing_status.php`, {
+      const response = await fetch(`${API_BASE}/chat/typing_status.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -432,6 +492,20 @@ export default function ChatPage() {
           is_typing: isTyping
         })
       });
+      
+      if (response.ok) {
+        // Debug logging (can be removed later)
+        console.log(`[Typing Status] Sent typing=${isTyping} for conversation ${conversationId}`);
+        
+        // Track if we successfully sent typing=true
+        if (isTyping && currentConvIdRef.current === conversationId && isMountedRef.current) {
+          lastTypingStatusSentRef.current = true;
+        } else if (!isTyping && currentConvIdRef.current === conversationId && isMountedRef.current) {
+          lastTypingStatusSentRef.current = false;
+        }
+      } else {
+        console.warn('[Typing Status] Failed to send typing status:', response.status);
+      }
     } catch (error) {
       // Ignore abort errors
       if (error.name === 'AbortError') return;
@@ -445,34 +519,43 @@ export default function ChatPage() {
     const newValue = e.target.value;
     setDraft(newValue);
 
-    if (!activeConvId) return;
+    if (!activeConvId || !isMountedRef.current) return;
 
     // Capture conversation ID to avoid stale closure
     const convId = activeConvId;
 
+    // Verify conversation is still active
+    if (currentConvIdRef.current !== convId) {
+      return;
+    }
+
     // Clear existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
     }
     if (typingStatusTimeoutRef.current) {
       clearTimeout(typingStatusTimeoutRef.current);
+      typingStatusTimeoutRef.current = null;
     }
 
-    // Send "typing" status after 300ms of typing
+    // Send "typing" status after 500ms debounce when user types
+    // Always set up the timeout to ensure typing status is sent reliably
     typingTimeoutRef.current = setTimeout(() => {
-      // Verify conversation is still active before sending
-      if (currentConvIdRef.current === convId) {
+      // Verify conversation is still active and component is mounted before sending
+      if (currentConvIdRef.current === convId && isMountedRef.current) {
         sendTypingStatus(convId, true);
       }
-    }, 300);
+    }, 500);
 
-    // Send "stopped" status after 4s of inactivity
+    // Send "stopped" status after 3s of inactivity (reduced from 4s for better UX)
     typingStatusTimeoutRef.current = setTimeout(() => {
-      // Verify conversation is still active before sending
-      if (currentConvIdRef.current === convId) {
+      // Verify conversation is still active and component is mounted before sending
+      if (currentConvIdRef.current === convId && isMountedRef.current) {
         sendTypingStatus(convId, false);
+        lastTypingStatusSentRef.current = false;
       }
-    }, 4000);
+    }, 3000);
   }, [activeConvId, sendTypingStatus]);
 
   /** Keydown handler for textarea: submit on Enter (without Shift) */
@@ -489,13 +572,16 @@ export default function ChatPage() {
       
       // Stop typing status when message is sent
       const convId = activeConvId;
-      if (convId && currentConvIdRef.current === convId) {
+      if (convId && currentConvIdRef.current === convId && isMountedRef.current) {
         sendTypingStatus(convId, false);
+        lastTypingStatusSentRef.current = false;
         if (typingTimeoutRef.current) {
           clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = null;
         }
         if (typingStatusTimeoutRef.current) {
           clearTimeout(typingStatusTimeoutRef.current);
+          typingStatusTimeoutRef.current = null;
         }
       }
     }
@@ -1136,9 +1222,6 @@ export default function ChatPage() {
                   );
                 })
               )}
-              {isOtherPersonTyping && activeConvId && (
-                <TypingIndicatorMessage />
-              )}
               {shouldShowReviewPrompt && (
                 <ReviewPromptMessageCard
                   productId={activeConversation.productId}
@@ -1150,6 +1233,11 @@ export default function ChatPage() {
                   productId={activeConversation.productId}
                   productTitle={activeConversation.productTitle}
                   buyerId={activeReceiverId}
+                />
+              )}
+              {isOtherPersonTyping && activeConvId && (
+                <TypingIndicatorMessage 
+                  firstName={typingUserName} 
                 />
               )}
             </div>
