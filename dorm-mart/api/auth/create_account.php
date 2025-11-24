@@ -2,6 +2,7 @@
 
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/auth_handle.php';
 setSecurityHeaders();
 setSecureCORS();
 
@@ -509,6 +510,11 @@ try {
         }
     }
     */
+
+    // Clear any existing session cookies when creating a new account
+    // This prevents confusion when a logged-in user creates a new account and then tries to login
+    // It also helps with security on shared machines
+    logout_destroy_session();
 
     // Success
     echo json_encode([

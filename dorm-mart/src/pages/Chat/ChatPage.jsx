@@ -686,7 +686,42 @@ export default function ChatPage() {
               ) : messages.length === 0 ? (
                 <p className="text-center text-sm text-gray-500 dark:text-gray-400">No messages yet.</p>
               ) : (
-                messages.map((m) => {
+                (() => {
+                  // Filter out duplicate confirm_request messages if a response exists
+                  // Build a map of confirm_request_id to response messages
+                  const confirmResponses = new Map();
+                  messages.forEach((m) => {
+                    const metadata = typeof m.metadata === 'string' ? (() => {
+                      try { return JSON.parse(m.metadata); } catch { return null; }
+                    })() : (m.metadata || null);
+                    const messageType = metadata?.type;
+                    const confirmRequestId = metadata?.confirm_request_id;
+                    
+                    if (confirmRequestId && (
+                      messageType === 'confirm_accepted' ||
+                      messageType === 'confirm_denied' ||
+                      messageType === 'confirm_auto_accepted'
+                    )) {
+                      // Track that we have a response for this confirm_request_id
+                      confirmResponses.set(confirmRequestId, true);
+                    }
+                  });
+                  
+                  // Filter messages: hide confirm_request if a response exists for the same confirm_request_id
+                  return messages.filter((m) => {
+                    const metadata = typeof m.metadata === 'string' ? (() => {
+                      try { return JSON.parse(m.metadata); } catch { return null; }
+                    })() : (m.metadata || null);
+                    const messageType = metadata?.type;
+                    const confirmRequestId = metadata?.confirm_request_id;
+                    
+                    // If this is a confirm_request and we have a response for it, hide it
+                    if (messageType === 'confirm_request' && confirmRequestId && confirmResponses.has(confirmRequestId)) {
+                      return false; // Hide this message
+                    }
+                    return true; // Show this message
+                  });
+                })().map((m) => {
                   /** Categorize message type: basic, schedule, confirm, listing intro, or next steps */
                   // Handle metadata that might be a string or object
                   const metadata = typeof m.metadata === 'string' ? (() => {
@@ -743,84 +778,84 @@ export default function ChatPage() {
                               }}
                             />
                           ) : isConfirmMessage ? (
-                        <ConfirmMessageCard
-                          message={messageWithMetadata}
-                          isMine={m.sender === "me"}
-                          onRespond={async () => {
-                            if (activeConvId) {
-                              await fetchConversation(activeConvId);
-                              const controller = new AbortController();
-                              await checkConfirmStatus(controller.signal);
-                            }
-                          }}
-                        />
-                      ) : (
-                        messageWithMetadata.image_url ? (
-                          <div
-                            className={
-                              "max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow " +
-                              (m.sender === "me" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900")
-                            }
-                          >
-                            {(() => {
-                              const imgSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${m.message_id}`;
-                              const dlSrc  = `${imgSrc}&download=1`;
-                              return (
-                                <>
-                                  <a 
-                                    href={imgSrc} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="block"
-                                    title="Chat Image - Click to view full size"
-                                  >
-                                    <img
-                                      src={imgSrc}
-                                      alt="Image attachment"
-                                      className={
-                                        "max-h-72 w-full object-contain rounded-lg " +
-                                        (m.sender === "me" ? "bg-white/10" : "bg-black/5")
-                                      }
-                                    />
-                                  </a>
-                                  {m.content && (
-                                    <p className="mt-2 whitespace-pre-wrap break-words">{m.content}</p>
-                                  )}
-                                  <div
-                                    className={
-                                      "mt-1 flex items-center justify-between text-[10px] " +
-                                      (m.sender === "me" ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")
-                                    }
-                                  >
-                                    <span>{fmtTime(m.ts)}</span>
-                                    <a
-                                      href={dlSrc}
-                                      className={
-                                        "ml-3 underline hover:no-underline " +
-                                        (m.sender === "me" ? "text-indigo-100" : "text-gray-600 dark:text-gray-400")
-                                      }
-                                    >
-                                      Download
-                                    </a>
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        ) : (
-                          <div
-                            className={
-                              "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
-                              (m.sender === "me" ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100")
-                            }
-                          >
-                            <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                            <div className={"mt-1 text-[10px] " + (m.sender === "me" ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
-                              {fmtTime(m.ts)}
-                            </div>
-                          </div>
-                        )
-                      )}
+                            <ConfirmMessageCard
+                              message={messageWithMetadata}
+                              isMine={m.sender === "me"}
+                              onRespond={async () => {
+                                if (activeConvId) {
+                                  await fetchConversation(activeConvId);
+                                  const controller = new AbortController();
+                                  await checkConfirmStatus(controller.signal);
+                                }
+                              }}
+                            />
+                          ) : (
+                            messageWithMetadata.image_url ? (
+                              <div
+                                className={
+                                  "max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow " +
+                                  (m.sender === "me" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900")
+                                }
+                              >
+                                {(() => {
+                                  const imgSrc = `${API_BASE}/chat/serve_chat_image.php?message_id=${m.message_id}`;
+                                  const dlSrc  = `${imgSrc}&download=1`;
+                                  return (
+                                    <>
+                                      <a 
+                                        href={imgSrc} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="block"
+                                        title="Chat Image - Click to view full size"
+                                      >
+                                        <img
+                                          src={imgSrc}
+                                          alt="Image attachment"
+                                          className={
+                                            "max-h-72 w-full object-contain rounded-lg " +
+                                            (m.sender === "me" ? "bg-white/10" : "bg-black/5")
+                                          }
+                                        />
+                                      </a>
+                                      {m.content && (
+                                        <p className="mt-2 whitespace-pre-wrap break-words">{m.content}</p>
+                                      )}
+                                      <div
+                                        className={
+                                          "mt-1 flex items-center justify-between text-[10px] " +
+                                          (m.sender === "me" ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")
+                                        }
+                                      >
+                                        <span>{fmtTime(m.ts)}</span>
+                                        <a
+                                          href={dlSrc}
+                                          className={
+                                            "ml-3 underline hover:no-underline " +
+                                            (m.sender === "me" ? "text-indigo-100" : "text-gray-600 dark:text-gray-400")
+                                          }
+                                        >
+                                          Download
+                                        </a>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <div
+                                className={
+                                  "max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow " +
+                                  (m.sender === "me" ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100")
+                                }
+                              >
+                                <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                                <div className={"mt-1 text-[10px] " + (m.sender === "me" ? "text-indigo-100" : "text-gray-500 dark:text-gray-400")}>
+                                  {fmtTime(m.ts)}
+                                </div>
+                              </div>
+                            )
+                          )}
                         </div>
                       )}
                     </div>

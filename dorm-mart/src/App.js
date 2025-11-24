@@ -18,6 +18,7 @@ import ProductListingPage from "./pages/ItemForms/ProductListingPage.jsx";
 import CreateAccount from "./pages/AccountCreation/index.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import MyProfilePage from "./pages/Settings/MyProfile.jsx";
+import BuyerReviewsPage from "./pages/Settings/BuyerReviewsPage.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
@@ -141,6 +142,7 @@ export const router = createHashRouter([
           { index: true, element: <Navigate to="/app/setting/my-profile" replace /> },
           { path: "my-profile", element: <MyProfilePage /> },
           { path: "change-password", element: <ChangePasswordPage /> },
+          { path: "buyer-reviews", element: <BuyerReviewsPage /> },
           // User Preferences
           { path: "user-preferences", element: <UserPreferences /> },
           // Stubs for yet-to-be-implemented pages (intentionally 404)

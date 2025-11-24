@@ -514,7 +514,7 @@ function SellerDashboardPage() {
                     </div>
 
                     {/* Metrics - Centered layout with 3 active statistics */}
-                    <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-12 md:flex-1 md:justify-center">
+                    <div className="flex flex-wrap md:flex-nowrap items-center justify-center gap-4 md:gap-12 md:flex-1">
                         <div className="text-center">
                             <div className="text-3xl font-bold text-white">{summaryMetrics.activeListings}</div>
                             <div className="text-sm text-blue-100">Active Listings</div>
