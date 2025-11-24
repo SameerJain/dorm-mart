@@ -43,7 +43,7 @@ export default function ItemCardNew({
     <div
       onClick={handleClick}
       className={`group relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200/90 dark:border-gray-700/70 overflow-hidden
-                 ${fixedWidth ? 'w-[210px]' : 'w-full'} h-[280px] cursor-pointer transition-all duration-200
+                 ${fixedWidth ? 'w-[240px]' : 'w-full'} h-[350px] cursor-pointer transition-all duration-200
                  hover:shadow-xl hover:-translate-y-1`}
     >
       {/* subtle top accent */}
