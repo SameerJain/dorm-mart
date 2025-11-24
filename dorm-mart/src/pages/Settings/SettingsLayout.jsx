@@ -46,13 +46,15 @@ function SettingsLayout({ children }) {
   const links = [
     { label: "My Profile", to: `${linkBase}/my-profile` },
     { label: "User Preferences", to: `${linkBase}/user-preferences` },
-    //{ label: "Security Options", to: `${linkBase}/security-options` },
     { label: "Change Password", to: `${linkBase}/change-password` },
   ];
 
   return (
-    // Fill viewport height minus the nav (≈64px). Use *height* + child h-full.
-    <div className="w-full flex flex-col bg-gray-50 dark:bg-gray-900" style={{ height: "calc(100vh - 64px)" }}>
+    // NOTE: `relative` so overlay is scoped *under* the main nav above
+    <div
+      className="w-full flex flex-col bg-gray-50 dark:bg-gray-900 relative"
+      style={{ height: "calc(100vh - 64px)" }}
+    >
       {/* Mobile hamburger menu button - only visible on mobile */}
       <div className="lg:hidden p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <button
@@ -84,7 +86,6 @@ function SettingsLayout({ children }) {
                 to={l.to}
                 className={({ isActive }) =>
                   [
-                    // was: "rounded-lg px-3 py-2 text-sm transition"
                     "rounded-lg px-3 py-2 text-base transition font-medium leading-6",
                     "hover:underline",
                     isActive ? "bg-white/15" : "bg-transparent",
@@ -98,7 +99,6 @@ function SettingsLayout({ children }) {
                 {l.label}
               </NavLink>
             ))}
-            {/* Logout button - styled differently as an action button */}
             <button
               onClick={handleLogout}
               className="rounded-lg px-3 py-2 text-base transition font-medium leading-6 text-white border border-white/50 hover:bg-white/20 hover:border-white/75 active:bg-white/30 mt-1"
@@ -108,68 +108,70 @@ function SettingsLayout({ children }) {
           </nav>
         </aside>
 
-        {/* Mobile Sidebar Overlay */}
-        {showMobileMenu && (
-          <div className="lg:hidden fixed inset-0 z-50 flex">
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black bg-opacity-50"
-              onClick={() => setShowMobileMenu(false)}
-            ></div>
+        {/* Mobile Sidebar Overlay – slides in from the left, doesn't cover the nav */}
+        <div
+          className={`lg:hidden absolute inset-0 z-50 flex transition-opacity duration-300 ${
+            showMobileMenu ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setShowMobileMenu(false)}
+          ></div>
 
-            {/* Sidebar */}
-            <aside
-              className="relative w-64 h-full rounded-r-xl p-0 text-white shadow-lg"
-              style={{ backgroundColor: NAV_BLUE }}
-            >
-              <div className="flex items-center justify-between px-4 py-3">
-                <h2 className="text-xl font-serif font-semibold">Settings</h2>
-                <button
+          {/* Sliding sidebar */}
+          <aside
+            className={`relative w-64 h-full rounded-r-xl p-0 text-white shadow-lg transform transition-transform duration-300 ${
+              showMobileMenu ? "translate-x-0" : "-translate-x-full"
+            }`}
+            style={{ backgroundColor: NAV_BLUE }}
+          >
+            <div className="flex items-center justify-between px-4 py-3">
+              <h2 className="text-xl font-serif font-semibold">Settings</h2>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="text-white hover:text-gray-300"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="h-px w-full" style={{ background: "rgba(255,255,255,0.25)" }} />
+            <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
+              {links.map((l) => (
+                <NavLink
+                  key={l.to}
+                  to={l.to}
                   onClick={() => setShowMobileMenu(false)}
-                  className="text-white hover:text-gray-300"
+                  className={({ isActive }) =>
+                    [
+                      "rounded-lg px-3 py-2 text-base transition font-medium leading-6",
+                      "hover:underline",
+                      isActive ? "bg-white/15" : "bg-transparent",
+                    ].join(" ")
+                  }
+                  style={({ isActive }) => ({
+                    color: "#ffffff",
+                    ...(isActive ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" } : {}),
+                  })}
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="h-px w-full" style={{ background: "rgba(255,255,255,0.25)" }} />
-              <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
-                {links.map((l) => (
-                  <NavLink
-                    key={l.to}
-                    to={l.to}
-                    onClick={() => setShowMobileMenu(false)}
-                    className={({ isActive }) =>
-                      [
-                        // was: "rounded-lg px-3 py-2 text-sm transition"
-                        "rounded-lg px-3 py-2 text-base transition font-medium leading-6",
-                        "hover:underline",
-                        isActive ? "bg-white/15" : "bg-transparent",
-                      ].join(" ")
-                    }
-                    style={({ isActive }) => ({
-                      color: "#ffffff",
-                      ...(isActive ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" } : {}),
-                    })}
-                  >
-                    {l.label}
-                  </NavLink>
-                ))}
-                {/* Logout button - styled differently as an action button */}
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setShowMobileMenu(false);
-                  }}
-                  className="rounded-lg px-3 py-2 text-base transition font-medium leading-6 text-white border border-white/50 hover:bg-white/20 hover:border-white/75 active:bg-white/30 mt-1"
-                >
-                  Log Out
-                </button>
-              </nav>
-            </aside>
-          </div>
-        )}
+                  {l.label}
+                </NavLink>
+              ))}
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setShowMobileMenu(false);
+                }}
+                className="rounded-lg px-3 py-2 text-base transition font-medium leading-6 text-white border border-white/50 hover:bg-white/20 hover:border-white/75 active:bg-white/30 mt-1"
+              >
+                Log Out
+              </button>
+            </nav>
+          </aside>
+        </div>
 
         {/* Content (stretch to bottom) */}
         <main className="h-full rounded-xl bg-white dark:bg-gray-800 p-4 sm:p-6 shadow overflow-auto min-h-0">
