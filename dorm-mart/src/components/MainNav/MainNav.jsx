@@ -15,6 +15,7 @@ import { useContext } from 'react';
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [showMobileMarketDropdown, setShowMobileMarketDropdown] = useState(false);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
     const mobileMenuRef = useRef(null);
@@ -25,7 +26,6 @@ function MainNav() {
     const { unreadMsgTotal, unreadNotificationTotal } = ctx;
     // no filters state in nav
 
-    // Close dropdowns/menus when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -36,8 +36,8 @@ function MainNav() {
                 !mobileMenuRef.current.contains(event.target)
             ) {
                 setShowMobileMenu(false);
+                setShowMobileMarketDropdown(false); // also close mobile market submenu
             }
-            // no filter panel to close
         };
 
         if (showDropdown || showMobileMenu) {
@@ -47,7 +47,8 @@ function MainNav() {
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [showDropdown, showMobileMenu]);
+        
+    }, [showDropdown, showMobileMenu, showMobileMarketDropdown]);
 
     const handlePurchaseHistory = () => {
         navigate("/app/purchase-history");
@@ -94,18 +95,6 @@ function MainNav() {
     return (
         <nav className="bg-blue-600 text-slate-100 dark:bg-gray-800 dark:text-gray-100">
             <div className="mx-auto flex items-center gap-1 sm:gap-2 md:gap-4 p-2 md:p-3">
-                {/* Home icon - visible on mobile only */}
-                <button
-                onClick={() => navigate("/app")}
-                className="md:hidden ml-1 sm:ml-2 flex-shrink-0"
-                aria-label="Home"
-                >
-                <img
-                    src={homeIcon}
-                    alt="Home"
-                    className="h-8 w-8"
-                />
-                </button>
                 {/* Dorm Mart logo - visible on desktop only */}
                 <button
                     onClick={() => navigate("/app")}
@@ -114,32 +103,19 @@ function MainNav() {
                     Dorm Mart
                 </button>
                 <div className="flex-1 mx-1 sm:mx-2 md:mx-3 lg:mx-5 min-w-0">
-                    <div className="flex h-12 md:h-15 items-center overflow-hidden rounded-full bg-white shadow-inner">
-                        {/* Search icon */}
-                        <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); handleSearchSubmit(searchText); }}
-                            className="flex h-full w-10 sm:w-12 md:w-16 lg:w-20 items-center justify-center border-r border-slate-200 border-black flex-shrink-0"
-                        >
-                            <img
-                                src={searchIcon}
-                                alt=""
-                                className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8"
-                            />
-                        </button>
-
+                    <div className="flex h-10 sm:h-11 md:h-15 items-center overflow-hidden rounded-full bg-white shadow-inner">
                         <input
                             type="text"
-                            placeholder="Search..."
+                            placeholder="Search by item name, category, or description.."
                             value={searchText}
                             ref={inputRef}
                             maxLength={50}
                             onChange={(e) => setSearchText(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleSearchSubmit(searchText);
-                                }
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSearchSubmit(searchText);
+                            }
                             }}
                             className="h-full w-full px-2 sm:px-3 text-sm md:text-base text-slate-900 placeholder-slate-400 focus:outline-none min-w-0"
                         />
@@ -147,17 +123,34 @@ function MainNav() {
                         {/* Clear button shows only when text present */}
                         {searchText ? (
                             <button
-                                type="button"
-                                onClick={() => { setSearchText(""); inputRef.current?.focus(); }}
-                                aria-label="Clear search"
-                                className="px-3 h-full text-slate-500 hover:text-slate-700"
+                            type="button"
+                            onClick={() => {
+                                setSearchText("");
+                                inputRef.current?.focus();
+                            }}
+                            aria-label="Clear search"
+                            className="px-3 h-full text-slate-500 hover:text-slate-700"
                             >
-                                ×
+                            ×
                             </button>
                         ) : null}
 
-                        {/* filter icon and panel removed; filters live on search page */}
-                    </div>
+                        {/* Search icon on the right */}
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                            e.preventDefault();
+                            handleSearchSubmit(searchText);
+                            }}
+                            className="flex h-full w-10 sm:w-12 md:w-16 lg:w-20 items-center justify-center border-l border-slate-200 border-black flex-shrink-0"
+                        >
+                            <img
+                            src={searchIcon}
+                            alt=""
+                            className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8"
+                            />
+                        </button>
+                        </div>
                 </div>
 
                 {/* Desktop navigation - hidden on mobile */}
@@ -207,8 +200,6 @@ function MainNav() {
                                 </div>
                             )}
                         </Icon>
-
-
                         <Icon to="/app/setting" src={settingIcon} alt="Setting" />
 
                 </ul>
@@ -228,19 +219,14 @@ function MainNav() {
                     {/* Mobile menu dropdown */}
                     {showMobileMenu && (
                         <div className="absolute right-0 mt-2 w-56 bg-blue-600 rounded-lg shadow-lg py-2 z-50 border-2 border-blue-400">
-                            {/* Home button - first item, left-most */}
                             <button
                                 onClick={() => {
                                     navigate("/app");
-                                    setShowMobileMenu(false); // close menu after navigating
+                                    setShowMobileMenu(false);
                                 }}
                                 className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                                <img
-                                    src={homeIcon}
-                                    alt=""
-                                    className="h-6 w-6"
-                                />
+                                <img src={homeIcon} alt="" className="h-6 w-6" />
                                 <span>Home</span>
                             </button>
                             <button
@@ -285,46 +271,68 @@ function MainNav() {
                                 </span>
                                 <span>Chat</span>
                             </button>
-                            <button
-                                onClick={() => {
-                                    handleSellerDashboard();
-                                    setShowMobileMenu(false);
-                                }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
-                            >
-                                <img src={marketIcon} alt="" className="h-6 w-6" />
-                                <span>Seller Dashboard</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    handleWishlist();
-                                    setShowMobileMenu(false);
-                                }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
-                            >
-                                <img src={marketIcon} alt="" className="h-6 w-6" />
-                                <span>My Wishlist</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    handleOngoingPurchases();
-                                    setShowMobileMenu(false);
-                                }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
-                            >
-                                <img src={marketIcon} alt="" className="h-6 w-6" />
-                                <span>Ongoing Purchases</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    handlePurchaseHistory();
-                                    setShowMobileMenu(false);
-                                }}
-                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
-                            >
-                                <img src={marketIcon} alt="" className="h-6 w-6" />
-                                <span>Purchase History</span>
-                            </button>
+                            {/* "Market" dropdown (mobile) */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowMobileMarketDropdown((prev) => !prev)}
+                                    className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center justify-between gap-3"
+                                >
+                                    <span className="flex items-center gap-3">
+                                        <img src={marketIcon} alt="" className="h-6 w-6" />
+                                        <span>Market</span>
+                                    </span>
+                                    {/* simple chevron indicator */}
+                                    <span className={`transform transition-transform ${showMobileMarketDropdown ? "rotate-90" : ""}`}>
+                                        ▶
+                                    </span>
+                                </button>
+
+                                {showMobileMarketDropdown && (
+                                    <div className="mt-1 mx-2 bg-blue-500 rounded-md shadow-inner">
+                                        <button
+                                            onClick={() => {
+                                                handleSellerDashboard();
+                                                setShowMobileMenu(false);
+                                                setShowMobileMarketDropdown(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors rounded-t-md"
+                                        >
+                                            Seller Dashboard
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                handleWishlist();
+                                                setShowMobileMenu(false);
+                                                setShowMobileMarketDropdown(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors"
+                                        >
+                                            My Wishlist
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                handleOngoingPurchases();
+                                                setShowMobileMenu(false);
+                                                setShowMobileMarketDropdown(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors"
+                                        >
+                                            Ongoing Purchases
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                handlePurchaseHistory();
+                                                setShowMobileMenu(false);
+                                                setShowMobileMarketDropdown(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-white hover:bg-blue-700 transition-colors rounded-b-md"
+                                        >
+                                            Purchase History
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
                             <button
                                 onClick={() => {
                                     navigate("/app/setting");
