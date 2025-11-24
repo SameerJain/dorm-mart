@@ -27,21 +27,8 @@ try {
     auth_boot_session();
     $userId = require_login();
 
-    // Validate buyer_user_id (optional - if not provided, use current user)
-    $buyerIdParam = trim((string)($_GET['buyer_user_id'] ?? ''));
-    $buyerId = null;
-    
-    if ($buyerIdParam !== '') {
-        if (!ctype_digit($buyerIdParam)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid buyer_user_id']);
-            exit;
-        }
-        $buyerId = (int)$buyerIdParam;
-    } else {
-        // If not provided, default to current user
-        $buyerId = $userId;
-    }
+    // Always use logged-in user's ID for privacy - users can only view their own buyer reviews
+    $buyerId = $userId;
 
     $conn = db();
     $conn->set_charset('utf8mb4');

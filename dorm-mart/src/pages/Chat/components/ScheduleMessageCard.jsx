@@ -211,7 +211,7 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
         
         {/* Product title and price for schedule_request messages */}
         {messageType === 'schedule_request' && productTitle && (
-          <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor} overflow-hidden`}>
+          <div className={`px-3 py-2 rounded-lg ${config.innerBgColor} border ${config.borderColor} overflow-hidden min-w-0`}>
             <p className={`text-sm font-semibold ${config.textColor} truncate block`}>
               <span className="font-bold">Item:</span> {productTitle}
             </p>
@@ -241,8 +241,8 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
               </div>
             )}
             {isTrade && metadata.trade_item_description && (
-              <p className={`text-sm font-semibold ${config.textColor} mt-1`}>
-                <span className="font-bold">Trade:</span> {metadata.trade_item_description}
+              <p className={`text-sm font-semibold ${config.textColor} mt-1 min-w-0 break-words break-all overflow-wrap-anywhere`} style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                <span className="font-bold">Trade:</span> <span className="break-all">{metadata.trade_item_description}</span>
               </p>
             )}
           </div>

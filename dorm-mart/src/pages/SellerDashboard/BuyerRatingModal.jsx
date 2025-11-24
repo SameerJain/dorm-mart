@@ -151,11 +151,6 @@ function BuyerRatingModal({
       return;
     }
 
-    if (reviewText.trim().length === 0) {
-      setError("Please write a review");
-      return;
-    }
-
     if (isSubmitting || pendingSubmit) return; // Prevent double submission
 
     // Set pending submit flag to prevent direct submission
@@ -223,7 +218,7 @@ function BuyerRatingModal({
     }
   };
 
-  const isFormValid = rating > 0 && reviewText.trim().length > 0;
+  const isFormValid = rating > 0;
 
   if (!isOpen) return null;
 
@@ -348,7 +343,7 @@ function BuyerRatingModal({
               {/* Review Text Section */}
               <div className="mb-6">
                 <label htmlFor="buyer-review-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Review <span className="text-red-500">*</span>
+                  Review (Optional)
                 </label>
                 <div 
                   className="overflow-hidden border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 min-w-0"
@@ -377,7 +372,6 @@ function BuyerRatingModal({
                       wordBreak: 'break-all',
                       overflowWrap: 'anywhere'
                     }}
-                    required
                   />
                 </div>
                 <div className="mt-1 flex items-center justify-between">

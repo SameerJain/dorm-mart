@@ -87,12 +87,10 @@ export default function ViewReceipt() {
           queryParams.set("id", productId);
         }
         const endpoint = `${API_BASE}/receipt/view_receipt.php?${queryParams.toString()}`;
-        console.log('[ViewReceipt] Fetching receipt from:', endpoint);
         const r = await fetch(endpoint, {
           signal: controller.signal,
           credentials: "include",
         });
-        console.log('[ViewReceipt] Response status:', r.status, r.statusText);
         if (!r.ok) {
           // Try to parse error response from API
           let errorMessage = `HTTP ${r.status}`;
@@ -120,7 +118,6 @@ export default function ViewReceipt() {
           throw new Error(errorMessage);
         }
         const json = await r.json();
-        console.log('[ViewReceipt] API response:', json);
         if (!json.success && json.error) {
           throw new Error(json.error);
         }

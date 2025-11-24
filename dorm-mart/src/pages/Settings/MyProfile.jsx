@@ -642,6 +642,13 @@ function MyProfilePage() {
                   <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Reviews</h2>
                   <p className="text-xs sm:text-sm text-slate-500">{reviewList.length} recorded review{reviewList.length === 1 ? "" : "s"}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/app/setting/buyer-reviews")}
+                  className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                >
+                  View how sellers have rated you
+                </button>
               </div>
               <div className="mt-4 flex-1 xl:overflow-y-auto xl:pr-1">
                 {reviewList.length === 0 ? (
