@@ -20,6 +20,8 @@ export default function SearchResults() {
   const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
 
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+
   // Derive includeDescription preference from URL or localStorage
   const includeDescriptionPref = useMemo(() => {
     const includeDescParam = query.get("desc") || query.get("includeDescription") || null;
@@ -175,23 +177,109 @@ export default function SearchResults() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 relative">
       <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between gap-2">
-        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex-shrink-0">Back</button>
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 break-words min-w-0 flex-1 text-center">{titleText}</h1>
-        <div className="flex-shrink-0" />
+        {/* LEFT SIDE */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Desktop: Back on the left */}
+          <button
+            onClick={() => navigate(-1)}
+            className="hidden md:inline text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Back
+          </button>
+
+          {/* Mobile: Filters on the left */}
+          <button
+            type="button"
+            onClick={() => setShowFiltersPanel(true)}
+            className="md:hidden text-xs px-2 py-1 rounded-full border border-blue-500 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:border-blue-400 dark:text-blue-300 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors"
+          >
+            Filters
+          </button>
+        </div>
+
+        {/* TITLE CENTERED */}
+        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 break-words min-w-0 flex-1 text-center">
+          {titleText}
+        </h1>
+
+        {/* RIGHT SIDE */}
+        <div className="flex items-center justify-end flex-shrink-0">
+          {/* Mobile: Back on the right */}
+          <button
+            onClick={() => navigate(-1)}
+            className="md:hidden text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Back
+          </button>
+
+          {/* Desktop: empty spacer to balance layout */}
+          <div className="hidden md:block w-0" />
+        </div>
+      </div>
+
+      <div
+        className={`md:hidden absolute inset-0 z-40 pointer-events-none ${
+          showFiltersPanel ? "pointer-events-auto" : ""
+        }`}
+      >
+      {/* Backdrop */}
+      <div
+        className={`absolute inset-0 bg-black/40 transition-opacity ${
+          showFiltersPanel ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={() => setShowFiltersPanel(false)}
+      />
+
+      {/* Slide-in panel from the left */}
+      <div
+        className={`absolute inset-y-0 left-0 max-w-xs w-72 transform transition-transform duration-300 ${
+          showFiltersPanel ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="h-full bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 flex flex-col">
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Search Filters
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowFiltersPanel(false)}
+              className="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
+            >
+              Close
+            </button>
+          </div>
+          {/* Filters content */}
+          <div className="flex-1 overflow-y-auto p-3">
+            <FiltersSidebar
+              query={query}
+              includeDescriptionPref={includeDescriptionPref}
+              onToggleIncludeDescription={handleToggleIncludeDescription}
+              navigate={navigate}
+              lastSearchRef={lastSearchRef}
+              onApplied={() => setShowFiltersPanel(false)}
+            />
+          </div>
+        </div>
+        </div>
       </div>
 
       <div className="w-full px-2 md:px-4 py-4">
         <div className="grid grid-cols-1 md:grid-cols-[260px,1fr] gap-4 items-start">
           {/* LEFT FILTERS */}
-          <FiltersSidebar
-            query={query}
-            includeDescriptionPref={includeDescriptionPref}
-            onToggleIncludeDescription={handleToggleIncludeDescription}
-            navigate={navigate}
-            lastSearchRef={lastSearchRef}
-          />
+          <div className="hidden md:block">
+              <FiltersSidebar
+                query={query}
+                includeDescriptionPref={includeDescriptionPref}
+                onToggleIncludeDescription={handleToggleIncludeDescription}
+                navigate={navigate}
+                lastSearchRef={lastSearchRef}
+                
+              />
+          </div>
 
           {/* RESULTS */}
           <section>
@@ -260,7 +348,14 @@ export default function SearchResults() {
 }
 
 // Sidebar component with filters and Apply button
-function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescription, navigate, lastSearchRef }) {
+function FiltersSidebar({
+  query,
+  includeDescriptionPref,
+  onToggleIncludeDescription,
+  navigate,
+  lastSearchRef,
+  onApplied, // optional: called after successful Apply
+}) {
   const [categories, setCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [sortOrder, setSortOrder] = useState(""); // '', 'new', 'old'
@@ -451,6 +546,10 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     if (acceptingTrades) sp.set("trades", "1");
     if (includeDescriptionPref) sp.set("desc", "1");
     navigate(`/app/listings?${sp.toString()}`);
+
+    if (typeof onApplied === "function") {
+      onApplied();
+    }
   };
 
   return (
