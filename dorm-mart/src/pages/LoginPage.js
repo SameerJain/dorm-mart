@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import backgroundImage from "../assets/images/login-page-left-side-background.jpg";
 import { fetch_me } from "../utils/handle_auth.js";
+import PreLoginBranding from "../components/PreLoginBranding";
 // Client no longer inspects cookies; auth is enforced server-side on protected routes
 
 function LoginPage() {
@@ -195,56 +195,28 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
-      <div className="hidden md:block md:w-1/2 relative min-h-screen">
-        {/* Background image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url(${backgroundImage})`,
-          }}
-        ></div>
-
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-
-        {/* Branding content */}
-        <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
-          <div className="text-center w-full px-4">
-            <h1 className="text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex flex-col lg:flex-row items-center justify-center lg:space-x-6 leading-tight lg:leading-normal">
-              <span>Dorm</span>
-              <span>Mart</span>
-            </h1>
-            <h2 className="text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90">
-              Wastage Who?
-            </h2>
-          </div>
-        </div>
-      </div>
+      <PreLoginBranding />
 
       {/* Right side - Login form (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen"
-        style={{ backgroundColor: "#364156" }}
+        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen pre-login-bg relative"
       >
         {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-6 text-center">
-          <h1 className="text-5xl font-serif text-white mb-2">Dorm Mart</h1>
-          <h2 className="text-xl font-light text-white opacity-90">
+        <div className="md:hidden mb-6 text-center relative z-10">
+          <h1 className="text-5xl font-serif text-gray-800 mb-2">Dorm Mart</h1>
+          <h2 className="text-xl font-light text-gray-600 opacity-90">
             Wastage Who?
           </h2>
         </div>
 
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md relative z-10">
           <div
-            className="p-4 sm:p-8 rounded-lg relative"
-            style={{ backgroundColor: "#3d3eb5" }}
+            className="p-4 sm:p-8 rounded-lg relative bg-blue-600"
           >
             {/* Torn paper effect */}
             <div
-              className="absolute inset-0 rounded-lg"
+              className="absolute inset-0 rounded-lg bg-blue-600"
               style={{
-                backgroundColor: "#3d3eb5",
                 clipPath:
                   "polygon(0 0, 100% 0, 100% 85%, 95% 90%, 100% 95%, 100% 100%, 0 100%)",
               }}
