@@ -6,9 +6,13 @@ import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
 // Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
 function containsMemePrice(priceString) {
   if (!priceString) return false;
-  const priceStr = String(priceString);
+  // Extract all digits from the price string (remove dollar signs, spaces, decimal points, etc.)
+  const digitsOnly = String(priceString).replace(/[^\d]/g, '');
+  if (!digitsOnly) return false;
+  
   const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
-  return memeNumbers.some(meme => priceStr.includes(meme));
+  // Check if any meme number sequence appears anywhere in the digit string
+  return memeNumbers.some(meme => digitsOnly.includes(meme));
 }
 
 function ProductListingPage() {
@@ -359,8 +363,31 @@ function ProductListingPage() {
   const handleInputChange = (field, value, setter) => {
     if (field === "title" && value.length > LIMITS.title) return;
     if (field === "description" && value.length > LIMITS.description) return;
-    // For price, only validate numeric limit if value is not empty and is a valid number
-    if (field === "price" && value !== "" && !isNaN(parseFloat(value)) && parseFloat(value) > LIMITS.price) return;
+    
+    // For price (text input), validate format: only digits and at most one decimal point
+    if (field === "price") {
+      // Allow empty string
+      if (value === "") {
+        setter(value);
+        return;
+      }
+      
+      // Count decimal points - only allow one
+      const decimalCount = (value.match(/\./g) || []).length;
+      if (decimalCount > 1) return;
+      
+      // Check if value matches valid number format (non-negative digits with optional decimal point)
+      // Allow: "40", "40.5", "40.99", "0.5", ".5", etc.
+      // Reject: "40.5.5", "abc", "40a", "-40", etc.
+      const validPricePattern = /^\d*\.?\d*$/;
+      
+      // Check if value matches valid pattern
+      if (!validPricePattern.test(value)) return;
+      
+      // Validate numeric limit if value is not empty and is a valid number
+      if (value !== "" && !isNaN(parseFloat(value)) && parseFloat(value) > LIMITS.price) return;
+    }
+    
     setter(value);
     if (errors[field]) {
       setErrors((prev) => {
@@ -1202,7 +1229,7 @@ function ProductListingPage() {
                     $
                   </span>
                   <input
-                    type="number"
+                    type="text"
                     value={price}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -1215,9 +1242,6 @@ function ProductListingPage() {
                         ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                     }`}
-                    step="0.01"
-                    min={LIMITS.priceMin}
-                    max={LIMITS.price}
                     placeholder="0.00"
                   />
                 </div>

@@ -51,6 +51,14 @@ export function ChatProvider({ children }) {
             return next;
         });
 
+        // Remove typing status for this conversation
+        setTypingStatusByConv((prev) => {
+            if (!prev[id]) return prev;
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+
         // Drop last-ts tracking for this conv
         if (lastTsRefByConv.current[id]) {
             delete lastTsRefByConv.current[id];
@@ -128,6 +136,7 @@ export function ChatProvider({ children }) {
     const [conversations, setConversations] = useState([]);
     const [activeConvId, setActiveConvId] = useState(null);
     const [messagesByConv, setMessagesByConv] = useState({});
+    const [typingStatusByConv, setTypingStatusByConv] = useState({}); // { convId -> { is_typing, typing_user_first_name } }
     const [convError, setConvError] = useState(false);
     const [chatByConvError, setChatByConvError] = useState({});
     const [sendMsgError, setSendMsgError] = useState(false);
@@ -468,12 +477,21 @@ export function ChatProvider({ children }) {
 
             try {
             const sinceSec = Math.floor((lastTsRefByConv.current[activeConvId] || 0) / 1000);
-            const incoming = await tick_fetch_new_messages(
+            const result = await tick_fetch_new_messages(
                 activeConvId,
                 currentMyId,
                 sinceSec,
                 controller.signal
             );
+
+            const incoming = result?.messages ?? [];
+            const typingStatus = result?.typingStatus ?? { is_typing: false, typing_user_first_name: null };
+
+            // Update typing status for this conversation (always update, even if no new messages)
+            setTypingStatusByConv((prev) => ({
+                ...prev,
+                [activeConvId]: typingStatus
+            }));
 
             if (!incoming.length) return;
 
@@ -630,6 +648,7 @@ export function ChatProvider({ children }) {
         activeConvId,
         messages,
         messagesByConv, // Expose to check loading state
+        typingStatusByConv, // Typing status per conversation
         convError,
         chatByConvError,
         sendMsgError,

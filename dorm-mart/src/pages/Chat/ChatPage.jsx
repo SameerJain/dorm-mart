@@ -13,6 +13,21 @@ import BuyerRatingPromptMessageCard from "./components/BuyerRatingPromptMessageC
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
+// Typing indicator message component (displays in messages area)
+const TypingIndicatorMessage = ({ firstName }) => {
+  const displayName = firstName || "Someone";
+  
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[80%] rounded-2xl px-3 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 shadow">
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="text-sm italic truncate block">{displayName} is typing...</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /** Root Chat page: wires context, sidebar, messages, and composer together */
 export default function ChatPage() {
   /** Chat global state and actions from context */
@@ -22,6 +37,7 @@ export default function ChatPage() {
     activeConvId,
     messages,
     messagesByConv,
+    typingStatusByConv,
     convError,
     chatByConvError,
     unreadMsgByConv,
@@ -42,6 +58,12 @@ export default function ChatPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
+  const typingTimeoutRef = useRef(null);
+  const typingStatusTimeoutRef = useRef(null);
+  const currentConvIdRef = useRef(null); // Track current active conversation
+  const sendTypingAbortControllerRef = useRef(null); // For canceling send typing requests
+  const lastTypingStatusSentRef = useRef(false); // Track last sent typing status for reference
+  const isMountedRef = useRef(true); // Track if component is mounted
   
   // Prevent body scroll when delete confirmation modal is open
   useEffect(() => {
@@ -207,11 +229,171 @@ export default function ChatPage() {
     if (activeConvId) setIsMobileList(false);
   }, [activeConvId]);
 
+  // Derive typing status from context (comes from fetch_new_messages)
+  const typingStatus = activeConvId ? (typingStatusByConv[activeConvId] || { is_typing: false, typing_user_first_name: null }) : null;
+  const isOtherPersonTyping = typingStatus?.is_typing || false;
+  const typingUserName = typingStatus?.typing_user_first_name || null;
+
+  /** Cleanup typing-related timeouts and requests when conversation changes */
+  useEffect(() => {
+    if (!activeConvId) {
+      currentConvIdRef.current = null;
+      lastTypingStatusSentRef.current = false;
+      return;
+    }
+
+    currentConvIdRef.current = activeConvId;
+    lastTypingStatusSentRef.current = false; // Reset when conversation changes
+
+    return () => {
+      // Clear all timeouts
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (typingStatusTimeoutRef.current) {
+        clearTimeout(typingStatusTimeoutRef.current);
+        typingStatusTimeoutRef.current = null;
+      }
+      
+      // Cancel all in-flight requests
+      if (sendTypingAbortControllerRef.current) {
+        sendTypingAbortControllerRef.current.abort();
+        sendTypingAbortControllerRef.current = null;
+      }
+    };
+  }, [activeConvId]);
+
+  /** Component mount/unmount tracking */
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Cleanup all timeouts and abort controllers on unmount
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (typingStatusTimeoutRef.current) {
+        clearTimeout(typingStatusTimeoutRef.current);
+        typingStatusTimeoutRef.current = null;
+      }
+      if (sendTypingAbortControllerRef.current) {
+        sendTypingAbortControllerRef.current.abort();
+        sendTypingAbortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   /** Auto-scroll to bottom when active conversation or messages change */
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
+    // Note: Removed automatic hiding of typing indicator on messages.length change
+    // The backend already handles typing status expiration, and this was causing
+    // race conditions where the indicator would disappear when messages were being fetched
   }, [activeConvId, messages.length]);
+
+  /** Auto-scroll to bottom when typing indicator appears */
+  useEffect(() => {
+    if (isOtherPersonTyping) {
+      // Use setTimeout to ensure DOM has updated with typing indicator
+      const timeoutId = setTimeout(() => {
+        const el = scrollRef.current;
+        if (el) {
+          el.scrollTop = el.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isOtherPersonTyping]);
+
+  /** Send typing status to backend */
+  const sendTypingStatus = useCallback(async (conversationId, isTyping) => {
+    if (!conversationId || !isMountedRef.current) return;
+    
+    // Verify conversation is still active
+    if (currentConvIdRef.current !== conversationId) {
+      return;
+    }
+    
+    // Cancel any previous send typing requests
+    if (sendTypingAbortControllerRef.current) {
+      sendTypingAbortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    sendTypingAbortControllerRef.current = abortController;
+    
+    try {
+      const response = await fetch(`${API_BASE}/chat/typing_status.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        signal: abortController.signal,
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          is_typing: isTyping
+        })
+      });
+      
+      if (response.ok && currentConvIdRef.current === conversationId && isMountedRef.current) {
+        // Track if we successfully sent typing status
+        lastTypingStatusSentRef.current = isTyping;
+      }
+    } catch (error) {
+      // Ignore abort errors - typing indicator is not critical, fail silently
+      if (error.name !== 'AbortError') {
+        // Only log non-abort errors for debugging
+        console.warn('Failed to send typing status:', error);
+      }
+    }
+  }, []);
+
+  /** Handle draft input change and track typing status */
+  const handleDraftChange = useCallback((e) => {
+    const newValue = e.target.value;
+    setDraft(newValue);
+
+    if (!activeConvId || !isMountedRef.current) return;
+
+    // Capture conversation ID to avoid stale closure
+    const convId = activeConvId;
+
+    // Verify conversation is still active
+    if (currentConvIdRef.current !== convId) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (typingStatusTimeoutRef.current) {
+      clearTimeout(typingStatusTimeoutRef.current);
+      typingStatusTimeoutRef.current = null;
+    }
+
+    // Send "typing" status after 500ms debounce when user types
+    // Always set up the timeout to ensure typing status is sent reliably
+    typingTimeoutRef.current = setTimeout(() => {
+      // Verify conversation is still active and component is mounted before sending
+      if (currentConvIdRef.current === convId && isMountedRef.current) {
+        sendTypingStatus(convId, true);
+      }
+    }, 500);
+
+    // Send "stopped" status after 3s of inactivity (reduced from 4s for better UX)
+    typingStatusTimeoutRef.current = setTimeout(() => {
+      // Verify conversation is still active and component is mounted before sending
+      if (currentConvIdRef.current === convId && isMountedRef.current) {
+        sendTypingStatus(convId, false);
+        lastTypingStatusSentRef.current = false;
+      }
+    }, 3000);
+  }, [activeConvId, sendTypingStatus]);
 
   /** Keydown handler for textarea: submit on Enter (without Shift) */
   function handleKeyDown(e) {
@@ -224,6 +406,21 @@ export default function ChatPage() {
       }
       setDraft("");
       setAttachedImage(null);
+      
+      // Stop typing status when message is sent
+      const convId = activeConvId;
+      if (convId && currentConvIdRef.current === convId && isMountedRef.current) {
+        sendTypingStatus(convId, false);
+        lastTypingStatusSentRef.current = false;
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = null;
+        }
+        if (typingStatusTimeoutRef.current) {
+          clearTimeout(typingStatusTimeoutRef.current);
+          typingStatusTimeoutRef.current = null;
+        }
+      }
     }
   }
 
@@ -690,6 +887,70 @@ export default function ChatPage() {
                   // Filter out duplicate confirm_request messages if a response exists
                   // Build a map of confirm_request_id to response messages
                   const confirmResponses = new Map();
+                  const confirmRequestIds = new Set(); // Track all confirm_request_ids we've seen
+                  let latestConfirmAcceptedTs = null;
+                  
+                  // First pass: identify all confirm_request messages and their IDs
+                  messages.forEach((m) => {
+                    const metadata = typeof m.metadata === 'string' ? (() => {
+                      try { return JSON.parse(m.metadata); } catch { return null; }
+                    })() : (m.metadata || null);
+                    const messageType = metadata?.type;
+                    const confirmRequestId = metadata?.confirm_request_id;
+                    
+                    if (messageType === 'confirm_request' && confirmRequestId) {
+                      confirmRequestIds.add(confirmRequestId);
+                    }
+                  });
+                  
+                  // Second pass: identify response messages and map them to request IDs
+                  messages.forEach((m) => {
+                    const metadata = typeof m.metadata === 'string' ? (() => {
+                      try { return JSON.parse(m.metadata); } catch { return null; }
+                    })() : (m.metadata || null);
+                    const messageType = metadata?.type;
+                    const confirmRequestId = metadata?.confirm_request_id;
+                    
+                    // Check if this is a response message
+                    if (confirmRequestId && (
+                      messageType === 'confirm_accepted' ||
+                      messageType === 'confirm_denied' ||
+                      messageType === 'confirm_auto_accepted'
+                    )) {
+                      // Track that we have a response for this confirm_request_id
+                      confirmResponses.set(confirmRequestId, true);
+                      
+                      // Track the latest confirm_accepted/confirm_auto_accepted timestamp
+                      if ((messageType === 'confirm_accepted' || messageType === 'confirm_auto_accepted') && m.ts) {
+                        if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
+                          latestConfirmAcceptedTs = m.ts;
+                        }
+                      }
+                    }
+                    
+                    // Also check enriched metadata for confirm_purchase_status
+                    // This handles cases where backend enriches messages with status
+                    const enrichedStatus = metadata?.confirm_purchase_status;
+                    if (confirmRequestId && enrichedStatus && (
+                      enrichedStatus === 'buyer_accepted' ||
+                      enrichedStatus === 'buyer_declined' ||
+                      enrichedStatus === 'auto_accepted'
+                    )) {
+                      confirmResponses.set(confirmRequestId, true);
+                      
+                      if ((enrichedStatus === 'buyer_accepted' || enrichedStatus === 'auto_accepted') && m.ts) {
+                        if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
+                          latestConfirmAcceptedTs = m.ts;
+                        }
+                      }
+                    }
+                  });
+                  
+                  // Filter messages: hide confirm_request if a response exists for the same confirm_request_id
+                  // Also deduplicate: if multiple response messages exist for the same confirm_request_id, keep only the latest one
+                  const responseMessagesByRequestId = new Map(); // Track confirm_request_id -> array of response messages
+                  
+                  // First, collect all response messages grouped by confirm_request_id
                   messages.forEach((m) => {
                     const metadata = typeof m.metadata === 'string' ? (() => {
                       try { return JSON.parse(m.metadata); } catch { return null; }
@@ -702,13 +963,27 @@ export default function ChatPage() {
                       messageType === 'confirm_denied' ||
                       messageType === 'confirm_auto_accepted'
                     )) {
-                      // Track that we have a response for this confirm_request_id
-                      confirmResponses.set(confirmRequestId, true);
+                      if (!responseMessagesByRequestId.has(confirmRequestId)) {
+                        responseMessagesByRequestId.set(confirmRequestId, []);
+                      }
+                      responseMessagesByRequestId.get(confirmRequestId).push(m);
                     }
                   });
                   
-                  // Filter messages: hide confirm_request if a response exists for the same confirm_request_id
-                  return messages.filter((m) => {
+                  // For each confirm_request_id with responses, find the latest one
+                  const latestResponseByRequestId = new Map();
+                  responseMessagesByRequestId.forEach((responseMessages, confirmRequestId) => {
+                    // Sort by timestamp descending and take the first (latest) one
+                    const sorted = responseMessages.sort((a, b) => {
+                      const tsA = a.ts || 0;
+                      const tsB = b.ts || 0;
+                      return tsB - tsA; // Descending order
+                    });
+                    latestResponseByRequestId.set(confirmRequestId, sorted[0]);
+                  });
+                  
+                  // Now filter messages
+                  let filteredMessages = messages.filter((m) => {
                     const metadata = typeof m.metadata === 'string' ? (() => {
                       try { return JSON.parse(m.metadata); } catch { return null; }
                     })() : (m.metadata || null);
@@ -716,11 +991,72 @@ export default function ChatPage() {
                     const confirmRequestId = metadata?.confirm_request_id;
                     
                     // If this is a confirm_request and we have a response for it, hide it
+                    // This ensures only the response message (confirm_accepted/confirm_denied) is shown
                     if (messageType === 'confirm_request' && confirmRequestId && confirmResponses.has(confirmRequestId)) {
                       return false; // Hide this message
                     }
+                    
+                    // If this is a response message, only show it if it's the latest one for this confirm_request_id
+                    if (confirmRequestId && (
+                      messageType === 'confirm_accepted' ||
+                      messageType === 'confirm_denied' ||
+                      messageType === 'confirm_auto_accepted'
+                    )) {
+                      const latestResponse = latestResponseByRequestId.get(confirmRequestId);
+                      // Only show this message if it's the latest one (same message object reference)
+                      return latestResponse === m;
+                    }
+                    
                     return true; // Show this message
                   });
+                  
+                  // Insert virtual messages for review/rating prompts right after the latest confirm_accepted message
+                  if (latestConfirmAcceptedTs !== null && hasAcceptedConfirm && activeConversation?.productId) {
+                    const virtualMessages = [];
+                    
+                    // Add review prompt for buyers
+                    if (shouldShowReviewPrompt) {
+                      virtualMessages.push({
+                        message_id: `review_prompt_${activeConversation.productId}`,
+                        sender: 'system',
+                        content: '',
+                        ts: latestConfirmAcceptedTs + 1, // Place right after confirm_accepted
+                        metadata: {
+                          type: 'review_prompt'
+                        }
+                      });
+                    }
+                    
+                    // Add buyer rating prompt for sellers
+                    if (shouldShowBuyerRatingPrompt && activeReceiverId) {
+                      virtualMessages.push({
+                        message_id: `buyer_rating_prompt_${activeConversation.productId}_${activeReceiverId}`,
+                        sender: 'system',
+                        content: '',
+                        ts: latestConfirmAcceptedTs + 2, // Place after review prompt if both exist
+                        metadata: {
+                          type: 'buyer_rating_prompt'
+                        }
+                      });
+                    }
+                    
+                    // Insert virtual messages into the array and sort by timestamp
+                    filteredMessages = [...filteredMessages, ...virtualMessages].sort((a, b) => {
+                      const tsA = a.ts || 0;
+                      const tsB = b.ts || 0;
+                      if (tsA !== tsB) return tsA - tsB;
+                      // If timestamps are equal, ensure virtual messages come after regular messages
+                      const aMsgId = String(a.message_id || '');
+                      const bMsgId = String(b.message_id || '');
+                      const aIsVirtual = aMsgId.startsWith('review_prompt_') || aMsgId.startsWith('buyer_rating_prompt_');
+                      const bIsVirtual = bMsgId.startsWith('review_prompt_') || bMsgId.startsWith('buyer_rating_prompt_');
+                      if (aIsVirtual && !bIsVirtual) return 1;
+                      if (!aIsVirtual && bIsVirtual) return -1;
+                      return 0;
+                    });
+                  }
+                  
+                  return filteredMessages;
                 })().map((m) => {
                   /** Categorize message type: basic, schedule, confirm, listing intro, or next steps */
                   // Handle metadata that might be a string or object
@@ -746,6 +1082,8 @@ export default function ChatPage() {
                   // Only treat as valid confirm message if it's a confirm type AND would not return null
                   const isConfirmMessage = isConfirmMessageType && !wouldConfirmCardReturnNull;
                   const isNextStepsMessage = messageType === 'next_steps';
+                  const isReviewPrompt = messageType === 'review_prompt';
+                  const isBuyerRatingPrompt = messageType === 'buyer_rating_prompt';
 
                   // Ensure message has parsed metadata
                   const messageWithMetadata = metadata ? { ...m, metadata } : m;
@@ -754,6 +1092,30 @@ export default function ChatPage() {
                   // This prevents wrapper div creation and whitespace
                   if (isConfirmMessageType && wouldConfirmCardReturnNull) {
                     return null;
+                  }
+                  
+                  // Handle virtual prompt messages
+                  if (isReviewPrompt) {
+                    return (
+                      <div key={m.message_id}>
+                        <ReviewPromptMessageCard
+                          productId={activeConversation?.productId}
+                          productTitle={activeConversation?.productTitle}
+                        />
+                      </div>
+                    );
+                  }
+                  
+                  if (isBuyerRatingPrompt) {
+                    return (
+                      <div key={m.message_id}>
+                        <BuyerRatingPromptMessageCard
+                          productId={activeConversation?.productId}
+                          productTitle={activeConversation?.productTitle}
+                          buyerId={activeReceiverId}
+                        />
+                      </div>
+                    );
                   }
                   
                   return (
@@ -862,17 +1224,9 @@ export default function ChatPage() {
                   );
                 })
               )}
-              {shouldShowReviewPrompt && (
-                <ReviewPromptMessageCard
-                  productId={activeConversation.productId}
-                  productTitle={activeConversation.productTitle}
-                />
-              )}
-              {shouldShowBuyerRatingPrompt && (
-                <BuyerRatingPromptMessageCard
-                  productId={activeConversation.productId}
-                  productTitle={activeConversation.productTitle}
-                  buyerId={activeReceiverId}
+              {isOtherPersonTyping && activeConvId && (
+                <TypingIndicatorMessage 
+                  firstName={typingUserName} 
                 />
               )}
             </div>
@@ -962,7 +1316,7 @@ export default function ChatPage() {
                       <textarea
                         ref={taRef}
                         value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
+                        onChange={handleDraftChange}
                         onInput={autoGrow}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message…"
