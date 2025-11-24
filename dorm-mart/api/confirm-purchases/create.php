@@ -170,6 +170,8 @@ try {
     }
 
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
+    // Check for any pending confirm purchase requests (block creation if pending)
+    // Note: buyer_declined status allows new confirm purchases to be created
     $pendingStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE scheduled_request_id = ? AND status = \'pending\' ORDER BY confirm_request_id DESC LIMIT 1');
     $pendingStmt->bind_param('i', $scheduledRequestId);
     $pendingStmt->execute();
@@ -184,6 +186,21 @@ try {
             echo json_encode(['success' => false, 'error' => 'There is already a pending confirmation for this scheduled purchase']);
             exit;
         }
+    }
+    
+    // Also check for already accepted/confirmed status (block creation if already confirmed)
+    // This prevents creating new confirm purchases after a successful confirmation
+    $latestStmt = $conn->prepare('SELECT status FROM confirm_purchase_requests WHERE scheduled_request_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
+    $latestStmt->bind_param('i', $scheduledRequestId);
+    $latestStmt->execute();
+    $latestRes = $latestStmt->get_result();
+    $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
+    $latestStmt->close();
+    
+    if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted'], true)) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'error' => 'This transaction has already been confirmed']);
+        exit;
     }
 
     $buyerId = (int)$schedRow['buyer_user_id'];

@@ -63,13 +63,8 @@ try {
         exit;
     }
 
-    // Validate review_text (required, max 250 chars)
+    // Validate review_text (optional, max 250 chars if provided)
     $reviewText = isset($payload['review_text']) ? trim((string)$payload['review_text']) : '';
-    if (empty($reviewText)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Review text is required']);
-        exit;
-    }
     if (strlen($reviewText) > 250) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Review text must be 250 characters or less']);

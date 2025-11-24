@@ -95,6 +95,23 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     return { label: 'Update', tone: 'info' };
   }, [isMine, localStatus, messageType]);
 
+  // Determine title text based on buyer response and seller's success marking
+  const titleText = useMemo(() => {
+    const enrichedStatus = metadata.confirm_purchase_status;
+    // Check if buyer denied first
+    if (enrichedStatus === 'buyer_declined' || messageType === 'confirm_denied' || localStatus === 'declined') {
+      return 'Confirm Purchase: Buyer Denied';
+    }
+    // Check if buyer accepted
+    if (enrichedStatus === 'buyer_accepted' || enrichedStatus === 'auto_accepted' || 
+        messageType === 'confirm_accepted' || messageType === 'confirm_auto_accepted' || 
+        localStatus === 'accepted') {
+      return isSuccessful ? 'Confirm Purchase: Marked Successful' : 'Confirm Purchase: Marked Unsuccessful';
+    }
+    // Default: show seller's success marking
+    return isSuccessful ? 'Confirm Purchase: Marked Successful' : 'Confirm Purchase: Marked Unsuccessful';
+  }, [metadata.confirm_purchase_status, messageType, localStatus, isSuccessful]);
+
   const toneClasses = {
     success: {
       container: 'bg-green-50 dark:bg-green-900/30 border-2 border-green-400 dark:border-green-700',
@@ -177,7 +194,8 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
       }
       setLocalStatus(action === 'accept' ? 'accepted' : 'declined');
       if (typeof onRespond === 'function') {
-        onRespond();
+        // Call the callback to refresh messages
+        await onRespond();
       }
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
@@ -208,7 +226,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
             <div className="flex-1 min-w-0 overflow-hidden">
               <div className="flex items-center justify-between gap-2 mb-1 min-w-0">
                 <p className={`text-sm font-semibold ${visual.titleColor} truncate flex-1 min-w-0`}>
-                  Confirm Purchase: {isSuccessful ? 'Marked Successful' : 'Marked Unsuccessful'}
+                  {titleText}
                 </p>
                 <span className={`text-xs font-semibold flex-shrink-0 whitespace-nowrap ${
                   safeStatusDescriptor.tone === 'success' ? 'text-green-800 dark:text-green-200' :
