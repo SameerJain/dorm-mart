@@ -169,6 +169,30 @@ try {
         $stmt->close();
     }
 
+    // Check if conversation has item_deleted flag set
+    $stmt = $conn->prepare('SELECT item_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
+    $stmt->bind_param('i', $convId);
+    $stmt->execute();
+    $stmt->bind_result($itemDeleted);
+    $itemDeletedFlag = false;
+    if ($stmt->fetch()) {
+        $itemDeletedFlag = (bool)$itemDeleted;
+    }
+    $stmt->close();
+
+    // If item is deleted, block message creation
+    if ($itemDeletedFlag) {
+        // Release lock before exiting
+        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
+        $stmt->bind_param('s', $lockKey);
+        $stmt->execute();
+        $stmt->close();
+        $conn->rollback();
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.']);
+        exit;
+    }
+
     // Ensure both participants exist
     $stmt = $conn->prepare(
         'INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
