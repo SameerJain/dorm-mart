@@ -32,7 +32,6 @@ async function fetchSettingsProfile(apiBase = API_BASE) {
   } catch (error) {
     data = null;
   }
-  console.log(data);
   if (!response.ok || !data?.success) {
     throw new Error(data?.error || "Unable to load profile information.");
   }
