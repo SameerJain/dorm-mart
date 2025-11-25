@@ -46,6 +46,7 @@ $sql = "
     c.user1_fname,
     c.user2_fname,
     c.product_id,
+    c.item_deleted,
     inv.title AS product_title,
     inv.seller_id AS product_seller_id,
     inv.photos AS product_photos

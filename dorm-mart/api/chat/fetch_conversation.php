@@ -115,9 +115,23 @@ $stmt->bind_param('ii', $convId, $userId);
 $stmt->execute();
 $stmt->close();
 
+// --- fetch item_deleted status from conversations table ---
+$itemDeleted = false;
+$stmt = $conn->prepare('SELECT item_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
+if ($stmt) {
+    $stmt->bind_param('i', $convId);
+    $stmt->execute();
+    $stmt->bind_result($itemDeletedFlag);
+    if ($stmt->fetch()) {
+        $itemDeleted = (bool)$itemDeletedFlag;
+    }
+    $stmt->close();
+}
+
 // --- done ---
 echo json_encode([
     'success'  => true,
     'conv_id'  => $convId,
-    'messages' => $messages
+    'messages' => $messages,
+    'item_deleted' => $itemDeleted
 ]);

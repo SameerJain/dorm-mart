@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+const NAV_BLUE = "#2563EB";
 
 // File type restrictions (same as product listing and chat)
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);

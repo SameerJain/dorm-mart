@@ -33,7 +33,7 @@ function ProductCard({ product, onView }) {
     <div className="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <img src={product.image_url || FALLBACK_AVATAR} alt={product.title} className="h-40 w-full rounded-t-2xl object-cover" />
       <div className="flex flex-col gap-2 p-4">
-        <p className="text-base font-semibold text-slate-900">{product.title}</p>
+        <p className="text-base font-semibold text-slate-900 truncate">{product.title}</p>
         <p className="text-sm text-slate-500">${Number(product.price || 0).toFixed(2)}</p>
         <button
           type="button"

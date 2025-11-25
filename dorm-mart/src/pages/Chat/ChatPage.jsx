@@ -124,6 +124,28 @@ export default function ChatPage() {
   const navigationState = location.state && typeof location.state === "object" ? location.state : null;
   const activeConversation = conversations.find((c) => c.conv_id === activeConvId);
 
+  /** Clear draft when item is deleted and prevent any input */
+  useEffect(() => {
+    if (activeConversation?.item_deleted) {
+      // Clear draft immediately
+      setDraft('');
+      // Clear textarea value and remove focus
+      if (taRef.current) {
+        taRef.current.value = '';
+        taRef.current.blur();
+        // Force the textarea to be disabled
+        taRef.current.disabled = true;
+        taRef.current.readOnly = true;
+      }
+    } else {
+      // Re-enable if item is not deleted
+      if (taRef.current) {
+        taRef.current.disabled = false;
+        taRef.current.readOnly = false;
+      }
+    }
+  }, [activeConversation?.item_deleted]);
+
   /** Compute header label for the active chat */
   const activeLabel = useMemo(() => {
     const c = conversations.find((c) => c.conv_id === activeConvId);
@@ -353,6 +375,20 @@ export default function ChatPage() {
 
   /** Handle draft input change and track typing status */
   const handleDraftChange = useCallback((e) => {
+    // Prevent typing if item is deleted
+    const currentConv = conversations.find((c) => c.conv_id === activeConvId);
+    if (currentConv?.item_deleted) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Force the value to stay empty and prevent any state update
+      if (taRef.current) {
+        taRef.current.value = '';
+        taRef.current.blur(); // Remove focus
+      }
+      setDraft('');
+      return false; // Explicitly return false
+    }
+    
     const newValue = e.target.value;
     setDraft(newValue);
 
@@ -393,16 +429,40 @@ export default function ChatPage() {
         lastTypingStatusSentRef.current = false;
       }
     }, 3000);
-  }, [activeConvId, sendTypingStatus]);
+  }, [activeConvId, sendTypingStatus, conversations]);
+
+  /** Wrapper to prevent message creation when item is deleted */
+  const handleCreateMessage = useCallback((content) => {
+    if (activeConversation?.item_deleted) {
+      return;
+    }
+    createMessage(content);
+  }, [activeConversation?.item_deleted, createMessage]);
+
+  /** Wrapper to prevent image message creation when item is deleted */
+  const handleCreateImageMessage = useCallback((content, file) => {
+    if (activeConversation?.item_deleted) {
+      return;
+    }
+    createImageMessage(content, file);
+  }, [activeConversation?.item_deleted, createImageMessage]);
 
   /** Keydown handler for textarea: submit on Enter (without Shift) */
   function handleKeyDown(e) {
+    // Prevent ALL keyboard input if item is deleted
+    if (activeConversation?.item_deleted) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      return false;
+    }
+    
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (attachedImage) {
-        createImageMessage(draft, attachedImage);
+        handleCreateImageMessage(draft, attachedImage);
       } else {
-        createMessage(draft);
+        handleCreateMessage(draft);
       }
       setDraft("");
       setAttachedImage(null);
@@ -1084,6 +1144,7 @@ export default function ChatPage() {
                   const isNextStepsMessage = messageType === 'next_steps';
                   const isReviewPrompt = messageType === 'review_prompt';
                   const isBuyerRatingPrompt = messageType === 'buyer_rating_prompt';
+                  const isItemDeletedMessage = messageType === 'item_deleted';
 
                   // Ensure message has parsed metadata
                   const messageWithMetadata = metadata ? { ...m, metadata } : m;
@@ -1122,6 +1183,24 @@ export default function ChatPage() {
                     <div key={m.message_id}>
                       {isNextStepsMessage ? (
                         <NextStepsMessageCard message={messageWithMetadata} />
+                      ) : isItemDeletedMessage ? (
+                        <div className="flex justify-center my-2">
+                          <div className="max-w-[85%] rounded-2xl border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 overflow-hidden">
+                            <div className="p-4">
+                              <div className="flex items-start gap-2">
+                                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <div className="flex-1">
+                                  <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">Item Removed</p>
+                                  <p className="text-sm text-red-700 dark:text-red-300">
+                                    This chat has been closed.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       ) : (
                         <div className={m.sender === "me" ? "flex justify-end" : "flex justify-start"}>
                           {messageType === "listing_intro" ? (
@@ -1232,7 +1311,17 @@ export default function ChatPage() {
             </div>
 
             {/* Composer */}
-            <div className="sticky bottom-0 z-10 border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+            <div className={`sticky bottom-0 z-10 border-t border-gray-200 dark:border-gray-700 p-4 relative ${activeConversation?.item_deleted ? 'bg-gray-100 dark:bg-gray-700' : 'bg-white dark:bg-gray-800'}`}>
+              {/* Overlay to block all interactions when item is deleted */}
+              {activeConversation?.item_deleted && (
+                <div className="absolute inset-0 z-50 bg-gray-100 dark:bg-gray-700 opacity-90 cursor-not-allowed" 
+                     onClick={(e) => e.preventDefault()}
+                     onMouseDown={(e) => e.preventDefault()}
+                     onKeyDown={(e) => e.preventDefault()}
+                     style={{ pointerEvents: 'all' }}
+                     aria-label="Chat is closed">
+                </div>
+              )}
               {isSellerPerspective && activeConversation?.productId && (
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <button
@@ -1296,12 +1385,17 @@ export default function ChatPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setAttachOpen(true)}
+                  onClick={() => {
+                    if (!activeConversation?.item_deleted) {
+                      setAttachOpen(true);
+                    }
+                  }}
+                  disabled={activeConversation?.item_deleted}
                   aria-label="Attach a file"
                   aria-haspopup="dialog"
                   aria-expanded={attachOpen}
-                  className="inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0"
-                  title="Attach"
+                  className={`inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0 ${activeConversation?.item_deleted ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-600'}`}
+                  title={activeConversation?.item_deleted ? 'Item has been deleted' : 'Attach'}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
                     <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -1312,35 +1406,48 @@ export default function ChatPage() {
 
                 <div className="relative w-full">
                   <div className="flex items-end gap-2">
-                    <div className="relative w-full">
-                      <textarea
-                        ref={taRef}
-                        value={draft}
-                        onChange={handleDraftChange}
-                        onInput={autoGrow}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Type a message…"
-                        rows={1}
-                        maxLength={MAX_LEN}
-                        aria-describedby="message-char-remaining"
-                        wrap="soft"
-                        className="w-full h-auto resize-none rounded-xl border-2 border-gray-300 dark:border-gray-600 px-3 py-2.5 pr-12 text-sm leading-5 min-h-[44px] focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words overflow-y-hidden max-h-[28vh]"
-                        aria-label="Message input"
-                      />
-                      <span id="message-char-remaining" className="pointer-events-none absolute right-3 bottom-2 text-xs text-gray-500 dark:text-gray-400">
-                        {MAX_LEN - draft.length}
-                      </span>
-                    </div>
+                    {activeConversation?.item_deleted ? (
+                      <div className="relative w-full">
+                        <div className="w-full h-auto rounded-xl border-2 border-gray-300 dark:border-gray-600 px-3 py-2.5 pr-12 text-sm leading-5 min-h-[44px] bg-gray-300 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed opacity-80 flex items-center pointer-events-none">
+                          <span>This chat has been closed.</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative w-full">
+                        <textarea
+                          ref={taRef}
+                          value={draft}
+                          onChange={handleDraftChange}
+                          onInput={autoGrow}
+                          onKeyDown={handleKeyDown}
+                          placeholder="Type a message…"
+                          rows={1}
+                          maxLength={MAX_LEN}
+                          aria-describedby="message-char-remaining"
+                          wrap="soft"
+                          className="w-full h-auto resize-none rounded-xl border-2 border-gray-300 dark:border-gray-600 px-3 py-2.5 pr-12 text-sm leading-5 min-h-[44px] whitespace-pre-wrap break-words overflow-y-hidden max-h-[28vh] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
+                          aria-label="Message input"
+                        />
+                        <span id="message-char-remaining" className="pointer-events-none absolute right-3 bottom-2 text-xs text-gray-500 dark:text-gray-400">
+                          {MAX_LEN - draft.length}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <ImageModal
                     open={attachOpen}
                     onClose={() => setAttachOpen(false)}
                     onSelect={(file) => {
+                      // Prevent attaching if item is deleted
+                      if (activeConversation?.item_deleted) {
+                        setAttachOpen(false);
+                        return;
+                      }
                       // On mobile, auto-send the image immediately
                       const isMobile = window.innerWidth < 768; // md breakpoint
                       if (isMobile) {
-                        createImageMessage(draft, file);
+                        handleCreateImageMessage(draft, file);
                         setDraft("");
                         setAttachedImage(null);
                       } else {
