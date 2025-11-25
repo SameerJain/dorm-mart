@@ -34,7 +34,7 @@ function WelcomePage() {
 
   const features = [
     { icon: '🛍️', title: 'Buy & Sell', description: 'Trade with students' },
-    { icon: '💰', title: 'Save Money', description: 'Great campus deals' },
+    { icon: '💰', title: 'Spend less', description: 'Great campus deals' },
     { icon: '🌱', title: 'Go Green', description: 'Reduce, reuse' },
     { icon: '🤝', title: 'Trusted', description: 'Secure platform' },
   ];

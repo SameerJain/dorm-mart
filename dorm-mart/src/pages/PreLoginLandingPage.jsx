@@ -30,7 +30,7 @@ function WelcomePage() {
               Wastage, who?
             </h2>
             <p className="text-lg lg:text-xl text-white opacity-80 mt-6 lg:mt-8 max-w-md mx-auto animate-fade-in-delay-2">
-              Your campus marketplace for buying and selling. Connect with fellow students and give items a second life.
+              Your campus marketplace for buying and selling. Connect with fellow students and save money.
             </p>
           </div>
         </div>
