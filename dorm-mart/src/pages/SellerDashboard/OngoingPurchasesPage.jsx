@@ -579,8 +579,8 @@ function OngoingPurchasesPage() {
         if (!itemGroup || itemGroup.purchases.length === 0) return null;
         
         return (
-            <div key={itemGroup.productId} className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            <div key={itemGroup.productId} className="mb-6 min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 break-words overflow-wrap-anywhere">
                     {itemGroup.item.title || 'Unknown Item'}
                 </h3>
                 <div className="space-y-3">

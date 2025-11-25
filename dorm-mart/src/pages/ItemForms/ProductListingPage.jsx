@@ -1,5 +1,5 @@
 // src/pages/ItemForms/ProductListingPage.jsx
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
 import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
 
@@ -65,7 +65,6 @@ function ProductListingPage() {
 
   // success modal
   const [showSuccess, setShowSuccess] = useState(false);
-  const [createdProdId, setCreatedProdId] = useState(null);
 
   // API base URL (respects .env)
   const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
@@ -84,6 +83,7 @@ function ProductListingPage() {
     description: 1000,
     price: 9999.99,
     priceMin: 0.01,
+    images: 6,
   };
 
   // File type restrictions (same as chat)
@@ -151,13 +151,6 @@ function ProductListingPage() {
 
   // we still keep React state for display/selection so UI updates,
   // but we ALSO mirror them in refs so drag reads the latest values.
-  const [displayInfo, setDisplayInfo] = useState({
-    dx: 0,
-    dy: 0,
-    dw: 0,
-    dh: 0,
-    scale: 1,
-  });
   const displayInfoRef = useRef({
     dx: 0,
     dy: 0,
@@ -401,29 +394,6 @@ function ProductListingPage() {
   // ============================================
   // CATEGORY HANDLERS
   // ============================================
-  const addCategory = () => {
-    if (!selectedCategory) {
-      setErrors((p) => ({ ...p, categories: "Select a category" }));
-      return;
-    }
-    if (categories.includes(selectedCategory)) return;
-    if (categories.length >= CATEGORIES_MAX) {
-      setErrors((p) => ({
-        ...p,
-        categories: `Select at most ${CATEGORIES_MAX} categories`,
-      }));
-      return;
-    }
-    const next = [...categories, selectedCategory];
-    setCategories(next);
-    setSelectedCategory("");
-    setErrors((p) => {
-      const ne = { ...p };
-      if (next.length && next.length <= CATEGORIES_MAX) delete ne.categories;
-      return ne;
-    });
-  };
-
   const removeCategory = (val) => {
     const next = categories.filter((c) => c !== val);
     setCategories(next);
@@ -531,6 +501,16 @@ function ProductListingPage() {
     const files = Array.from(e.target.files || []).slice(0, 1);
     if (!files.length) return;
 
+    // Check image limit
+    if (images.length >= LIMITS.images) {
+      setErrors((prev) => ({
+        ...prev,
+        images: `Maximum ${LIMITS.images} images allowed.`,
+      }));
+      e.target.value = null;
+      return;
+    }
+
     const file = files[0];
 
     // Validate file size
@@ -566,6 +546,16 @@ function ProductListingPage() {
     reader.onload = function (ev) {
       const img = new Image();
       img.onload = function () {
+        // Check image limit again before adding (in case user added images while file was loading)
+        if (images.length >= LIMITS.images) {
+          setErrors((prev) => ({
+            ...prev,
+            images: `Maximum ${LIMITS.images} images allowed.`,
+          }));
+          e.target.value = null;
+          return;
+        }
+
         const w = img.width;
         const h = img.height;
         if (w === h) {
@@ -586,6 +576,15 @@ function ProductListingPage() {
             });
           }
         } else {
+          // Check image limit before opening cropper
+          if (images.length >= LIMITS.images) {
+            setErrors((prev) => ({
+              ...prev,
+              images: `Maximum ${LIMITS.images} images allowed.`,
+            }));
+            e.target.value = null;
+            return;
+          }
           // open cropper
           setCropImageSrc(ev.target.result);
           setCropImgEl(img);
@@ -627,7 +626,6 @@ function ProductListingPage() {
       dh: dispH,
       scale,
     };
-    setDisplayInfo(di);
     displayInfoRef.current = di;
 
     const fixedSize = Math.min(dispW, dispH);
@@ -703,6 +701,19 @@ function ProductListingPage() {
       return;
     }
 
+    // Check image limit before adding cropped image
+    if (images.length >= LIMITS.images) {
+      setErrors((prev) => ({
+        ...prev,
+        images: `Maximum ${LIMITS.images} images allowed.`,
+      }));
+      setShowCropper(false);
+      setCropImageSrc(null);
+      setCropImgEl(null);
+      setPendingFileName("");
+      return;
+    }
+
     const di = displayInfoRef.current;
     const sel = selectionRef.current;
 
@@ -735,6 +746,20 @@ function ProductListingPage() {
           setShowCropper(false);
           return;
         }
+        
+        // Check image limit again before adding (in case user added images while cropping)
+        if (images.length >= LIMITS.images) {
+          setErrors((prev) => ({
+            ...prev,
+            images: `Maximum ${LIMITS.images} images allowed.`,
+          }));
+          setShowCropper(false);
+          setCropImageSrc(null);
+          setCropImgEl(null);
+          setPendingFileName("");
+          return;
+        }
+
         const finalFile = new File([blob], pendingFileName, {
           type: "image/png",
         });
@@ -846,7 +871,6 @@ function ProductListingPage() {
         navigate(returnTo);
       } else {
         // For new listings, show success modal
-        setCreatedProdId(pid);
         setShowSuccess(true);
 
         // reset form
@@ -1346,8 +1370,11 @@ function ProductListingPage() {
                   scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
                   fileInputRef.current.click();
                 }}
+                disabled={images.length >= LIMITS.images}
                 className={`w-full py-4 px-6 border-2 border-dashed rounded-lg font-medium transition-colors ${
-                  errors.images
+                  images.length >= LIMITS.images
+                    ? "border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
+                    : errors.images
                     ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400 hover:border-red-600 dark:hover:border-red-500"
                     : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600"
                 }`}
@@ -1356,6 +1383,11 @@ function ProductListingPage() {
               </button>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
                 All photos are displayed as squares. You can adjust the crop area when uploading.
+                {images.length >= LIMITS.images && (
+                  <span className="block mt-1 text-gray-600 dark:text-gray-300 font-medium">
+                    Maximum {LIMITS.images} images reached.
+                  </span>
+                )}
               </p>
               {errors.images && (
                 <p className="text-red-600 dark:text-red-400 text-sm mt-2 text-center">
