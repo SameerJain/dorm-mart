@@ -21,9 +21,9 @@ import {
 export const ChatContext = createContext(null);
 
 export function ChatProvider({ children }) {
-    const NEW_MSG_POLL_MS = 500;  // Increased from 1000ms to 500ms for faster message updates
-    const UNREAD_MSG_POLL_MS = 2000;  // Increased from 5000ms to 2000ms for faster unread count updates
-    const UNREAD_NOTIFICATION_POLL_MS = 5000;  // Increased from 10000ms to 5000ms for faster notification updates
+    const NEW_MSG_POLL_MS = 250;  // Optimized for fast typing indicator updates (was 300ms)
+    const UNREAD_MSG_POLL_MS = 1500;  // Optimized for fast unread count updates (was 5000ms)
+    const UNREAD_NOTIFICATION_POLL_MS = 3000;  // Optimized for fast notification updates (was 10000ms)
     const newMsgPollRef = useRef(null);
     const lastTsRefByConv = useRef({}); // { [convId]: last-message-ts }
     const unreadMsgPollRef = useRef(null);
@@ -497,10 +497,13 @@ export function ChatProvider({ children }) {
 
             setMessagesByConv((prev) => {
                 const existing = prev[activeConvId] ?? [];
+                // Use Set for O(1) lookup instead of O(n) array operations
                 const seen = new Set(existing.map((m) => m.message_id));
-                const merged = existing.concat(
-                incoming.filter((m) => !seen.has(m.message_id))
-                );
+                // Filter incoming messages more efficiently
+                const newMessages = incoming.filter((m) => !seen.has(m.message_id));
+                if (!newMessages.length) return prev; // No changes, return previous state
+                // Only create new array if there are actually new messages
+                const merged = existing.concat(newMessages);
                 return { ...prev, [activeConvId]: merged };
             });
 
