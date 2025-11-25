@@ -72,19 +72,29 @@ function WelcomePage() {
               {/* Header with dot */}
               <div className="text-center mb-4 sm:mb-6 md:mb-8">
                 <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white mb-2 sm:mb-3">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white">
                   Welcome!
                 </h2>
-                <p className="text-sm sm:text-base text-gray-200 mb-1.5 sm:mb-2">
-                  Join the campus marketplace
-                </p>
-                <p className="text-xs sm:text-sm text-gray-300 opacity-90">
-                  Buy, sell, and trade with UB students
-                </p>
+              </div>
+
+              {/* Features grid */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
+                {features.map((feature, index) => (
+                  <div
+                    key={index}
+                    className="bg-white/5 rounded-lg p-2.5 sm:p-3"
+                  >
+                    <div className="text-xl sm:text-2xl mb-0.5 sm:mb-1">
+                      {feature.icon}
+                    </div>
+                    <h3 className="text-[10px] sm:text-xs font-semibold text-white mb-0.5">{feature.title}</h3>
+                    <p className="text-[10px] sm:text-xs text-gray-300">{feature.description}</p>
+                  </div>
+                ))}
               </div>
 
               {/* Action buttons */}
-              <div className="space-y-3 sm:space-y-4 md:space-y-5 mb-4 sm:mb-6">
+              <div className="space-y-3 sm:space-y-4 md:space-y-5">
                 {/* Login Button */}
                 <button
                   onClick={() => navigate('/login')}
@@ -100,32 +110,6 @@ function WelcomePage() {
                 >
                   Create Account
                 </button>
-              </div>
-
-              {/* Features grid */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-                {features.map((feature, index) => (
-                  <div
-                    key={index}
-                    className="bg-white/10 backdrop-blur-sm rounded-lg p-2.5 sm:p-3 border border-white/20 hover:bg-white/15 transition-all duration-200"
-                  >
-                    <div className="text-xl sm:text-2xl mb-0.5 sm:mb-1">
-                      {feature.icon}
-                    </div>
-                    <h3 className="text-[10px] sm:text-xs font-semibold text-white mb-0.5">{feature.title}</h3>
-                    <p className="text-[10px] sm:text-xs text-gray-300">{feature.description}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Additional info */}
-              <div className="text-center pt-1 sm:pt-2">
-                <p className="text-xs sm:text-sm text-gray-300">
-                  🎓 Exclusively for UB students
-                </p>
-                <p className="text-[10px] sm:text-xs text-gray-300 mt-0.5 sm:mt-1">
-                  Secure • Fast • Sustainable
-                </p>
               </div>
             </div>
           </div>
