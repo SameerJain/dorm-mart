@@ -412,14 +412,14 @@ export default function ChatPage() {
       typingStatusTimeoutRef.current = null;
     }
 
-    // Send "typing" status after 500ms debounce when user types
+    // Send "typing" status after 200ms debounce when user types (reduced from 500ms for faster response)
     // Always set up the timeout to ensure typing status is sent reliably
     typingTimeoutRef.current = setTimeout(() => {
       // Verify conversation is still active and component is mounted before sending
       if (currentConvIdRef.current === convId && isMountedRef.current) {
         sendTypingStatus(convId, true);
       }
-    }, 500);
+    }, 200);
 
     // Send "stopped" status after 3s of inactivity (reduced from 4s for better UX)
     typingStatusTimeoutRef.current = setTimeout(() => {
