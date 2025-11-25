@@ -27,7 +27,7 @@ function WelcomePage() {
               <span>Mart</span>
             </h1>
             <h2 className="text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90 animate-fade-in-delay">
-              Wastage Who?
+              Wastage, who?
             </h2>
             <p className="text-lg lg:text-xl text-white opacity-80 mt-6 lg:mt-8 max-w-md mx-auto animate-fade-in-delay-2">
               Your campus marketplace for buying and selling. Connect with fellow students and give items a second life.
@@ -52,7 +52,7 @@ function WelcomePage() {
         <div className="md:hidden mb-8 text-center relative z-10">
           <h1 className="text-5xl font-serif text-white mb-2 animate-fade-in">Dorm Mart</h1>
           <h2 className="text-xl font-light text-white opacity-90 mb-4 animate-fade-in-delay">
-            Wastage Who?
+            Wastage, who?
           </h2>
           <p className="text-base text-white opacity-80 max-w-sm mx-auto animate-fade-in-delay-2">
             Your campus marketplace for buying and selling.

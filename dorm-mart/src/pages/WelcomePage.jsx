@@ -40,24 +40,24 @@ function WelcomePage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      <PreLoginBranding animate={true} />
+    <div className="h-screen flex flex-col md:flex-row pre-login-bg overflow-hidden">
+      <PreLoginBranding animate={true} animateText={true} />
 
       {/* Right side - Action buttons (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen pre-login-bg relative"
+        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 h-screen pre-login-bg relative overflow-hidden"
       >
         {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-6 text-center relative z-10">
-          <h1 className="text-5xl font-serif text-gray-800 mb-2">Dorm Mart</h1>
-          <h2 className="text-xl font-light text-gray-600 opacity-90">
-            Wastage Who?
+        <div className="md:hidden mb-4 sm:mb-6 text-center relative z-10">
+          <h1 className="text-4xl sm:text-5xl font-serif text-gray-800 mb-2">Dorm Mart</h1>
+          <h2 className="text-lg sm:text-xl font-light text-gray-600 opacity-90">
+            Wastage, who?
           </h2>
         </div>
 
         <div className="w-full max-w-md relative z-10">
           <div
-            className="p-4 sm:p-8 rounded-lg relative bg-blue-600"
+            className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600"
           >
             {/* Torn paper effect */}
             <div
@@ -70,25 +70,25 @@ function WelcomePage() {
 
             <div className="relative z-10">
               {/* Header with dot */}
-              <div className="text-center mb-6 sm:mb-8">
-                <div className="w-3 h-3 bg-black rounded-full mx-auto mb-4"></div>
-                <h2 className="text-3xl sm:text-4xl font-serif text-white mb-3">
+              <div className="text-center mb-4 sm:mb-6 md:mb-8">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white mb-2 sm:mb-3">
                   Welcome!
                 </h2>
-                <p className="text-base text-gray-200 mb-2">
+                <p className="text-sm sm:text-base text-gray-200 mb-1.5 sm:mb-2">
                   Join the campus marketplace
                 </p>
-                <p className="text-sm text-gray-300 opacity-90">
+                <p className="text-xs sm:text-sm text-gray-300 opacity-90">
                   Buy, sell, and trade with UB students
                 </p>
               </div>
 
               {/* Action buttons */}
-              <div className="space-y-4 sm:space-y-5 mb-6">
+              <div className="space-y-3 sm:space-y-4 md:space-y-5 mb-4 sm:mb-6">
                 {/* Login Button */}
                 <button
                   onClick={() => navigate('/login')}
-                  className="w-full px-4 py-3 sm:py-4 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white font-semibold text-base sm:text-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-emerald-500/30"
+                  className="w-full px-4 py-2.5 sm:py-3 md:py-4 bg-sky-500 hover:bg-sky-600 rounded-lg text-white font-semibold text-sm sm:text-base md:text-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-400/30"
                 >
                   Log In
                 </button>
@@ -96,34 +96,34 @@ function WelcomePage() {
                 {/* Create Account Button */}
                 <button
                   onClick={() => navigate('/create-account')}
-                  className="w-full px-4 py-3 sm:py-4 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold text-base sm:text-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+                  className="w-full px-4 py-2.5 sm:py-3 md:py-4 bg-teal-400 hover:bg-teal-500 rounded-lg text-white font-semibold text-sm sm:text-base md:text-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-teal-300/30"
                 >
                   Create Account
                 </button>
               </div>
 
               {/* Features grid */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
                 {features.map((feature, index) => (
                   <div
                     key={index}
-                    className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20 hover:bg-white/15 transition-all duration-200"
+                    className="bg-white/10 backdrop-blur-sm rounded-lg p-2.5 sm:p-3 border border-white/20 hover:bg-white/15 transition-all duration-200"
                   >
-                    <div className="text-2xl mb-1">
+                    <div className="text-xl sm:text-2xl mb-0.5 sm:mb-1">
                       {feature.icon}
                     </div>
-                    <h3 className="text-xs font-semibold text-white mb-0.5">{feature.title}</h3>
-                    <p className="text-xs text-gray-300">{feature.description}</p>
+                    <h3 className="text-[10px] sm:text-xs font-semibold text-white mb-0.5">{feature.title}</h3>
+                    <p className="text-[10px] sm:text-xs text-gray-300">{feature.description}</p>
                   </div>
                 ))}
               </div>
 
               {/* Additional info */}
-              <div className="text-center pt-2">
-                <p className="text-sm text-gray-300">
+              <div className="text-center pt-1 sm:pt-2">
+                <p className="text-xs sm:text-sm text-gray-300">
                   🎓 Exclusively for UB students
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-300 mt-0.5 sm:mt-1">
                   Secure • Fast • Sustainable
                 </p>
               </div>

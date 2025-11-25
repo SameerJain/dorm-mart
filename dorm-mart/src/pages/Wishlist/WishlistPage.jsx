@@ -171,7 +171,24 @@ export default function WishlistPage() {
       const json = await r.json();
       if (json.success) {
         // Remove item from local state
-        setAllItems((prev) => prev.filter((item) => item.id !== confirmRemove.id));
+        setAllItems((prev) => {
+          const updated = prev.filter((item) => item.id !== confirmRemove.id);
+          
+          // Check if we need to reset the filter to "All"
+          if (selectedCategory) {
+            const remainingInCategory = updated.filter((item) => {
+              const itemTags = Array.isArray(item.tags) ? item.tags.map((t) => String(t).toLowerCase()) : [];
+              return itemTags.includes(selectedCategory.toLowerCase());
+            });
+            
+            // If no items remain in the selected category, reset to "All"
+            if (remainingInCategory.length === 0) {
+              setSelectedCategory(null);
+            }
+          }
+          
+          return updated;
+        });
         setItems((prev) => prev.filter((item) => item.id !== confirmRemove.id));
         setConfirmRemove(null);
       } else {
