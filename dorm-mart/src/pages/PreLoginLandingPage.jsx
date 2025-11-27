@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
+import backgroundImage from '../assets/images/cf704b7b8689fdfa8cf49a9f368bb17c.jpg';
 
 function WelcomePage() {
   const navigate = useNavigate();

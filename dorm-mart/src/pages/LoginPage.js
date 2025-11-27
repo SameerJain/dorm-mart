@@ -258,7 +258,6 @@ function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={50}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
-                    placeholder="ubname@buffalo.edu"
                   />
                 </div>
 
@@ -273,7 +272,6 @@ function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
-                    placeholder="Enter your password"
                   />
                 </div>
 

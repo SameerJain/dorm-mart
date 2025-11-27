@@ -2,34 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Only reset text-like inputs, not checkboxes/radios */
-/* @layer base {
-  button,
-  input:not([type="checkbox"]):not([type="radio"]),
-  select,
-  textarea {
-    @apply appearance-none bg-transparent border-0 outline-none;
-  }
-}*/
-
 @layer base {
   button {
     @apply appearance-none bg-transparent border-0 outline-none;
   }
 }
 
-
-@tailwind components;
-@tailwind utilities;
-
 @layer components {
   .all-\[unset\] {
     all: unset;
   }
   
-  /* Pre-login right side background - solid white */
+  /* Pre-login right side background - subtle blue gradient */
   .pre-login-bg {
-    background: #ffffff;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
     position: relative;
     overflow: hidden;
   }

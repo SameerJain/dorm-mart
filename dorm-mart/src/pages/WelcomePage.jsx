@@ -94,11 +94,11 @@ function WelcomePage() {
               </div>
 
               {/* Action buttons */}
-              <div className="space-y-3 sm:space-y-4 md:space-y-5">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 {/* Login Button */}
                 <button
                   onClick={() => navigate('/login')}
-                  className="w-full px-4 py-2.5 sm:py-3 md:py-4 bg-sky-500 hover:bg-sky-600 rounded-lg text-white font-semibold text-sm sm:text-base md:text-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-400/30"
+                  className="flex-1 px-4 py-2.5 sm:py-3 md:py-4 bg-sky-500 hover:bg-sky-600 rounded-lg text-white font-semibold text-sm sm:text-base md:text-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-400/30"
                 >
                   Log In
                 </button>
@@ -106,7 +106,7 @@ function WelcomePage() {
                 {/* Create Account Button */}
                 <button
                   onClick={() => navigate('/create-account')}
-                  className="w-full px-4 py-2.5 sm:py-3 md:py-4 bg-teal-400 hover:bg-teal-500 rounded-lg text-white font-semibold text-sm sm:text-base md:text-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-teal-300/30"
+                  className="flex-1 px-4 py-2.5 sm:py-3 md:py-4 bg-teal-400 hover:bg-teal-500 rounded-lg text-white font-semibold text-sm sm:text-base md:text-lg transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-teal-300/30"
                 >
                   Create Account
                 </button>
