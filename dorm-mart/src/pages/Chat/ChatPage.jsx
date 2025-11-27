@@ -307,26 +307,33 @@ export default function ChatPage() {
     };
   }, []);
 
-  /** Auto-scroll to bottom when active conversation or messages change */
+  /** Auto-scroll to bottom when active conversation or messages change - optimized with requestAnimationFrame */
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    
+    // Use requestAnimationFrame for smoother scrolling
+    const rafId = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    
+    return () => cancelAnimationFrame(rafId);
     // Note: Removed automatic hiding of typing indicator on messages.length change
     // The backend already handles typing status expiration, and this was causing
     // race conditions where the indicator would disappear when messages were being fetched
   }, [activeConvId, messages.length]);
 
-  /** Auto-scroll to bottom when typing indicator appears */
+  /** Auto-scroll to bottom when typing indicator appears - optimized with requestAnimationFrame */
   useEffect(() => {
     if (isOtherPersonTyping) {
-      // Use setTimeout to ensure DOM has updated with typing indicator
-      const timeoutId = setTimeout(() => {
+      // Use requestAnimationFrame for smoother scrolling
+      const rafId = requestAnimationFrame(() => {
         const el = scrollRef.current;
         if (el) {
           el.scrollTop = el.scrollHeight;
         }
-      }, 100);
-      return () => clearTimeout(timeoutId);
+      });
+      return () => cancelAnimationFrame(rafId);
     }
   }, [isOtherPersonTyping]);
 
@@ -402,6 +409,9 @@ export default function ChatPage() {
       return;
     }
 
+    // Track if we've sent typing status for this typing session
+    const hasSentTyping = lastTypingStatusSentRef.current === true;
+    
     // Clear existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -412,23 +422,30 @@ export default function ChatPage() {
       typingStatusTimeoutRef.current = null;
     }
 
-    // Send "typing" status after 500ms debounce when user types
-    // Always set up the timeout to ensure typing status is sent reliably
-    typingTimeoutRef.current = setTimeout(() => {
-      // Verify conversation is still active and component is mounted before sending
+    // Send "typing" status immediately on first keystroke for instant feedback
+    // Then use minimal debounce for subsequent keystrokes to avoid spam
+    if (!hasSentTyping) {
+      // First keystroke - send immediately for instant responsiveness
       if (currentConvIdRef.current === convId && isMountedRef.current) {
         sendTypingStatus(convId, true);
       }
-    }, 500);
+    } else {
+      // Subsequent keystrokes - use minimal debounce (50ms) for smooth updates
+      typingTimeoutRef.current = setTimeout(() => {
+        if (currentConvIdRef.current === convId && isMountedRef.current) {
+          sendTypingStatus(convId, true);
+        }
+      }, 50);
+    }
 
-    // Send "stopped" status after 3s of inactivity (reduced from 4s for better UX)
+    // Send "stopped" status after 1.5s of inactivity (optimized for faster cleanup and responsiveness)
     typingStatusTimeoutRef.current = setTimeout(() => {
       // Verify conversation is still active and component is mounted before sending
       if (currentConvIdRef.current === convId && isMountedRef.current) {
         sendTypingStatus(convId, false);
         lastTypingStatusSentRef.current = false;
       }
-    }, 3000);
+    }, 1500);
   }, [activeConvId, sendTypingStatus, conversations]);
 
   /** Wrapper to prevent message creation when item is deleted */
@@ -551,26 +568,217 @@ export default function ChatPage() {
     setDeleteError('');
   }
 
-  /** Detect listing intro message and whether current user is seller */
-  const hasListingIntro = messages.some(m => m.metadata?.type === "listing_intro");
-  const listingIntroMsg = messages.find(m => m.metadata?.type === "listing_intro");
-  const isSeller = hasListingIntro && listingIntroMsg && listingIntroMsg.sender === "them";
+  /** Helper to parse metadata once and cache it */
+  const parseMetadata = useCallback((metadata) => {
+    if (!metadata) return null;
+    if (typeof metadata === "object") return metadata;
+    try {
+      return JSON.parse(metadata);
+    } catch {
+      return null;
+    }
+  }, []);
+
 
   /** Determine if current user is the seller (seller perspective) */
   const isSellerPerspective = activeConversation?.productId && activeConversation?.productSellerId && myId &&
     Number(activeConversation.productSellerId) === Number(myId);
 
-  /** Check if buyer has accepted confirm purchase and should see review prompt */
-  const hasAcceptedConfirm = messages.some(m => {
-    const msgType = m.metadata?.type;
-    // Buyer sees confirm_accepted when they accept (sender === "me") or when seller sends it (sender === "them")
-    // We show the prompt to buyers (not seller perspective) when there's an accepted confirm message
-    return (msgType === 'confirm_accepted' || msgType === 'confirm_auto_accepted');
-  });
-  const shouldShowReviewPrompt = !isSellerPerspective && hasAcceptedConfirm && activeConversation?.productId;
+  /** Check if buyer has accepted confirm purchase and should see review prompt - memoized */
+  const { hasAcceptedConfirm, shouldShowReviewPrompt, shouldShowBuyerRatingPrompt } = useMemo(() => {
+    const accepted = messages.some(m => {
+      const meta = parseMetadata(m.metadata);
+      const msgType = meta?.type;
+      return (msgType === 'confirm_accepted' || msgType === 'confirm_auto_accepted');
+    });
+    const showReview = !isSellerPerspective && accepted && activeConversation?.productId;
+    const showBuyerRating = isSellerPerspective && accepted && activeConversation?.productId && activeReceiverId;
+    return { 
+      hasAcceptedConfirm: accepted, 
+      shouldShowReviewPrompt: showReview,
+      shouldShowBuyerRatingPrompt: showBuyerRating
+    };
+  }, [messages, isSellerPerspective, activeConversation?.productId, activeReceiverId, parseMetadata]);
 
-  /** Check if seller should see buyer rating prompt */
-  const shouldShowBuyerRatingPrompt = isSellerPerspective && hasAcceptedConfirm && activeConversation?.productId && activeReceiverId;
+  /** Memoize filtered messages computation to avoid re-running complex logic on every render */
+  const filteredMessages = useMemo(() => {
+    if (!messages.length) return [];
+    
+    // Filter out duplicate confirm_request messages if a response exists
+    // Build a map of confirm_request_id to response messages
+    const confirmResponses = new Map();
+    const confirmRequestIds = new Set(); // Track all confirm_request_ids we've seen
+    let latestConfirmAcceptedTs = null;
+    
+    // Pre-parse all metadata once to avoid repeated parsing
+    const messagesWithParsedMetadata = messages.map(m => ({
+      ...m,
+      parsedMetadata: parseMetadata(m.metadata)
+    }));
+    
+    // First pass: identify all confirm_request messages and their IDs
+    messagesWithParsedMetadata.forEach((m) => {
+      const metadata = m.parsedMetadata;
+      const messageType = metadata?.type;
+      const confirmRequestId = metadata?.confirm_request_id;
+      
+      if (messageType === 'confirm_request' && confirmRequestId) {
+        confirmRequestIds.add(confirmRequestId);
+      }
+    });
+    
+    // Second pass: identify response messages and map them to request IDs
+    messagesWithParsedMetadata.forEach((m) => {
+      const metadata = m.parsedMetadata;
+      const messageType = metadata?.type;
+      const confirmRequestId = metadata?.confirm_request_id;
+      
+      // Check if this is a response message
+      if (confirmRequestId && (
+        messageType === 'confirm_accepted' ||
+        messageType === 'confirm_denied' ||
+        messageType === 'confirm_auto_accepted'
+      )) {
+        // Track that we have a response for this confirm_request_id
+        confirmResponses.set(confirmRequestId, true);
+        
+        // Track the latest confirm_accepted/confirm_auto_accepted timestamp
+        if ((messageType === 'confirm_accepted' || messageType === 'confirm_auto_accepted') && m.ts) {
+          if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
+            latestConfirmAcceptedTs = m.ts;
+          }
+        }
+      }
+      
+      // Also check enriched metadata for confirm_purchase_status
+      // This handles cases where backend enriches messages with status
+      const enrichedStatus = metadata?.confirm_purchase_status;
+      if (confirmRequestId && enrichedStatus && (
+        enrichedStatus === 'buyer_accepted' ||
+        enrichedStatus === 'buyer_declined' ||
+        enrichedStatus === 'auto_accepted'
+      )) {
+        confirmResponses.set(confirmRequestId, true);
+        
+        if ((enrichedStatus === 'buyer_accepted' || enrichedStatus === 'auto_accepted') && m.ts) {
+          if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
+            latestConfirmAcceptedTs = m.ts;
+          }
+        }
+      }
+    });
+    
+    // Filter messages: hide confirm_request if a response exists for the same confirm_request_id
+    // Also deduplicate: if multiple response messages exist for the same confirm_request_id, keep only the latest one
+    const responseMessagesByRequestId = new Map(); // Track confirm_request_id -> array of response messages
+    
+    // First, collect all response messages grouped by confirm_request_id
+    messagesWithParsedMetadata.forEach((m) => {
+      const metadata = m.parsedMetadata;
+      const messageType = metadata?.type;
+      const confirmRequestId = metadata?.confirm_request_id;
+      
+      if (confirmRequestId && (
+        messageType === 'confirm_accepted' ||
+        messageType === 'confirm_denied' ||
+        messageType === 'confirm_auto_accepted'
+      )) {
+        if (!responseMessagesByRequestId.has(confirmRequestId)) {
+          responseMessagesByRequestId.set(confirmRequestId, []);
+        }
+        responseMessagesByRequestId.get(confirmRequestId).push(m);
+      }
+    });
+    
+    // For each confirm_request_id with responses, find the latest one
+    const latestResponseByRequestId = new Map();
+    responseMessagesByRequestId.forEach((responseMessages, confirmRequestId) => {
+      // Sort by timestamp descending and take the first (latest) one
+      const sorted = responseMessages.sort((a, b) => {
+        const tsA = a.ts || 0;
+        const tsB = b.ts || 0;
+        return tsB - tsA; // Descending order
+      });
+      latestResponseByRequestId.set(confirmRequestId, sorted[0]);
+    });
+    
+    // Now filter messages
+    let filtered = messagesWithParsedMetadata.filter((m) => {
+      const metadata = m.parsedMetadata;
+      const messageType = metadata?.type;
+      const confirmRequestId = metadata?.confirm_request_id;
+      
+      // If this is a confirm_request and we have a response for it, hide it
+      // This ensures only the response message (confirm_accepted/confirm_denied) is shown
+      if (messageType === 'confirm_request' && confirmRequestId && confirmResponses.has(confirmRequestId)) {
+        return false; // Hide this message
+      }
+      
+      // If this is a response message, only show it if it's the latest one for this confirm_request_id
+      if (confirmRequestId && (
+        messageType === 'confirm_accepted' ||
+        messageType === 'confirm_denied' ||
+        messageType === 'confirm_auto_accepted'
+      )) {
+        const latestResponse = latestResponseByRequestId.get(confirmRequestId);
+        // Only show this message if it's the latest one (same message object reference)
+        return latestResponse === m;
+      }
+      
+      return true; // Show this message
+    });
+    
+    // Insert virtual messages for review/rating prompts right after the latest confirm_accepted message
+    if (latestConfirmAcceptedTs !== null && hasAcceptedConfirm && activeConversation?.productId) {
+      const virtualMessages = [];
+      
+      // Add review prompt for buyers
+      if (shouldShowReviewPrompt) {
+        virtualMessages.push({
+          message_id: `review_prompt_${activeConversation.productId}`,
+          sender: 'system',
+          content: '',
+          ts: latestConfirmAcceptedTs + 1, // Place right after confirm_accepted
+          metadata: {
+            type: 'review_prompt'
+          },
+          parsedMetadata: { type: 'review_prompt' }
+        });
+      }
+      
+      // Add buyer rating prompt for sellers
+      if (shouldShowBuyerRatingPrompt && activeReceiverId) {
+        virtualMessages.push({
+          message_id: `buyer_rating_prompt_${activeConversation.productId}_${activeReceiverId}`,
+          sender: 'system',
+          content: '',
+          ts: latestConfirmAcceptedTs + 2, // Place after review prompt if both exist
+          metadata: {
+            type: 'buyer_rating_prompt'
+          },
+          parsedMetadata: { type: 'buyer_rating_prompt' }
+        });
+      }
+      
+      // Insert virtual messages into the array and sort by timestamp
+      filtered = [...filtered, ...virtualMessages].sort((a, b) => {
+        const tsA = a.ts || 0;
+        const tsB = b.ts || 0;
+        if (tsA !== tsB) return tsA - tsB;
+        // If timestamps are equal, ensure virtual messages come after regular messages
+        const aMsgId = String(a.message_id || '');
+        const bMsgId = String(b.message_id || '');
+        const aIsVirtual = aMsgId.startsWith('review_prompt_') || aMsgId.startsWith('buyer_rating_prompt_');
+        const bIsVirtual = bMsgId.startsWith('review_prompt_') || bMsgId.startsWith('buyer_rating_prompt_');
+        if (aIsVirtual && !bIsVirtual) return 1;
+        if (!aIsVirtual && bIsVirtual) return -1;
+        return 0;
+      });
+    }
+    
+    return filtered;
+  }, [messages, hasAcceptedConfirm, activeConversation?.productId, shouldShowReviewPrompt, shouldShowBuyerRatingPrompt, activeReceiverId, parseMetadata]);
+
 
   /** Header background color based on buyer vs seller perspective */
   const headerBgColor = isSellerPerspective
@@ -726,8 +934,6 @@ export default function ChatPage() {
       }
     }
     const hoverColor = sectionType === 'buyers' ? "hover:bg-green-600" : "hover:bg-blue-600";
-    const profileUsername = usernameMap[c.receiverId] || null;
-    const profilePath = profileUsername ? `/app/profile?username=${encodeURIComponent(profileUsername)}` : null;
 
     return (
       <li key={c.conv_id} className="relative group">
@@ -757,6 +963,7 @@ export default function ChatPage() {
                   src={c.productImageUrl.startsWith('http') || c.productImageUrl.startsWith('/data/images/') || c.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(c.productImageUrl)}` : c.productImageUrl}
                   alt={c.productTitle || 'Product'}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
             )}
@@ -887,11 +1094,12 @@ export default function ChatPage() {
                 <div className="flex items-center gap-2">
                   {activeConversation?.productImageUrl && (
                     <div className="inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
-                      <img
-                        src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
+                                <img
+                                  src={activeConversation.productImageUrl.startsWith('http') || activeConversation.productImageUrl.startsWith('/data/images/') || activeConversation.productImageUrl.startsWith('/images/') ? `${API_BASE}/image.php?url=${encodeURIComponent(activeConversation.productImageUrl)}` : activeConversation.productImageUrl}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
                     </div>
                   )}
                   {activeConversation?.productId && (
@@ -943,186 +1151,10 @@ export default function ChatPage() {
               ) : messages.length === 0 ? (
                 <p className="text-center text-sm text-gray-500 dark:text-gray-400">No messages yet.</p>
               ) : (
-                (() => {
-                  // Filter out duplicate confirm_request messages if a response exists
-                  // Build a map of confirm_request_id to response messages
-                  const confirmResponses = new Map();
-                  const confirmRequestIds = new Set(); // Track all confirm_request_ids we've seen
-                  let latestConfirmAcceptedTs = null;
-                  
-                  // First pass: identify all confirm_request messages and their IDs
-                  messages.forEach((m) => {
-                    const metadata = typeof m.metadata === 'string' ? (() => {
-                      try { return JSON.parse(m.metadata); } catch { return null; }
-                    })() : (m.metadata || null);
-                    const messageType = metadata?.type;
-                    const confirmRequestId = metadata?.confirm_request_id;
-                    
-                    if (messageType === 'confirm_request' && confirmRequestId) {
-                      confirmRequestIds.add(confirmRequestId);
-                    }
-                  });
-                  
-                  // Second pass: identify response messages and map them to request IDs
-                  messages.forEach((m) => {
-                    const metadata = typeof m.metadata === 'string' ? (() => {
-                      try { return JSON.parse(m.metadata); } catch { return null; }
-                    })() : (m.metadata || null);
-                    const messageType = metadata?.type;
-                    const confirmRequestId = metadata?.confirm_request_id;
-                    
-                    // Check if this is a response message
-                    if (confirmRequestId && (
-                      messageType === 'confirm_accepted' ||
-                      messageType === 'confirm_denied' ||
-                      messageType === 'confirm_auto_accepted'
-                    )) {
-                      // Track that we have a response for this confirm_request_id
-                      confirmResponses.set(confirmRequestId, true);
-                      
-                      // Track the latest confirm_accepted/confirm_auto_accepted timestamp
-                      if ((messageType === 'confirm_accepted' || messageType === 'confirm_auto_accepted') && m.ts) {
-                        if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
-                          latestConfirmAcceptedTs = m.ts;
-                        }
-                      }
-                    }
-                    
-                    // Also check enriched metadata for confirm_purchase_status
-                    // This handles cases where backend enriches messages with status
-                    const enrichedStatus = metadata?.confirm_purchase_status;
-                    if (confirmRequestId && enrichedStatus && (
-                      enrichedStatus === 'buyer_accepted' ||
-                      enrichedStatus === 'buyer_declined' ||
-                      enrichedStatus === 'auto_accepted'
-                    )) {
-                      confirmResponses.set(confirmRequestId, true);
-                      
-                      if ((enrichedStatus === 'buyer_accepted' || enrichedStatus === 'auto_accepted') && m.ts) {
-                        if (!latestConfirmAcceptedTs || m.ts > latestConfirmAcceptedTs) {
-                          latestConfirmAcceptedTs = m.ts;
-                        }
-                      }
-                    }
-                  });
-                  
-                  // Filter messages: hide confirm_request if a response exists for the same confirm_request_id
-                  // Also deduplicate: if multiple response messages exist for the same confirm_request_id, keep only the latest one
-                  const responseMessagesByRequestId = new Map(); // Track confirm_request_id -> array of response messages
-                  
-                  // First, collect all response messages grouped by confirm_request_id
-                  messages.forEach((m) => {
-                    const metadata = typeof m.metadata === 'string' ? (() => {
-                      try { return JSON.parse(m.metadata); } catch { return null; }
-                    })() : (m.metadata || null);
-                    const messageType = metadata?.type;
-                    const confirmRequestId = metadata?.confirm_request_id;
-                    
-                    if (confirmRequestId && (
-                      messageType === 'confirm_accepted' ||
-                      messageType === 'confirm_denied' ||
-                      messageType === 'confirm_auto_accepted'
-                    )) {
-                      if (!responseMessagesByRequestId.has(confirmRequestId)) {
-                        responseMessagesByRequestId.set(confirmRequestId, []);
-                      }
-                      responseMessagesByRequestId.get(confirmRequestId).push(m);
-                    }
-                  });
-                  
-                  // For each confirm_request_id with responses, find the latest one
-                  const latestResponseByRequestId = new Map();
-                  responseMessagesByRequestId.forEach((responseMessages, confirmRequestId) => {
-                    // Sort by timestamp descending and take the first (latest) one
-                    const sorted = responseMessages.sort((a, b) => {
-                      const tsA = a.ts || 0;
-                      const tsB = b.ts || 0;
-                      return tsB - tsA; // Descending order
-                    });
-                    latestResponseByRequestId.set(confirmRequestId, sorted[0]);
-                  });
-                  
-                  // Now filter messages
-                  let filteredMessages = messages.filter((m) => {
-                    const metadata = typeof m.metadata === 'string' ? (() => {
-                      try { return JSON.parse(m.metadata); } catch { return null; }
-                    })() : (m.metadata || null);
-                    const messageType = metadata?.type;
-                    const confirmRequestId = metadata?.confirm_request_id;
-                    
-                    // If this is a confirm_request and we have a response for it, hide it
-                    // This ensures only the response message (confirm_accepted/confirm_denied) is shown
-                    if (messageType === 'confirm_request' && confirmRequestId && confirmResponses.has(confirmRequestId)) {
-                      return false; // Hide this message
-                    }
-                    
-                    // If this is a response message, only show it if it's the latest one for this confirm_request_id
-                    if (confirmRequestId && (
-                      messageType === 'confirm_accepted' ||
-                      messageType === 'confirm_denied' ||
-                      messageType === 'confirm_auto_accepted'
-                    )) {
-                      const latestResponse = latestResponseByRequestId.get(confirmRequestId);
-                      // Only show this message if it's the latest one (same message object reference)
-                      return latestResponse === m;
-                    }
-                    
-                    return true; // Show this message
-                  });
-                  
-                  // Insert virtual messages for review/rating prompts right after the latest confirm_accepted message
-                  if (latestConfirmAcceptedTs !== null && hasAcceptedConfirm && activeConversation?.productId) {
-                    const virtualMessages = [];
-                    
-                    // Add review prompt for buyers
-                    if (shouldShowReviewPrompt) {
-                      virtualMessages.push({
-                        message_id: `review_prompt_${activeConversation.productId}`,
-                        sender: 'system',
-                        content: '',
-                        ts: latestConfirmAcceptedTs + 1, // Place right after confirm_accepted
-                        metadata: {
-                          type: 'review_prompt'
-                        }
-                      });
-                    }
-                    
-                    // Add buyer rating prompt for sellers
-                    if (shouldShowBuyerRatingPrompt && activeReceiverId) {
-                      virtualMessages.push({
-                        message_id: `buyer_rating_prompt_${activeConversation.productId}_${activeReceiverId}`,
-                        sender: 'system',
-                        content: '',
-                        ts: latestConfirmAcceptedTs + 2, // Place after review prompt if both exist
-                        metadata: {
-                          type: 'buyer_rating_prompt'
-                        }
-                      });
-                    }
-                    
-                    // Insert virtual messages into the array and sort by timestamp
-                    filteredMessages = [...filteredMessages, ...virtualMessages].sort((a, b) => {
-                      const tsA = a.ts || 0;
-                      const tsB = b.ts || 0;
-                      if (tsA !== tsB) return tsA - tsB;
-                      // If timestamps are equal, ensure virtual messages come after regular messages
-                      const aMsgId = String(a.message_id || '');
-                      const bMsgId = String(b.message_id || '');
-                      const aIsVirtual = aMsgId.startsWith('review_prompt_') || aMsgId.startsWith('buyer_rating_prompt_');
-                      const bIsVirtual = bMsgId.startsWith('review_prompt_') || bMsgId.startsWith('buyer_rating_prompt_');
-                      if (aIsVirtual && !bIsVirtual) return 1;
-                      if (!aIsVirtual && bIsVirtual) return -1;
-                      return 0;
-                    });
-                  }
-                  
-                  return filteredMessages;
-                })().map((m) => {
+                filteredMessages.map((m) => {
                   /** Categorize message type: basic, schedule, confirm, listing intro, or next steps */
-                  // Handle metadata that might be a string or object
-                  const metadata = typeof m.metadata === 'string' ? (() => {
-                    try { return JSON.parse(m.metadata); } catch { return null; }
-                  })() : (m.metadata || null);
+                  // Use pre-parsed metadata for better performance
+                  const metadata = m.parsedMetadata || parseMetadata(m.metadata);
                   const messageType = metadata?.type;
                   const isScheduleMessage = messageType === 'schedule_request' ||
                                             messageType === 'schedule_accepted' ||
@@ -1146,8 +1178,8 @@ export default function ChatPage() {
                   const isBuyerRatingPrompt = messageType === 'buyer_rating_prompt';
                   const isItemDeletedMessage = messageType === 'item_deleted';
 
-                  // Ensure message has parsed metadata
-                  const messageWithMetadata = metadata ? { ...m, metadata } : m;
+                  // Ensure message has parsed metadata (use pre-parsed if available)
+                  const messageWithMetadata = { ...m, metadata: metadata || m.metadata };
                   
                   // Skip rendering entirely if this is an invalid confirm message (would return null)
                   // This prevents wrapper div creation and whitespace
@@ -1252,11 +1284,12 @@ export default function ChatPage() {
                                       >
                                         <img
                                           src={imgSrc}
-                                          alt="Image attachment"
+                                          alt="Chat attachment"
                                           className={
                                             "max-h-72 w-full object-contain rounded-lg " +
                                             (m.sender === "me" ? "bg-white/10" : "bg-black/5")
                                           }
+                                          loading="lazy"
                                         />
                                       </a>
                                       {m.content && (

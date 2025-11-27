@@ -164,7 +164,6 @@ function ForgotPasswordPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={30}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
-                    placeholder="ubname@buffalo.edu"
                   />
                 </div>
                 {error && (
@@ -233,7 +232,7 @@ function ForgotPasswordPage() {
                   >
                     Create account
                   </button>
-                  <span className="w-1 h-1 bg-black rounded-full hidden xs:block"></span>
+                  <span className="w-1 h-1 bg-black rounded-full"></span>
                   <button
                     onClick={(e) => {
                       e.preventDefault();
@@ -241,7 +240,7 @@ function ForgotPasswordPage() {
                     }}
                     className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer p-0"
                   >
-                    Go back to login
+                    Go to login
                   </button>
                 </div>
               </div>

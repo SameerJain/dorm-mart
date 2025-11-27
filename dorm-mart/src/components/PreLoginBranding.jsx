@@ -1,4 +1,4 @@
-import backgroundImage from '../assets/images/login-page-left-side-background.jpg';
+import backgroundImage from '../assets/images/cf704b7b8689fdfa8cf49a9f368bb17c.jpg';
 
 function PreLoginBranding({ animate = false, animateText = false }) {
   return (
@@ -19,7 +19,6 @@ function PreLoginBranding({ animate = false, animateText = false }) {
         {/* Branding content */}
         <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
           <div className="text-center w-full px-4">
-            
             <h1 className={`text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex flex-col lg:flex-row items-center justify-center lg:space-x-6 leading-tight lg:leading-normal ${animateText ? 'animate-fade-in' : ''}`}>
               <span>Dorm</span>
               <span>Mart</span>
