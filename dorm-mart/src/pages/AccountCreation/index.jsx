@@ -236,7 +236,7 @@ function CreateAccountPage() {
                     maxLength={30}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
                   />
-                  {errors.firstName && <p className="text-red-200 text-xs mt-1">{errors.firstName}</p>}
+                  {errors.firstName && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.firstName}</p>}
                 </div>
 
                 {/* Last Name */}
@@ -250,7 +250,7 @@ function CreateAccountPage() {
                     maxLength={30}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
                   />
-                  {errors.lastName && <p className="text-red-200 text-xs mt-1">{errors.lastName}</p>}
+                  {errors.lastName && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.lastName}</p>}
                 </div>
 
                 {/* Graduation Date */}
@@ -276,7 +276,7 @@ function CreateAccountPage() {
                       className="w-1/2 px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
                     />
                   </div>
-                  {errors.gradDate && <p className="text-red-200 text-xs mt-1">{errors.gradDate}</p>}
+                  {errors.gradDate && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.gradDate}</p>}
                 </div>
 
                 {/* Email */}
@@ -290,7 +290,7 @@ function CreateAccountPage() {
                     maxLength={255}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
                   />
-                  {errors.email && <p className="text-red-200 text-xs mt-1">{errors.email}</p>}
+                  {errors.email && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.email}</p>}
                 </div>
 
                 {/* Checkboxes */}
@@ -326,7 +326,7 @@ function CreateAccountPage() {
                       </a>
                     </span>
                   </label>
-                  {errors.terms && <p className="text-red-200 text-xs mt-1">{errors.terms}</p>}
+                  {errors.terms && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.terms}</p>}
 
                   <label className="flex items-center text-gray-100">
                     <input
