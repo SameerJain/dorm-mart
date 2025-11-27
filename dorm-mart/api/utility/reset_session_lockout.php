@@ -5,24 +5,24 @@ require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 setSecureCORS();
 
+// Include auth handle for session management
+require_once __DIR__ . '/../auth/auth_handle.php';
+
 /**
- * Reset All Active Lockouts - Development Utility
+ * Reset All Session Lockouts - Development Utility
  * 
  * This script resets all active rate limiting lockouts for all sessions.
  * Run this script whenever you need to clear all lockouts during testing.
  * 
- * NOTE: Rate limiting is now session-based instead of email-based.
- * This script resets all sessions, not individual user accounts.
- * 
  * COMMAND LINE USAGE:
  * ===================
  * 
- * Reset all lockouts (command line):
- *   php api/utility/reset_user_account_lockouts.php
+ * Reset all session lockouts (command line):
+ *   php api/utility/reset_session_lockout.php
  * 
  * EXAMPLES:
  * =========
- * php api/utility/reset_user_account_lockouts.php
+ * php api/utility/reset_session_lockout.php
  * 
  * WEB BROWSER USAGE:
  * ==================
@@ -30,20 +30,19 @@ setSecureCORS();
  * 1. NPM START METHOD (React Dev Server):
  *    - Start React dev server: npm start
  *    - Start PHP server: C:\xampp\php\php.exe -S localhost:8080 -t .
- *    - Open browser: http://localhost:3000/api/auth/utility/reset_lockouts.php
+ *    - Open browser: http://localhost:3000/api/utility/reset_session_lockout.php
  * 
  * 2. NPM BUILD METHOD (Production Build):
  *    - Build React app: npm run build
  *    - Start PHP server: C:\xampp\php\php.exe -S localhost:8080 -t .
- *    - Open browser: http://localhost:8080/api/auth/utility/reset_lockouts.php
+ *    - Open browser: http://localhost:8080/api/utility/reset_session_lockout.php
  * 
  * NOTES:
  * ======
- * - This script resets failed_login_attempts to 0 and clears last_failed_attempt and lockout_until for all sessions
+ * - This script resets failed_login_attempts to 0 and clears last_failed_attempt and lockout_until for ALL sessions
  * - All sessions can then attempt login without rate limiting restrictions
  * - Use this during development/testing to reset rate limits
  * - Works both from command line and web browser
- * - For resetting a single session, use reset_session_lockout.php instead
  */
 
 // Include database connection
@@ -73,7 +72,7 @@ try {
 
     $response = [
         'success' => true,
-        'message' => "All rate limiting lockouts have been reset!",
+        'message' => "All session rate limiting lockouts have been reset!",
         'details' => [
             'affected_sessions' => $affectedRows,
             'reset_time' => $currentTime,
@@ -82,7 +81,7 @@ try {
     ];
 
     if (php_sapi_name() === 'cli') {
-        echo "SUCCESS: All rate limiting lockouts have been reset!\n";
+        echo "SUCCESS: All session rate limiting lockouts have been reset!\n";
         echo "Affected sessions: $affectedRows\n";
         echo "Reset time: $currentTime\n";
         echo "All sessions can now attempt login without restrictions.\n";
@@ -92,15 +91,16 @@ try {
 } catch (Exception $e) {
     $errorResponse = [
         'success' => false,
-        'error' => 'Failed to reset lockouts',
+        'error' => 'Failed to reset session lockouts',
         'message' => $e->getMessage()
     ];
 
     if (php_sapi_name() === 'cli') {
-        echo "ERROR: Failed to reset lockouts\n";
+        echo "ERROR: Failed to reset session lockouts\n";
         echo "Details: " . $e->getMessage() . "\n";
     } else {
         http_response_code(500);
         echo json_encode($errorResponse, JSON_PRETTY_PRINT);
     }
 }
+

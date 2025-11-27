@@ -1,52 +1,51 @@
 <?php
 /**
- * User Rate Limiting Monitor
+ * Session Rate Limiting Monitor
  * 
- * This script allows you to monitor user login attempts, decay events, and rate limiting status.
+ * This script allows you to monitor session login attempts, decay events, and rate limiting status.
  * 
  * USAGE:
- * php api/utility/monitor_user_attempts.php [email]
+ * php api/utility/monitor_user_attempts.php [session_id]
  * 
  * Examples:
- * php api/utility/monitor_user_attempts.php sameerja@buffalo.edu
- * php api/utility/monitor_user_attempts.php testuser@buffalo.edu
+ * php api/utility/monitor_user_attempts.php abc123def456...
+ * 
+ * NOTE: Rate limiting is now session-based. Use session_id (PHPSESSID) instead of email.
  */
 
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../security/security.php';
 
-// Get email from command line argument
-$email = $argv[1] ?? '';
+// Get session_id from command line argument
+$sessionId = $argv[1] ?? '';
 
-if (empty($email)) {
-    echo "Usage: php api/utility/monitor_user_attempts.php [email]\n";
-    echo "Example: php api/utility/monitor_user_attempts.php sameerja@buffalo.edu\n";
+if (empty($sessionId)) {
+    echo "Usage: php api/utility/monitor_user_attempts.php [session_id]\n";
+    echo "Example: php api/utility/monitor_user_attempts.php abc123def456ghi789...\n";
+    echo "\n";
+    echo "NOTE: Rate limiting is now session-based (PHPSESSID) instead of email-based.\n";
+    echo "You can find your session ID in browser cookies (PHPSESSID) or session files.\n";
     exit(1);
 }
 
-// Validate email format
-if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/@buffalo\.edu$/', $email)) {
-    echo "Error: Email must be a valid @buffalo.edu address\n";
-    exit(1);
-}
-
-echo "=== USER RATE LIMITING MONITOR ===\n";
-echo "Email: $email\n";
+echo "=== SESSION RATE LIMITING MONITOR ===\n";
+echo "Session ID: " . substr($sessionId, 0, 32) . "...\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n";
 echo str_repeat("=", 50) . "\n\n";
 
-// Get current user status
+// Get current session status
 $conn = db();
-$stmt = $conn->prepare('SELECT user_id, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ?');
-$stmt->bind_param('s', $email);
+$stmt = $conn->prepare('SELECT failed_login_attempts, last_failed_attempt, lockout_until FROM login_rate_limits WHERE session_id = ?');
+$stmt->bind_param('s', $sessionId);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    echo "❌ User not found in database\n";
+    echo "✅ No rate limiting data found for this session\n";
+    echo "   This session has no failed login attempts recorded.\n";
     $stmt->close();
     $conn->close();
-    exit(1);
+    exit(0);
 }
 
 $row = $result->fetch_assoc();
@@ -55,10 +54,9 @@ $conn->close();
 
 $attempts = (int)$row['failed_login_attempts'];
 $lastAttempt = $row['last_failed_attempt'];
-$userId = $row['user_id'];
+$lockoutUntil = $row['lockout_until'];
 
 echo "📊 CURRENT STATUS:\n";
-echo "  User ID: $userId\n";
 echo "  Failed Attempts: $attempts\n";
 echo "  Last Attempt: " . ($lastAttempt ?: 'Never') . "\n";
 
@@ -74,7 +72,7 @@ echo "\n";
 
 // Check rate limiting status
 echo "🔒 RATE LIMITING STATUS:\n";
-$rateLimitCheck = check_rate_limit($email);
+$rateLimitCheck = check_rate_limit($sessionId);
 if ($rateLimitCheck['blocked']) {
     $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
     echo "  Status: 🔴 LOCKED OUT\n";
@@ -123,14 +121,13 @@ if ($attempts > 0 && $lastAttempt) {
 echo "\n";
 
 // Show lockout expiry
-if ($attempts >= 5 && $lastAttempt) {
-    $lockoutExpiry = strtotime($lastAttempt) + (3 * 60); // 3 minutes
+if ($lockoutUntil) {
+    $lockoutExpiry = strtotime($lockoutUntil);
     $currentTime = time();
     $remainingLockout = $lockoutExpiry - $currentTime;
     
     echo "🚫 LOCKOUT STATUS:\n";
-    echo "  Lockout Started: " . date('Y-m-d H:i:s', strtotime($lastAttempt)) . "\n";
-    echo "  Lockout Expires: " . date('Y-m-d H:i:s', $lockoutExpiry) . "\n";
+    echo "  Lockout Until: " . date('Y-m-d H:i:s', $lockoutExpiry) . "\n";
     
     if ($remainingLockout > 0) {
         echo "  Remaining Lockout: " . formatTime($remainingLockout) . "\n";

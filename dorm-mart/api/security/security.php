@@ -361,11 +361,11 @@ function containsSQLInjectionPattern($input) {
 // ============================================================================
 
 /**
- * Check if user has exceeded rate limit for forgot password requests
- * @param string $email User's email address
+ * Check if session has exceeded rate limit for login attempts
+ * @param string $sessionId PHP session ID (PHPSESSID)
  * @return array Rate limit status
  */
-function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
+function check_rate_limit($sessionId, $maxAttempts = 4, $lockoutMinutes = 3) {
     try {
         require_once __DIR__ . '/../database/db_connect.php';
         
@@ -378,11 +378,11 @@ function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
     // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
     $stmt = $conn->prepare("
         SELECT failed_login_attempts, last_failed_attempt, lockout_until 
-        FROM user_accounts 
-        WHERE email = ? 
+        FROM login_rate_limits 
+        WHERE session_id = ? 
         LIMIT 1
     ");
-    $stmt->bind_param('s', $email);
+    $stmt->bind_param('s', $sessionId);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -399,6 +399,27 @@ function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
     $lastAttempt = $row['last_failed_attempt'];
     $lockoutUntil = $row['lockout_until'];
     
+    // Check if session is currently locked out FIRST (before decay)
+    // If locked out, do NOT apply decay - lockout time must expire completely
+    if ($lockoutUntil) {
+        $currentTime = time();
+        $lockoutExpiry = strtotime($lockoutUntil);
+        
+        if ($currentTime >= $lockoutExpiry) {
+            // Lockout has expired, clear it AND reset attempts
+            $updateStmt = $conn->prepare('UPDATE login_rate_limits SET lockout_until = NULL, failed_login_attempts = 0, last_failed_attempt = NULL WHERE session_id = ?');
+            $updateStmt->bind_param('s', $sessionId);
+            $updateStmt->execute();
+            $updateStmt->close();
+            $conn->close();
+            return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
+        }
+        
+        // Still locked out - return immediately without applying decay
+        $conn->close();
+        return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => $lockoutUntil];
+    }
+    
     // If no attempts, not blocked
     if ($attempts === 0) {
         $conn->close();
@@ -406,6 +427,7 @@ function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
     }
     
     // DECAY SYSTEM: Reduce attempts by 1 if 10+ seconds have passed since last attempt
+    // Only apply decay when NOT locked out
     $decaySeconds = 10;
     $currentTime = time();
     $lastAttemptTime = $lastAttempt ? strtotime($lastAttempt) : 0;
@@ -417,43 +439,23 @@ function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
         
         // Update attempts if they've decayed
         if ($newAttempts !== $attempts) {
-            $updateStmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = ? WHERE email = ?');
-            $updateStmt->bind_param('is', $newAttempts, $email);
+            $updateStmt = $conn->prepare('UPDATE login_rate_limits SET failed_login_attempts = ? WHERE session_id = ?');
+            $updateStmt->bind_param('is', $newAttempts, $sessionId);
             $updateStmt->execute();
             $updateStmt->close();
             $attempts = $newAttempts;
         }
     }
     
-    // Check if user is currently locked out (regardless of attempt count)
-    if ($lockoutUntil) {
-        $currentTime = time();
-        $lockoutExpiry = strtotime($lockoutUntil);
-        
-        if ($currentTime >= $lockoutExpiry) {
-            // Lockout has expired, clear it AND reset attempts
-            $updateStmt = $conn->prepare('UPDATE user_accounts SET lockout_until = NULL, failed_login_attempts = 0, last_failed_attempt = NULL WHERE email = ?');
-            $updateStmt->bind_param('s', $email);
-            $updateStmt->execute();
-            $updateStmt->close();
-            $conn->close();
-            return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
-        }
-        
-        // Still locked out
-        $conn->close();
-        return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => $lockoutUntil];
-    }
-    
-    // Check if we need to start a new lockout (5+ attempts)
+    // Check if we need to start a new lockout (4+ attempts)
     if ($attempts >= $maxAttempts) {
         $currentTime = time();
         $lockoutExpiry = $currentTime + ($lockoutMinutes * 60);
         $lockoutUntil = date('Y-m-d H:i:s', $lockoutExpiry);
         
         // Set lockout timestamp
-        $updateStmt = $conn->prepare('UPDATE user_accounts SET lockout_until = ? WHERE email = ?');
-        $updateStmt->bind_param('ss', $lockoutUntil, $email);
+        $updateStmt = $conn->prepare('UPDATE login_rate_limits SET lockout_until = ? WHERE session_id = ?');
+        $updateStmt->bind_param('ss', $lockoutUntil, $sessionId);
         $updateStmt->execute();
         $updateStmt->close();
         
@@ -473,9 +475,9 @@ function check_rate_limit($email, $maxAttempts = 5, $lockoutMinutes = 3) {
 
 /**
  * Record a failed login attempt for rate limiting
- * @param string $email User's email address
+ * @param string $sessionId PHP session ID (PHPSESSID)
  */
-function record_failed_attempt($email) {
+function record_failed_attempt($sessionId) {
     try {
         require_once __DIR__ . '/../database/db_connect.php';
         
@@ -484,19 +486,18 @@ function record_failed_attempt($email) {
             return; // Silently fail if no database connection
         }
     
-    // First check if user exists and get current attempt data
+    // First check if session record exists and get current attempt data
     // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
-    $checkStmt = $conn->prepare('SELECT user_id, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ?');
-    $checkStmt->bind_param('s', $email);
+    $checkStmt = $conn->prepare('SELECT failed_login_attempts, last_failed_attempt FROM login_rate_limits WHERE session_id = ?');
+    $checkStmt->bind_param('s', $sessionId);
     $checkStmt->execute();
     $result = $checkStmt->get_result();
     $checkStmt->close();
     
     if ($result->num_rows > 0) {
-        // User exists, get current data
+        // Session record exists, get current data
         $row = $result->fetch_assoc();
         $currentAttempts = (int)$row['failed_login_attempts'];
-        $lastAttempt = $row['last_failed_attempt'];
         
         // Don't apply decay when recording new attempts - only when checking rate limits
         // This ensures that new attempts are always recorded regardless of time gaps
@@ -504,18 +505,18 @@ function record_failed_attempt($email) {
         // Now increment by 1
         $newAttempts = $currentAttempts + 1;
         // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
-        $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = ?, last_failed_attempt = NOW() WHERE email = ?');
-        $stmt->bind_param('is', $newAttempts, $email);
+        $stmt = $conn->prepare('UPDATE login_rate_limits SET failed_login_attempts = ?, last_failed_attempt = NOW() WHERE session_id = ?');
+        $stmt->bind_param('is', $newAttempts, $sessionId);
         $stmt->execute();
         $stmt->close();
         
         // Ensure the update is committed
         $conn->commit();
     } else {
-        // User doesn't exist, create a temporary record for rate limiting
+        // Session record doesn't exist, create a new record for rate limiting
         // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
-        $stmt = $conn->prepare('INSERT INTO user_accounts (email, failed_login_attempts, last_failed_attempt) VALUES (?, 1, NOW())');
-        $stmt->bind_param('s', $email);
+        $stmt = $conn->prepare('INSERT INTO login_rate_limits (session_id, failed_login_attempts, last_failed_attempt) VALUES (?, 1, NOW())');
+        $stmt->bind_param('s', $sessionId);
         $stmt->execute();
         $stmt->close();
         
@@ -531,15 +532,15 @@ function record_failed_attempt($email) {
 }
 
 /**
- * Reset failed login attempts for a user
- * @param string $email User's email address
+ * Reset failed login attempts for a session
+ * @param string $sessionId PHP session ID (PHPSESSID)
  */
-function reset_failed_attempts($email) {
+function reset_failed_attempts($sessionId) {
     require_once __DIR__ . '/../database/db_connect.php';
     
     $conn = db();
-    $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = 0, last_failed_attempt = NULL WHERE email = ?');
-    $stmt->bind_param('s', $email);
+    $stmt = $conn->prepare('UPDATE login_rate_limits SET failed_login_attempts = 0, last_failed_attempt = NULL, lockout_until = NULL WHERE session_id = ?');
+    $stmt->bind_param('s', $sessionId);
     $stmt->execute();
     $stmt->close();
     $conn->close();
@@ -573,10 +574,16 @@ function get_remaining_lockout_minutes($lockoutUntil) {
 
 /**
  * Reset all lockouts (admin function)
+ * Resets all session-based rate limiting lockouts
  */
 function reset_all_lockouts() {
-    require_once __DIR__ . '/../utility/reset_user_account_lockouts.php';
-    reset_all_lockouts();
+    require_once __DIR__ . '/../database/db_connect.php';
+    
+    $conn = db();
+    $stmt = $conn->prepare('UPDATE login_rate_limits SET failed_login_attempts = 0, last_failed_attempt = NULL, lockout_until = NULL');
+    $stmt->execute();
+    $stmt->close();
+    $conn->close();
 }
 
 // ============================================================================

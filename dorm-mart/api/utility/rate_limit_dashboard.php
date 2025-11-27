@@ -15,11 +15,11 @@ echo "=== RATE LIMITING DASHBOARD ===\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n";
 echo str_repeat("=", 80) . "\n\n";
 
-// Get all users with failed attempts
+// Get all sessions with failed attempts
 $conn = db();
 $stmt = $conn->prepare('
-    SELECT email, failed_login_attempts, last_failed_attempt, user_id 
-    FROM user_accounts 
+    SELECT session_id, failed_login_attempts, last_failed_attempt, lockout_until
+    FROM login_rate_limits 
     WHERE failed_login_attempts > 0 OR last_failed_attempt IS NOT NULL
     ORDER BY last_failed_attempt DESC
 ');
@@ -27,22 +27,22 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    echo "✅ No users with failed login attempts\n";
+    echo "✅ No sessions with failed login attempts\n";
     $stmt->close();
     $conn->close();
     exit(0);
 }
 
-echo "📊 USERS WITH FAILED ATTEMPTS:\n";
+echo "📊 SESSIONS WITH FAILED ATTEMPTS:\n";
 echo str_repeat("-", 80) . "\n";
 
 while ($row = $result->fetch_assoc()) {
-    $email = $row['email'];
+    $sessionId = $row['session_id'];
     $attempts = (int)$row['failed_login_attempts'];
     $lastAttempt = $row['last_failed_attempt'];
-    $userId = $row['user_id'];
+    $lockoutUntil = $row['lockout_until'];
     
-    echo "👤 User: $email (ID: $userId)\n";
+    echo "🔑 Session: " . substr($sessionId, 0, 32) . "...\n";
     echo "   Attempts: $attempts\n";
     echo "   Last Attempt: " . ($lastAttempt ?: 'Never') . "\n";
     
@@ -55,7 +55,7 @@ while ($row = $result->fetch_assoc()) {
     }
     
     // Check rate limiting status
-    $rateLimitCheck = check_rate_limit($email);
+    $rateLimitCheck = check_rate_limit($sessionId);
     if ($rateLimitCheck['blocked']) {
         $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
         echo "   Status: 🔴 LOCKED OUT ($remainingMinutes minutes remaining)\n";
@@ -90,10 +90,12 @@ if (file_exists($logFile)) {
 }
 
 echo "💡 COMMANDS:\n";
-echo "  php api/utility/monitor_user_attempts.php [email]  - Monitor specific user\n";
+echo "  php api/utility/monitor_user_attempts.php [session_id]  - Monitor specific session\n";
 echo "  php api/utility/attempt_logger.php view           - View all logs\n";
-echo "  php api/utility/reset_user_account_lockouts.php   - Reset all lockouts\n";
-echo "  php api/utility/rate_limit_dashboard.php          - Show this dashboard\n";
+echo "  php api/utility/reset_session_lockout.php          - Reset current session lockout\n";
+echo "  php api/utility/rate_limit_dashboard.php           - Show this dashboard\n";
+echo "\n";
+echo "ℹ️  NOTE: Rate limiting is now session-based (PHPSESSID) instead of email-based.\n";
 
 /**
  * Format seconds into human-readable time

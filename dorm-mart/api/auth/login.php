@@ -26,6 +26,9 @@ if (!$isLocalhost && (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'on')) 
 require __DIR__ . '/auth_handle.php';
 require __DIR__ . '/../database/db_connect.php';
 
+// Initialize session for rate limiting (must be done before checking rate limits)
+auth_boot_session();
+
 // Respond to CORS preflight after setting CORS headers
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -102,11 +105,17 @@ if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
 
 try {
     // CRITICAL: Check rate limiting FIRST, before any password verification
-    $rateLimitCheck = check_rate_limit($email);
+    // This ensures lockout error is shown regardless of whether credentials are valid or invalid
+    // Use session ID instead of email for rate limiting
+    $sessionId = session_id();
+    $rateLimitCheck = check_rate_limit($sessionId);
     if ($rateLimitCheck['blocked']) {
+        // Session is locked out - show lockout error regardless of credential validity
         $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
+        // Ensure at least 1 minute is shown if lockout is still active
+        $displayMinutes = max(1, $remainingMinutes);
         http_response_code(429);
-        echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
+        echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$displayMinutes} minute" . ($displayMinutes > 1 ? 's' : '') . "."]);
         exit;
     }
 
@@ -120,7 +129,7 @@ try {
     // Even if malicious SQL is in $email, it cannot execute because it's bound as a string parameter.
     // This is the industry-standard defense against SQL injection attacks.
     // ============================================================================
-    $stmt = $conn->prepare('SELECT user_id, hash_pass, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT user_id, hash_pass FROM user_accounts WHERE email = ? LIMIT 1');
     $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
     $stmt->execute();
     $res = $stmt->get_result();
@@ -130,7 +139,8 @@ try {
         $conn->close();
         
         // Record failed attempt for non-existent user (but don't reveal this)
-        record_failed_attempt($email);
+        // Use session ID instead of email for rate limiting
+        record_failed_attempt($sessionId);
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -146,7 +156,8 @@ try {
         $conn->close();
         
         // Record failed attempt
-        record_failed_attempt($email);
+        // Use session ID instead of email for rate limiting
+        record_failed_attempt($sessionId);
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -164,12 +175,18 @@ try {
     $themeStmt->close();
     $conn->close();
     
+    // Clear rate limiting data on successful login BEFORE regenerating session ID
+    // This prevents the new session from inheriting any lockout state
+    require_once __DIR__ . '/../security/security.php';
+    reset_failed_attempts($sessionId);
+    
     $theme = 'light'; // default
     if ($themeRow && isset($themeRow['theme'])) {
         $theme = $themeRow['theme'] ? 'dark' : 'light';
     }
 
     // Regenerate session ID to prevent session fixation attacks
+    // This happens AFTER clearing rate limits to ensure old session data is cleared
     regenerate_session_on_login();
     $_SESSION['user_id'] = $userId;
 
