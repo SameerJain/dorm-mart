@@ -329,8 +329,8 @@ function SellerDashboardPage() {
             setConfirmOpen(false);
             setPendingDeleteId(null);
         } catch (e) {
-            // minimal alert
             console.error('Delete error:', e);
+            // minimal alert
             alert('Failed to delete listing.');
         }
     };

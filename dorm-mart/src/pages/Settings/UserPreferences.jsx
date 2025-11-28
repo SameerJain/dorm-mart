@@ -35,8 +35,8 @@ function UserPreferences() {
         if (!cancelled) setAvailableCategories(data);
       } catch (e) {
         if (!cancelled) {
-          setCategoriesError(e.message);
           console.error('Failed to load categories:', e);
+          setCategoriesError(e.message);
         }
       } finally {
         if (!cancelled) setCategoriesLoading(false);

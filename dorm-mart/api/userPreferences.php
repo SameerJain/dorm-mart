@@ -68,13 +68,19 @@ function getPrefs(mysqli $conn, int $userId)
   }
   
   // Build interests array from the 3 category columns
+  // XSS PROTECTION: Escape user-generated content before returning in JSON
   $interests = [];
   if ($userRow) {
-    $interests = array_filter([
+    $rawInterests = array_filter([
       $userRow['interested_category_1'] ?? null,
       $userRow['interested_category_2'] ?? null,
       $userRow['interested_category_3'] ?? null
     ]);
+    foreach ($rawInterests as $interest) {
+      if ($interest !== null && $interest !== '') {
+        $interests[] = escapeHtml((string)$interest);
+      }
+    }
   }
   
   $result = [

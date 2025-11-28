@@ -273,10 +273,12 @@ try {
 } catch (Throwable $e) {
   error_log('[productListing] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
   http_response_code(500);
+  // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+  // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
   echo json_encode([
     'ok'    => false,
-    'error' => $DEBUG ? $e->getMessage() : 'Internal Server Error',
-    'type'  => $DEBUG ? get_class($e) : null,
-    'trace' => $DEBUG ? $e->getTraceAsString() : null,
+    'error' => $DEBUG ? escapeHtml($e->getMessage()) : 'Internal Server Error',
+    'type'  => $DEBUG ? escapeHtml(get_class($e)) : null,
+    'trace' => $DEBUG ? escapeHtml($e->getTraceAsString()) : null,
   ]);
 }

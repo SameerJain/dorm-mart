@@ -159,13 +159,14 @@ try {
     error_log('Stack trace: ' . $e->getTraceAsString());
 
     http_response_code(500);
-    // Include error message in development for debugging (always show for now)
+    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+    // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
     $debug = true; // Temporarily enabled for debugging
     echo json_encode([
         'success' => false, 
-        'error' => $e->getMessage(),
-        'file' => $debug ? $e->getFile() : null,
+        'error' => escapeHtml($e->getMessage()),
+        'file' => $debug ? escapeHtml($e->getFile()) : null,
         'line' => $debug ? $e->getLine() : null,
-        'trace' => $debug ? $e->getTraceAsString() : null
+        'trace' => $debug ? escapeHtml($e->getTraceAsString()) : null
     ]);
 }

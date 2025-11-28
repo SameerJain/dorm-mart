@@ -68,7 +68,8 @@ try {
         exit;
     }
 
-    // Format the response
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
+    $buyerName = trim(($review['first_name'] ?? '') . ' ' . ($review['last_name'] ?? ''));
     $reviewData = [
         'review_id' => (int)$review['review_id'],
         'product_id' => (int)$review['product_id'],
@@ -82,8 +83,8 @@ try {
         'image3_url' => $review['image3_url'] ?? null,
         'created_at' => $review['created_at'],
         'updated_at' => $review['updated_at'],
-        'buyer_name' => trim(($review['first_name'] ?? '') . ' ' . ($review['last_name'] ?? '')),
-        'buyer_email' => $review['email'] ?? null
+        'buyer_name' => escapeHtml($buyerName),
+        'buyer_email' => escapeHtml($review['email'] ?? '')
     ];
 
     echo json_encode([

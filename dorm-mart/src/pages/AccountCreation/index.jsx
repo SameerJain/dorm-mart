@@ -207,13 +207,13 @@ function CreateAccountPage() {
       <PreLoginBranding />
 
       {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
-      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 lg:p-6 h-screen overflow-y-auto md:overflow-hidden pre-login-bg relative">
+      <div className="w-full md:w-1/2 flex flex-col items-center md:justify-center justify-start p-4 sm:p-6 md:p-8 lg:p-6 pt-6 sm:pt-8 md:pt-8 h-screen overflow-y-auto md:overflow-hidden pre-login-bg relative">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="md:hidden mb-4 sm:mb-6 text-center w-full relative z-10">
-          <h1 className="text-4xl sm:text-5xl font-serif text-gray-800 mb-2">
+          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
           </h1>
-          <h2 className="text-lg sm:text-xl font-light text-gray-600 opacity-90">Wastage, who?</h2>
+          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">Wastage, who?</h2>
         </div>
         <div className="w-full max-w-md relative z-10">
           <div className="p-4 sm:p-6 md:p-8 lg:p-6 rounded-lg relative bg-blue-600">
@@ -228,44 +228,44 @@ function CreateAccountPage() {
             <div className="relative z-10">
               {/* Header with dot */}
               <div className="text-center mb-4 sm:mb-6 md:mb-8">
-                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black rounded-full mx-auto mb-3 sm:mb-4" />
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white">Create Account</h2>
+                <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4" />
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white leading-tight">Create Account</h2>
               </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5 md:space-y-4">
+              {/* Form - Improved spacing and touch targets */}
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-5">
                 {/* First Name */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-200 mb-1.5 sm:mb-2">First Name</label>
+                  <label className="block text-sm sm:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5">First Name</label>
                   <input
                     type="text"
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
                     maxLength={30}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
                   />
-                  {errors.firstName && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.firstName}</p>}
+                  {errors.firstName && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.firstName}</p>}
                 </div>
 
                 {/* Last Name */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-200 mb-1.5 sm:mb-2">Last Name</label>
+                  <label className="block text-sm sm:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5">Last Name</label>
                   <input
                     type="text"
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
                     maxLength={30}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
                   />
-                  {errors.lastName && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.lastName}</p>}
+                  {errors.lastName && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.lastName}</p>}
                 </div>
 
                 {/* Graduation Date */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-200 mb-1.5 sm:mb-2">Graduation Date (Month / Year)</label>
-                  <div className="flex space-x-2">
+                  <label className="block text-sm sm:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5">Graduation Date (Month / Year)</label>
+                  <div className="flex gap-3 sm:gap-4">
                     <input
                       type="number"
                       name="gradMonth"
@@ -273,7 +273,7 @@ function CreateAccountPage() {
                       onChange={handleChange}
                       placeholder="MM"
                       maxLength={2}
-                      className="w-1/2 px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
+                      className="w-1/2 min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
                     />
                     <input
                       type="number"
@@ -282,37 +282,37 @@ function CreateAccountPage() {
                       onChange={handleChange}
                       placeholder="YYYY"
                       maxLength={4}
-                      className="w-1/2 px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
+                      className="w-1/2 min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
                     />
                   </div>
-                  {errors.gradDate && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.gradDate}</p>}
+                  {errors.gradDate && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.gradDate}</p>}
                 </div>
 
                 {/* Email */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-200 mb-1.5 sm:mb-2">University Email Address</label>
+                  <label className="block text-sm sm:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5">University Email Address</label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
                     maxLength={255}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
                   />
-                  {errors.email && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.email}</p>}
+                  {errors.email && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.email}</p>}
                 </div>
 
-                {/* Checkboxes */}
-                <div className="space-y-2">
-                  <label className="flex items-center text-gray-100">
+                {/* Checkboxes - Improved touch targets */}
+                <div className="space-y-3 sm:space-y-4">
+                  <label className="flex items-start text-gray-100 min-h-[44px] py-2">
                     <input
                       type="checkbox"
                       name="terms"
                       checked={formData.terms}
                       onChange={handleChange}
-                      className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="mt-1 mr-3 h-5 w-5 sm:h-6 sm:w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                     />
-                    <span className="select-none">
+                    <span className="select-none text-sm sm:text-base leading-relaxed pt-0.5">
                       I agree to the{" "}
                       <a
                         href={termsPdf}
@@ -335,25 +335,27 @@ function CreateAccountPage() {
                       </a>
                     </span>
                   </label>
-                  {errors.terms && <p className="text-xs font-medium text-red-500 mt-0.5 leading-tight">{errors.terms}</p>}
+                  {errors.terms && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed ml-8">{errors.terms}</p>}
 
-                  <label className="flex items-center text-gray-100">
+                  <label className="flex items-start text-gray-100 min-h-[44px] py-2">
                     <input
                       type="checkbox"
                       name="promos"
                       checked={formData.promos}
                       onChange={handleChange}
-                      className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="mt-1 mr-3 h-5 w-5 sm:h-6 sm:w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                     />
-                    I want to receive promotional news on my email
+                    <span className="select-none text-sm sm:text-base leading-relaxed pt-0.5">
+                      I want to receive promotional news on my email
+                    </span>
                   </label>
                 </div>
 
-                {/* Confirm button */}
+                {/* Confirm button - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-full sm:w-3/4 md:w-1/2 lg:w-1/3 text-white py-2.5 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 font-medium mx-auto text-sm sm:text-base
+                  className={`w-full min-h-[44px] text-white py-3 sm:py-3.5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 font-medium text-base sm:text-lg active:scale-95
                     ${loading ? 'bg-sky-300 cursor-not-allowed' : 'bg-sky-500 hover:bg-sky-600 hover:scale-105 hover:shadow-lg'}
                   `}
                 >
@@ -370,13 +372,13 @@ function CreateAccountPage() {
                 </button>
               </form>
 
-              {/* Links */}
-              <div className="mt-3 sm:mt-4 md:mt-6 mb-3 sm:mb-4 md:mb-8 text-center">
-                <div className="flex items-center justify-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm md:text-base text-white">
+              {/* Links - Improved touch targets and spacing */}
+              <div className="mt-6 sm:mt-8 mb-4 sm:mb-6 text-center">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base text-white">
                   <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); navigate('/login'); }}
-                    className="hover:underline hover:text-blue-300 transition-colors duration-200"
+                    className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-300 transition-colors duration-200"
                   >
                     already have an account? log in
                   </a>
@@ -384,7 +386,7 @@ function CreateAccountPage() {
                   <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }}
-                    className="hover:underline hover:text-blue-300 transition-colors duration-200"
+                    className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-300 transition-colors duration-200"
                   >
                     forgot password?
                   </a>
@@ -395,31 +397,31 @@ function CreateAccountPage() {
         </div>
       </div>
 
-      {/* Notice Modal */}
+      {/* Notice Modal - Improved mobile responsiveness */}
       {showNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           {/* backdrop */}
           <div
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => setShowNotice(false)}
           />
           {/* card */}
-          <div className="relative z-10 w-full max-w-lg mx-4 rounded-xl shadow-2xl border border-white/10 bg-blue-600">
-            <div className="p-6">
-              <h3 className="text-2xl font-serif text-white mb-3 text-center">Check Your Email</h3>
-              <p className="text-white/90 text-center leading-relaxed">
+          <div className="relative z-10 w-full max-w-lg rounded-xl shadow-2xl border border-white/10 bg-blue-600">
+            <div className="p-6 sm:p-8">
+              <h3 className="text-2xl sm:text-3xl font-serif text-white mb-4 sm:mb-5 text-center leading-tight">Check Your Email</h3>
+              <p className="text-white/90 text-center leading-relaxed text-sm sm:text-base mb-6 sm:mb-8">
                 If an account using the email does not already exist, a temporary password has been sent to the email.
               </p>
-              <div className="mt-6 flex items-center justify-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
                 <button
                   onClick={() => { setShowNotice(false); navigate('/login'); }}
-                  className="px-5 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white transition-colors"
+                  className="min-h-[44px] px-6 py-3 sm:py-3.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white transition-colors font-medium text-base sm:text-lg active:scale-95"
                 >
                   Go to Login
                 </button>
                 <button
                   onClick={() => setShowNotice(false)}
-                  className="px-5 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                  className="min-h-[44px] px-6 py-3 sm:py-3.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors font-medium text-base sm:text-lg active:scale-95"
                 >
                   Stay Here
                 </button>

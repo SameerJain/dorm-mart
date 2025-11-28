@@ -87,6 +87,7 @@ try {
             $buyerName = 'Buyer #' . $row['buyer_user_id'];
         }
 
+        // XSS PROTECTION: Escape user-generated content before returning in JSON
         $reviews[] = [
             'review_id' => (int)$row['review_id'],
             'product_id' => (int)$row['product_id'],
@@ -100,8 +101,8 @@ try {
             'image3_url' => $row['image3_url'] ?? null,
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
-            'buyer_name' => $buyerName,
-            'buyer_email' => $row['email'] ?? null
+            'buyer_name' => escapeHtml($buyerName),
+            'buyer_email' => escapeHtml($row['email'] ?? '')
         ];
     }
     
