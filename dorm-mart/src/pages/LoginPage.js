@@ -23,6 +23,7 @@ function LoginPage() {
         // User is authenticated, redirect to app
         navigate("/app", { replace: true });
       } catch (error) {
+        console.error("Login error:", error);
         // AbortError means component unmounted, don't navigate
         if (error.name === 'AbortError') {
           return;
@@ -187,7 +188,6 @@ function LoginPage() {
     } catch (error) {
       // Handle network or other errors
       setError("Network error. Please try again.");
-      console.error("Login error:", error);
     } finally {
       setLoading(false);
     }
