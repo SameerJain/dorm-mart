@@ -12,8 +12,8 @@ const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
 
 function RequirementRow({ ok, text }) {
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
+    <div className="flex items-center gap-3 text-sm sm:text-base">
+      <span className="inline-flex h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
       <span className={ok ? "text-green-200" : "text-red-200"}>{text}</span>
     </div>
   );
@@ -22,7 +22,7 @@ function RequirementRow({ ok, text }) {
 function Field({ id, label, type = "password", value, onChange, placeholder, disabled = false }) {
   return (
     <div className="mb-6">
-      <label htmlFor={id} className="mb-2 block text-xs sm:text-sm font-semibold text-gray-300">
+      <label htmlFor={id} className="mb-2 block text-sm sm:text-base font-semibold text-gray-300">
         {label}
       </label>
       <input
@@ -32,7 +32,7 @@ function Field({ id, label, type = "password", value, onChange, placeholder, dis
         placeholder={placeholder}
         onChange={onChange}
         disabled={disabled}
-        className={`h-11 w-full rounded-lg border-2 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base outline-none focus:ring-4 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg ${disabled
+        className={`min-h-[44px] w-full rounded-lg border-2 px-4 sm:px-5 py-3 sm:py-3.5 text-base sm:text-lg outline-none focus:ring-4 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg ${disabled
             ? 'border-gray-400 bg-gray-200 text-gray-500 cursor-not-allowed'
             : 'border-gray-300 bg-white focus:ring-blue-400/30 focus:border-blue-400'
           }`}
@@ -205,12 +205,12 @@ function ResetPasswordForm() {
       <div
         className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 h-screen pre-login-bg relative overflow-hidden"
       >
-        {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-4 sm:mb-6 text-center relative z-10">
-          <h1 className="text-4xl sm:text-5xl font-serif text-gray-800 mb-2">
+        {/* Mobile branding header (visible only on mobile/tablet) */}
+        <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
+          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
           </h1>
-          <h2 className="text-lg sm:text-xl font-light text-gray-600 opacity-90">
+          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">
             Wastage, who?
           </h2>
         </div>
@@ -230,53 +230,53 @@ function ResetPasswordForm() {
 
             <div className="relative z-10 flex-1 flex flex-col">
               {/* Header with dot */}
-              <div className="mb-6 border-b border-white/20 pb-3">
+              <div className="mb-6 sm:mb-8 border-b border-white/20 pb-4 sm:pb-5">
                 <div className="text-center">
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black rounded-full mx-auto mb-2"></div>
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-serif text-white">
+                  <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white leading-tight">
                     Reset Password
                   </h1>
                 </div>
               </div>
 
-              <div className="flex-1 grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-2">
+              <div className="flex-1 grid grid-cols-1 gap-6 sm:gap-8 xl:grid-cols-2">
                 <section className="flex flex-col justify-center">
                   {isVerifyingToken && (
-                    <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-lg">
+                    <div className="mb-6 p-4 sm:p-5 bg-white/10 border border-white/20 rounded-lg">
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-white"></div>
                         </div>
                         <div className="ml-3">
-                          <p className="text-sm text-white">Verifying reset link...</p>
+                          <p className="text-sm sm:text-base text-white leading-relaxed">Verifying reset link...</p>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {!isTokenValid && !isVerifyingToken && (
-                    <div className="mb-6 p-4 bg-red-500/30 border-2 border-red-500 rounded-lg">
-                      <div className="flex items-center">
+                    <div className="mb-6 p-4 sm:p-5 bg-red-500/30 border-2 border-red-500 rounded-lg">
+                      <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                          <svg className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                           </svg>
                         </div>
-                        <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-600">Reset Link Expired</h3>
-                          <p className="mt-1 text-sm text-red-600">{tokenError}</p>
+                        <div className="ml-3 flex-1">
+                          <h3 className="text-sm sm:text-base font-medium text-red-600 mb-1">Reset Link Expired</h3>
+                          <p className="text-sm sm:text-base text-red-600 leading-relaxed">{tokenError}</p>
                         </div>
                       </div>
-                      <div className="mt-4">
+                      <div className="mt-4 flex flex-col sm:flex-row gap-3">
                         <button
                           onClick={() => navigate('/forgot-password')}
-                          className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md transition-colors"
+                          className="min-h-[44px] bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-md transition-colors font-medium text-base sm:text-lg active:scale-95"
                         >
                           Request New Reset Link
                         </button>
                         <button
                           onClick={() => navigate('/login')}
-                          className="ml-3 text-sm bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-md transition-colors"
+                          className="min-h-[44px] bg-white/20 hover:bg-white/30 text-white px-5 py-3 rounded-md transition-colors font-medium text-base sm:text-lg active:scale-95"
                         >
                           Back to Login
                         </button>
@@ -286,15 +286,15 @@ function ResetPasswordForm() {
 
                   {/* Test 1: Invalid token error */}
                   {submitError && (
-                    <div className="mb-6 p-4 bg-red-500/30 border-2 border-red-500 rounded-lg">
-                      <div className="flex items-center">
+                    <div className="mb-6 p-4 sm:p-5 bg-red-500/30 border-2 border-red-500 rounded-lg">
+                      <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                          <svg className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                           </svg>
                         </div>
-                        <div className="ml-3">
-                          <p className="text-sm text-red-600">{submitError}</p>
+                        <div className="ml-3 flex-1">
+                          <p className="text-sm sm:text-base text-red-600 leading-relaxed">{submitError}</p>
                         </div>
                       </div>
                     </div>
@@ -302,15 +302,15 @@ function ResetPasswordForm() {
 
                   {/* Test 3: Password mismatch error */}
                   {passwordMismatchError && (
-                    <div className="mb-6 p-4 bg-yellow-100/20 border border-yellow-300/30 rounded-lg">
-                      <div className="flex items-center">
+                    <div className="mb-6 p-4 sm:p-5 bg-yellow-100/20 border border-yellow-300/30 rounded-lg">
+                      <div className="flex items-start">
                         <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 text-yellow-300" viewBox="0 0 20 20" fill="currentColor">
+                          <svg className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-300" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
                         </div>
-                        <div className="ml-3">
-                          <p className="text-sm text-white">{passwordMismatchError}</p>
+                        <div className="ml-3 flex-1">
+                          <p className="text-sm sm:text-base text-white leading-relaxed">{passwordMismatchError}</p>
                         </div>
                       </div>
                     </div>
@@ -337,17 +337,17 @@ function ResetPasswordForm() {
                     type="button"
                     onClick={handleSubmit}
                     disabled={isLoading || !isTokenValid || isVerifyingToken}
-                    className="mt-6 h-12 w-full sm:w-48 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-sm sm:text-base"
+                    className="mt-6 min-h-[44px] w-full xl:w-48 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg active:scale-95"
                   >
                     {isLoading ? 'Resetting...' : isVerifyingToken ? 'Verifying...' : 'Reset Password'}
                   </button>
                 </section>
 
-                <section className="rounded-lg border border-white/20 bg-white/10 p-4 sm:p-6 flex flex-col justify-center">
-                  <h2 className="mb-4 text-lg sm:text-xl font-serif font-semibold text-white">
+                <section className="rounded-lg border border-white/20 bg-white/10 p-5 sm:p-6 flex flex-col justify-center">
+                  <h2 className="mb-5 sm:mb-6 text-xl sm:text-2xl font-serif font-semibold text-white leading-tight">
                     Password Requirements:
                   </h2>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
                     <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
                     <RequirementRow ok={policy.minLen} text="At least 8 characters" />

@@ -117,14 +117,14 @@ function ForgotPasswordPage() {
 
       {/* Right side - forgot password form (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 h-screen pre-login-bg relative overflow-hidden"
+        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:py-8 h-screen pre-login-bg relative overflow-y-auto md:overflow-hidden"
       >
-        {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-4 sm:mb-6 text-center relative z-10">
-          <h1 className="text-4xl sm:text-5xl font-serif text-gray-800 mb-2">
+        {/* Mobile branding header (visible only on mobile/tablet) */}
+        <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
+          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
             Dorm Mart
           </h1>
-          <h2 className="text-lg sm:text-xl font-light text-gray-600 opacity-90">
+          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">
             Wastage, who?
           </h2>
         </div>
@@ -143,22 +143,22 @@ function ForgotPasswordPage() {
 
             <div className="relative z-10">
               {/* Header with dot */}
-              <div className="text-center mb-4 sm:mb-6 md:mb-8">
-                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white">
+              <div className="text-center mb-6 sm:mb-8 md:mb-10">
+                <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-4 sm:mb-5"></div>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-white leading-tight">
                   Forgot Password?{" "}
                 </h2>
               </div>
 
-              {/* forgot password form */}
+              {/* forgot password form - Improved spacing and touch targets */}
               <form
                 onSubmit={handleForgotPasswordRequest}
                 noValidate
-                className="space-y-3 sm:space-y-4 md:space-y-6"
+                className="space-y-4 sm:space-y-5 md:space-y-6"
               >
                 {/* email input input */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-1.5 sm:mb-2">
+                  <label className="block text-sm sm:text-base font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
                   </label>
                   <input
@@ -166,20 +166,20 @@ function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={255}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 text-base sm:text-lg bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                 </div>
                 {error && (
-                  <p className="text-xs sm:text-sm font-medium text-center text-red-500 px-2">
+                  <p className="text-sm sm:text-base font-medium text-center text-red-500 px-2 leading-relaxed">
                     {error}
                   </p>
                 )}
 
-                {/* request button with arrow */}
+                {/* request button with arrow - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full max-w-sm bg-sky-500 hover:bg-sky-600 text-white py-2.5 sm:py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto text-sm sm:text-base"
+                  className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 text-white py-3 sm:py-3.5 px-5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium text-base sm:text-lg active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {isLoading ? (
                     <svg
@@ -208,7 +208,7 @@ function ForgotPasswordPage() {
                         Send password reset link
                       </span>
                       <svg
-                        className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
+                        className="w-5 h-5 flex-shrink-0"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -223,15 +223,15 @@ function ForgotPasswordPage() {
                 </button>
               </form>
 
-              {/* Links */}
-              <div className="mt-4 sm:mt-6 text-center px-2">
-                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:text-sm md:text-base text-white">
+              {/* Links - Improved touch targets and spacing */}
+              <div className="mt-6 sm:mt-8 text-center px-2">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base text-white">
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       navigate("/create-account");
                     }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer p-0"
+                    className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer"
                   >
                     Create account
                   </button>
@@ -241,7 +241,7 @@ function ForgotPasswordPage() {
                       e.preventDefault();
                       navigate("/login");
                     }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer p-0"
+                    className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer"
                   >
                     Go to login
                   </button>
