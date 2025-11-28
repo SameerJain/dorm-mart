@@ -20,8 +20,8 @@ const TypingIndicatorMessage = ({ firstName }) => {
   return (
     <div className="flex justify-start">
       <div className="max-w-[80%] rounded-2xl px-3 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 shadow">
-        <div className="flex items-center gap-1 min-w-0">
-          <span className="text-sm italic truncate block">{displayName} is typing...</span>
+        <div className="min-w-0">
+          <span className="text-sm italic break-words whitespace-normal">{displayName} is typing...</span>
         </div>
       </div>
     </div>
@@ -64,6 +64,9 @@ export default function ChatPage() {
   const sendTypingAbortControllerRef = useRef(null); // For canceling send typing requests
   const lastTypingStatusSentRef = useRef(false); // Track last sent typing status for reference
   const isMountedRef = useRef(true); // Track if component is mounted
+  const typingRequestSequenceRef = useRef(0); // Track request sequence to ignore stale responses
+  const pendingTypingFalseTimeoutRef = useRef(null); // Track pending typing=false timeout
+  const typingStartedAtRef = useRef(null); // Track when current typing session started (for 30s timeout)
   
   // Prevent body scroll when delete confirmation modal is open
   useEffect(() => {
@@ -261,11 +264,38 @@ export default function ChatPage() {
     if (!activeConvId) {
       currentConvIdRef.current = null;
       lastTypingStatusSentRef.current = false;
+      typingStartedAtRef.current = null; // Reset typing start time
+      // Clear all timeouts when no active conversation
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (typingStatusTimeoutRef.current) {
+        clearTimeout(typingStatusTimeoutRef.current);
+        typingStatusTimeoutRef.current = null;
+      }
+      if (pendingTypingFalseTimeoutRef.current) {
+        clearTimeout(pendingTypingFalseTimeoutRef.current);
+        pendingTypingFalseTimeoutRef.current = null;
+      }
+      // Cancel all in-flight requests
+      if (sendTypingAbortControllerRef.current) {
+        sendTypingAbortControllerRef.current.abort();
+        sendTypingAbortControllerRef.current = null;
+      }
       return;
     }
 
+    // Reset state when conversation changes
+    const previousConvId = currentConvIdRef.current;
     currentConvIdRef.current = activeConvId;
-    lastTypingStatusSentRef.current = false; // Reset when conversation changes
+    lastTypingStatusSentRef.current = false;
+    typingStartedAtRef.current = null; // Reset typing start time when conversation changes
+    
+    // If conversation changed, increment sequence to invalidate any pending requests
+    if (previousConvId !== activeConvId) {
+      typingRequestSequenceRef.current = 0; // Reset sequence for new conversation
+    }
 
     return () => {
       // Clear all timeouts
@@ -276,6 +306,10 @@ export default function ChatPage() {
       if (typingStatusTimeoutRef.current) {
         clearTimeout(typingStatusTimeoutRef.current);
         typingStatusTimeoutRef.current = null;
+      }
+      if (pendingTypingFalseTimeoutRef.current) {
+        clearTimeout(pendingTypingFalseTimeoutRef.current);
+        pendingTypingFalseTimeoutRef.current = null;
       }
       
       // Cancel all in-flight requests
@@ -299,6 +333,10 @@ export default function ChatPage() {
       if (typingStatusTimeoutRef.current) {
         clearTimeout(typingStatusTimeoutRef.current);
         typingStatusTimeoutRef.current = null;
+      }
+      if (pendingTypingFalseTimeoutRef.current) {
+        clearTimeout(pendingTypingFalseTimeoutRef.current);
+        pendingTypingFalseTimeoutRef.current = null;
       }
       if (sendTypingAbortControllerRef.current) {
         sendTypingAbortControllerRef.current.abort();
@@ -337,7 +375,7 @@ export default function ChatPage() {
     }
   }, [isOtherPersonTyping]);
 
-  /** Send typing status to backend */
+  /** Send typing status to backend with request sequencing to prevent race conditions */
   const sendTypingStatus = useCallback(async (conversationId, isTyping) => {
     if (!conversationId || !isMountedRef.current) return;
     
@@ -345,6 +383,9 @@ export default function ChatPage() {
     if (currentConvIdRef.current !== conversationId) {
       return;
     }
+    
+    // Increment sequence number for this request
+    const sequenceNumber = ++typingRequestSequenceRef.current;
     
     // Cancel any previous send typing requests
     if (sendTypingAbortControllerRef.current) {
@@ -355,6 +396,9 @@ export default function ChatPage() {
     const abortController = new AbortController();
     sendTypingAbortControllerRef.current = abortController;
     
+    // Include timestamp to help detect stale responses
+    const requestTimestamp = Date.now();
+    
     try {
       const response = await fetch(`${API_BASE}/chat/typing_status.php`, {
         method: 'POST',
@@ -363,11 +407,20 @@ export default function ChatPage() {
         signal: abortController.signal,
         body: JSON.stringify({
           conversation_id: conversationId,
-          is_typing: isTyping
+          is_typing: isTyping,
+          timestamp: requestTimestamp
         })
       });
       
-      if (response.ok && currentConvIdRef.current === conversationId && isMountedRef.current) {
+      // Only process response if:
+      // 1. Response is OK
+      // 2. Conversation is still active
+      // 3. Component is still mounted
+      // 4. This is still the latest request (sequence hasn't advanced)
+      if (response.ok && 
+          currentConvIdRef.current === conversationId && 
+          isMountedRef.current &&
+          sequenceNumber === typingRequestSequenceRef.current) {
         // Track if we successfully sent typing status
         lastTypingStatusSentRef.current = isTyping;
       }
@@ -380,7 +433,7 @@ export default function ChatPage() {
     }
   }, []);
 
-  /** Handle draft input change and track typing status */
+  /** Handle draft input change and track typing status with improved race condition handling */
   const handleDraftChange = useCallback((e) => {
     // Prevent typing if item is deleted
     const currentConv = conversations.find((c) => c.conv_id === activeConvId);
@@ -409,10 +462,8 @@ export default function ChatPage() {
       return;
     }
 
-    // Track if we've sent typing status for this typing session
-    const hasSentTyping = lastTypingStatusSentRef.current === true;
-    
-    // Clear existing timeout
+    // CRITICAL: Clear ALL existing timeouts FIRST to prevent race conditions
+    // This ensures no stale typing=false timeout can fire after we send typing=true
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = null;
@@ -421,29 +472,54 @@ export default function ChatPage() {
       clearTimeout(typingStatusTimeoutRef.current);
       typingStatusTimeoutRef.current = null;
     }
+    if (pendingTypingFalseTimeoutRef.current) {
+      clearTimeout(pendingTypingFalseTimeoutRef.current);
+      pendingTypingFalseTimeoutRef.current = null;
+    }
 
+    // Track if we've sent typing status for this typing session
+    const hasSentTyping = lastTypingStatusSentRef.current === true;
+    
+    // Track when typing started (for 30-second continuous typing timeout)
+    const now = Date.now();
+    if (!typingStartedAtRef.current) {
+      typingStartedAtRef.current = now;
+    }
+    
+    // Check if we've been typing continuously for more than 30 seconds
+    const typingDuration = now - typingStartedAtRef.current;
+    const shouldShowTyping = typingDuration < 30000; // 30 seconds
+    
     // Send "typing" status immediately on first keystroke for instant feedback
     // Then use minimal debounce for subsequent keystrokes to avoid spam
-    if (!hasSentTyping) {
+    // But only if we haven't exceeded the 30-second continuous typing limit
+    if (!hasSentTyping && shouldShowTyping) {
       // First keystroke - send immediately for instant responsiveness
       if (currentConvIdRef.current === convId && isMountedRef.current) {
         sendTypingStatus(convId, true);
       }
-    } else {
+    } else if (hasSentTyping && shouldShowTyping) {
       // Subsequent keystrokes - use minimal debounce (50ms) for smooth updates
       typingTimeoutRef.current = setTimeout(() => {
-        if (currentConvIdRef.current === convId && isMountedRef.current) {
+        // Double-check conversation is still active, component is mounted, and we haven't exceeded timeout
+        const currentTypingDuration = Date.now() - (typingStartedAtRef.current || Date.now());
+        if (currentConvIdRef.current === convId && isMountedRef.current && currentTypingDuration < 30000) {
           sendTypingStatus(convId, true);
         }
       }, 50);
     }
+    // If typingDuration >= 30000, don't send typing=true updates (indicator will disappear)
 
     // Send "stopped" status after 1.5s of inactivity (optimized for faster cleanup and responsiveness)
+    // Store timeout reference to allow proper cleanup
     typingStatusTimeoutRef.current = setTimeout(() => {
       // Verify conversation is still active and component is mounted before sending
       if (currentConvIdRef.current === convId && isMountedRef.current) {
+        // Clear the timeout reference before sending
+        typingStatusTimeoutRef.current = null;
         sendTypingStatus(convId, false);
         lastTypingStatusSentRef.current = false;
+        typingStartedAtRef.current = null; // Reset typing start time when stopping
       }
     }, 1500);
   }, [activeConvId, sendTypingStatus, conversations]);
@@ -484,11 +560,10 @@ export default function ChatPage() {
       setDraft("");
       setAttachedImage(null);
       
-      // Stop typing status when message is sent
+      // Stop typing status when message is sent - clear all timeouts first
       const convId = activeConvId;
       if (convId && currentConvIdRef.current === convId && isMountedRef.current) {
-        sendTypingStatus(convId, false);
-        lastTypingStatusSentRef.current = false;
+        // Clear all timeouts to prevent race conditions
         if (typingTimeoutRef.current) {
           clearTimeout(typingTimeoutRef.current);
           typingTimeoutRef.current = null;
@@ -497,6 +572,14 @@ export default function ChatPage() {
           clearTimeout(typingStatusTimeoutRef.current);
           typingStatusTimeoutRef.current = null;
         }
+        if (pendingTypingFalseTimeoutRef.current) {
+          clearTimeout(pendingTypingFalseTimeoutRef.current);
+          pendingTypingFalseTimeoutRef.current = null;
+        }
+        // Send typing=false after clearing timeouts
+        sendTypingStatus(convId, false);
+        lastTypingStatusSentRef.current = false;
+        typingStartedAtRef.current = null; // Reset typing start time when message is sent
       }
     }
   }

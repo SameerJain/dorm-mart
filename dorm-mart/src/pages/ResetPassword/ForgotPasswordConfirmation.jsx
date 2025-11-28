@@ -38,10 +38,10 @@ function ForgotPasswordConfirmation() {
                 </h2>
               </div>
 
-              <p className="text-sm sm:text-base text-gray-200 mb-3 sm:mb-4 text-center leading-relaxed">
+              <p className="text-sm sm:text-base text-white/90 mb-3 sm:mb-4 text-center leading-relaxed">
                 If an account with this email address exists, then a link to reset your password was sent to your inbox!
               </p>
-              <p className="text-xs sm:text-sm text-gray-300 text-center italic mb-4 sm:mb-6">
+              <p className="text-xs sm:text-sm text-white/80 text-center italic mb-4 sm:mb-6">
                 Note: Another email can only be sent after 10 minutes.
               </p>
 

@@ -81,7 +81,10 @@ function CreateAccountPage() {
     // Enforce hard caps at input-time
     let nextValue = type === "checkbox" ? checked : value;
     if (name === "firstName" || name === "lastName") {
-      nextValue = String(nextValue).slice(0, 30);
+      // Only allow letters (including spaces and hyphens for names like "Mary-Jane" or "Van Der Berg")
+      // Remove any non-letter characters except spaces and hyphens
+      nextValue = String(nextValue).replace(/[^a-zA-Z\s-]/g, '');
+      nextValue = nextValue.slice(0, 30);
     }
     if (name === "email") {
       nextValue = String(nextValue).slice(0, 255);
@@ -125,11 +128,17 @@ function CreateAccountPage() {
     else if (xssPatterns.some(pattern => pattern.test(first))) {
       newErrors.firstName = "Invalid characters in first name";
     }
+    else if (!/^[a-zA-Z\s-]+$/.test(first)) {
+      newErrors.firstName = "First name can only contain letters, spaces, and hyphens";
+    }
     else if (first.length > 30) newErrors.firstName = "First name must be 30 characters or fewer";
 
     if (!last) newErrors.lastName = "Last name is required";
     else if (xssPatterns.some(pattern => pattern.test(last))) {
       newErrors.lastName = "Invalid characters in last name";
+    }
+    else if (!/^[a-zA-Z\s-]+$/.test(last)) {
+      newErrors.lastName = "Last name can only contain letters, spaces, and hyphens";
     }
     else if (last.length > 30) newErrors.lastName = "Last name must be 30 characters or fewer";
 
