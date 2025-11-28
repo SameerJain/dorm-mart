@@ -164,11 +164,11 @@ INSERT INTO INVENTORY (
   sold
 ) VALUES (
   'Custom Gamecube Controller',
-  JSON_ARRAY('Gaming', 'Controllers'),
+  JSON_ARRAY('Gaming', 'Electronics'),
   'North Campus',
   'Like New',
   'This is a custom gamceube controller, created by the desginer Control-In-Color. This is a cartoon and stylized design of the "Great Wave Off Kanagawa" by Hokusai. It has custom front and outer shells. The back shell has the tag "SAMMY" on it. There is also come blue tape around the cord for more style.There does not exist any mods for in-game control. The stick certainly is looser than a new controller, but its not terrible. You for sure want to play Melee with UCF and a good monitor, but this controller is certainly not going to hold you back or anthing like that.This is most definitely best used for competitive Super Smash Bros. across various installments.',
-  JSON_ARRAY('/data/images/custom-gamecube-controller.jpg'),
+  JSON_ARRAY('/images/custom-gamecube-controller.jpg'),
   80.00,
   'Active',
   0,

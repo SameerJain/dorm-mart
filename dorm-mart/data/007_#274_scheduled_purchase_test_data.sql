@@ -3,7 +3,7 @@ START TRANSACTION;
 -- Seed data for scheduled purchase feature testing
 -- Creates test users: Luke Skywalker (seller) and Han Solo (buyer)
 -- Creates test items: Scrub Daddy, Air Fryer (price negotiable), Pim Plushie (accepts trades)
--- Creates conversations between users for each item
+-- Note: Conversations are created via "Message Seller" button in UI, not in this migration
 
 -- First, get the user IDs if they exist (for cleanup)
 SELECT user_id INTO @existing_seller_id

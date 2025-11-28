@@ -15,6 +15,11 @@ FROM user_accounts
 WHERE email = 'testuserchatfeaturesblue@buffalo.edu'
 LIMIT 1;
 
+-- Update Po Dameron to be a seller (needed for White and Blue Backpack listing)
+UPDATE user_accounts
+SET seller = 1
+WHERE email = 'testuserchatfeaturesblue@buffalo.edu';
+
 -- Delete existing products with these titles (idempotent cleanup)
 DELETE FROM INVENTORY
 WHERE title IN ('Blue Water Bottle', 'White and Blue Backpack');
@@ -36,7 +41,7 @@ INSERT INTO INVENTORY (
   sold
 ) VALUES (
   'Blue Water Bottle',
-  JSON_ARRAY('Accessories', 'Health & Fitness'),
+  JSON_ARRAY('Health', 'Dorm Essentials'),
   'North Campus',
   'Like New',
   'A high-quality blue water bottle perfect for staying hydrated on campus. Great condition with no leaks or damage.',
@@ -67,7 +72,7 @@ INSERT INTO INVENTORY (
   sold
 ) VALUES (
   'White and Blue Backpack',
-  JSON_ARRAY('Accessories', 'School Supplies'),
+  JSON_ARRAY('School', 'Dorm Essentials'),
   'North Campus',
   'Good',
   'A stylish white and blue backpack with multiple compartments. Perfect for carrying books and laptop to class.',

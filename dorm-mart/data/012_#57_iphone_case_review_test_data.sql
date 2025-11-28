@@ -2,7 +2,8 @@ START TRANSACTION;
 -- 012_iphone_case_review_test_data.sql
 -- Seed data for buyer review submission tests
 -- Creates a completed purchase: iPhone Case sold by testuserschedulered@buffalo.edu to testuser@buffalo.edu
--- Note: Review should be manually submitted by tester (testuser@buffalo.edu) after this data is seeded
+-- Simulates organic flow: Message Seller -> Scheduled Purchase -> Confirm Purchase -> Review (user writes it)
+-- Note: Review is NOT pre-seeded - user writes it themselves via the UI
 
 -- Get user IDs (users must exist from previous migrations/data files)
 -- If users don't exist, these will be NULL and subsequent operations will fail
@@ -19,6 +20,27 @@ LIMIT 1;
 -- Delete any existing iPhone Case item and related records (idempotent cleanup)
 -- First get the product_id if it exists
 SET @existing_product_id = (SELECT product_id FROM INVENTORY WHERE title = 'iPhone Case' AND seller_id = @seller_id LIMIT 1);
+
+-- Delete messages first (due to FK constraints)
+DELETE FROM messages
+WHERE conv_id IN (
+  SELECT conv_id FROM conversations 
+  WHERE product_id = @existing_product_id 
+  AND @existing_product_id IS NOT NULL
+);
+
+-- Delete conversation participants
+DELETE FROM conversation_participants
+WHERE conv_id IN (
+  SELECT conv_id FROM conversations 
+  WHERE product_id = @existing_product_id 
+  AND @existing_product_id IS NOT NULL
+);
+
+-- Delete conversations
+DELETE FROM conversations
+WHERE product_id = @existing_product_id 
+AND @existing_product_id IS NOT NULL;
 
 DELETE FROM confirm_purchase_requests
 WHERE inventory_product_id IN (SELECT product_id FROM INVENTORY WHERE title = 'iPhone Case');
@@ -84,37 +106,105 @@ FROM INVENTORY
 WHERE title = 'iPhone Case' AND seller_id = @seller_id
 LIMIT 1;
 
--- Get first names for conversation
-SELECT first_name INTO @buyer_first_name
+-- Get names for conversation and messages
+SELECT first_name, last_name INTO @buyer_first_name, @buyer_last_name
 FROM user_accounts
 WHERE user_id = @buyer_id
 LIMIT 1;
 
-SELECT first_name INTO @seller_first_name_for_conv
+SELECT first_name, last_name INTO @seller_first_name_for_conv, @seller_last_name_for_conv
 FROM user_accounts
 WHERE user_id = @seller_id
 LIMIT 1;
 
--- Get or create conversation between buyer and seller (required for scheduled/confirm purchases)
-INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, user1_deleted, user2_deleted)
+-- Get full names for display
+SET @buyer_full_name = CONCAT(@buyer_first_name, ' ', @buyer_last_name);
+SET @seller_full_name = CONCAT(@seller_first_name_for_conv, ' ', @seller_last_name_for_conv);
+SET @buyer_display_name = IF(@buyer_full_name IS NULL OR TRIM(@buyer_full_name) = '', @buyer_first_name, @buyer_full_name);
+SET @seller_display_name = IF(@seller_full_name IS NULL OR TRIM(@seller_full_name) = '', @seller_first_name_for_conv, @seller_full_name);
+
+-- Create conversation between buyer and seller with product_id (simulates "Message Seller" click)
+-- This is the organic flow: buyer clicks "Message Seller" which creates conversation with product_id
+INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, product_id, user1_deleted, user2_deleted)
 VALUES (
   LEAST(@buyer_id, @seller_id),
   GREATEST(@buyer_id, @seller_id),
-  IF(@buyer_id < @seller_id, @buyer_first_name, @seller_first_name_for_conv),
-  IF(@buyer_id < @seller_id, @seller_first_name_for_conv, @buyer_first_name),
+  IF(@buyer_id < @seller_id, @buyer_display_name, @seller_display_name),
+  IF(@buyer_id < @seller_id, @seller_display_name, @buyer_display_name),
+  @product_id,
   FALSE,
   FALSE
 )
 ON DUPLICATE KEY UPDATE
   user1_deleted = FALSE,
-  user2_deleted = FALSE;
+  user2_deleted = FALSE,
+  product_id = @product_id;
 
 -- Get the conversation_id
 SELECT conv_id INTO @conversation_id
 FROM conversations
 WHERE user1_id = LEAST(@buyer_id, @seller_id)
   AND user2_id = GREATEST(@buyer_id, @seller_id)
+  AND product_id = @product_id
 LIMIT 1;
+
+-- Create conversation participants (required for chat functionality)
+INSERT INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
+VALUES (@conversation_id, @buyer_id, NULL, 0)
+ON DUPLICATE KEY UPDATE first_unread_msg_id = first_unread_msg_id;
+
+INSERT INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
+VALUES (@conversation_id, @seller_id, NULL, 0)
+ON DUPLICATE KEY UPDATE first_unread_msg_id = first_unread_msg_id;
+
+-- Create the initial auto-message that appears when buyer clicks "Message Seller"
+-- This simulates the automatic message: "{buyerName} would like to message you about {productTitle}"
+INSERT INTO messages (
+  conv_id,
+  sender_id,
+  receiver_id,
+  sender_fname,
+  receiver_fname,
+  content,
+  metadata
+)
+VALUES (
+  @conversation_id,
+  @buyer_id,
+  @seller_id,
+  IFNULL(@buyer_display_name, CONCAT('User ', @buyer_id)),
+  IFNULL(@seller_display_name, CONCAT('User ', @seller_id)),
+  CONCAT(@buyer_display_name, ' would like to message you about iPhone Case'),
+  JSON_OBJECT(
+    'type', 'listing_intro',
+    'product', JSON_OBJECT(
+      'product_id', @product_id,
+      'title', 'iPhone Case',
+      'image_url', '/images/iphone-case-product-image.jpg'
+    ),
+    'buyer_name', @buyer_display_name
+  )
+);
+
+-- Get the auto-message ID for updating unread count
+SELECT message_id INTO @auto_message_id
+FROM messages
+WHERE conv_id = @conversation_id
+  AND sender_id = @buyer_id
+  AND receiver_id = @seller_id
+  AND JSON_EXTRACT(metadata, '$.type') = 'listing_intro'
+LIMIT 1;
+
+-- Update seller's unread count (buyer sent the initial message)
+UPDATE conversation_participants
+SET unread_count = unread_count + 1,
+    first_unread_msg_id = CASE
+        WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN @auto_message_id
+        ELSE first_unread_msg_id
+    END
+WHERE conv_id = @conversation_id 
+  AND user_id = @seller_id
+  AND @auto_message_id IS NOT NULL;
 
 -- Create scheduled_purchase_requests record (required for receipt)
 -- Delete any existing one first to ensure clean state
