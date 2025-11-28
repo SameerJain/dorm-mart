@@ -161,7 +161,7 @@ function ReviewRow({ review }) {
           <div className="space-y-0.5 min-w-0 flex-1">
             <p className="text-sm sm:text-base font-semibold text-slate-900 break-words">{review.reviewer_name || "Anonymous"}</p>
             {review.reviewer_email ? (
-              <p className="text-xs sm:text-sm text-slate-500 break-all">{review.reviewer_email}</p>
+              <p className="text-xs sm:text-sm text-slate-500 truncate" title={review.reviewer_email}>{review.reviewer_email}</p>
             ) : (
               <p className="text-xs sm:text-sm text-slate-400">No email provided</p>
             )}
@@ -517,7 +517,7 @@ function MyProfilePage() {
                   <div className="space-y-1 text-center sm:text-left text-slate-900 min-w-0 max-w-full overflow-hidden flex-1">
                     <p className="text-xl sm:text-2xl font-serif font-semibold truncate block">{profile?.name}</p>
                     <p className="text-xs sm:text-sm break-all">@{profile?.username}</p>
-                    <p className="text-xs sm:text-sm break-all">{profile?.email}</p>
+                    <p className="text-xs sm:text-sm truncate" title={profile?.email}>{profile?.email}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col items-center gap-1 text-center text-xs sm:text-sm text-slate-500 sm:items-start sm:text-left">

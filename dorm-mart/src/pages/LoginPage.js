@@ -61,7 +61,7 @@ function LoginPage() {
     setLoading(true);
 
     // Validate input lengths FIRST (prevent excessively large inputs)
-    if (email.length >= 50 || password.length >= 64) {
+    if (email.length > 255 || password.length > 64) {
       setError("Username or password is too large");
       setLoading(false);
       return;
@@ -246,7 +246,7 @@ function LoginPage() {
               )}
 
               {/* Login form */}
-              <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4 md:space-y-6">
+              <form onSubmit={handleLogin} noValidate className="space-y-3 sm:space-y-4 md:space-y-6">
                 {/* Email input */}
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-1.5 sm:mb-2">
@@ -255,8 +255,29 @@ function LoginPage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    maxLength={50}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Ensure we capture the full value up to 255 characters
+                      if (value.length <= 255) {
+                        setEmail(value);
+                      } else {
+                        setEmail(value.slice(0, 255));
+                      }
+                    }}
+                    onPaste={(e) => {
+                      // Always handle paste ourselves to ensure full email is captured
+                      e.preventDefault();
+                      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                      let cleanedText = pastedText.trim();
+                      // Remove '-- ' prefix if present (SQL comment marker)
+                      if (cleanedText.startsWith('-- ')) {
+                        cleanedText = cleanedText.substring(3).trim();
+                      }
+                      // Limit to exactly 255 characters to match database limit
+                      const trimmedText = cleanedText.slice(0, 255);
+                      setEmail(trimmedText);
+                    }}
+                    maxLength={255}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-sm sm:text-base"
                   />
                 </div>

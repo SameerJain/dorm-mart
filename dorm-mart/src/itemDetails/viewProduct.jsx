@@ -586,7 +586,7 @@ export default function ViewProduct() {
                   <Detail label="Condition" value={normalized.itemCondition || '—'} />
                   <Detail label="Price Negotiable" value={normalized.priceNego ? 'Yes' : 'No'} />
                   <Detail label="Accepts trades" value={normalized.trades ? 'Yes' : 'No'} />
-                  <Detail label="Seller email" value={normalized.sellerEmail ? (<a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 dark:text-blue-400 hover:underline">{normalized.sellerEmail}</a>) : '—'} />
+                  <Detail label="Seller email" value={normalized.sellerEmail ? (<a href={`mailto:${normalized.sellerEmail}`} className="text-blue-600 dark:text-blue-400 hover:underline truncate inline-block max-w-full" title={normalized.sellerEmail}>{normalized.sellerEmail}</a>) : '—'} />
                 </div>
                 <div className="space-y-2">
                   <Detail label="Date listed" value={normalized.dateListed ? formatDate(normalized.dateListed) : '—'} />
@@ -610,8 +610,8 @@ export default function ViewProduct() {
 function Detail({ label, value }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">{label}</span>
-      <span className="text-sm text-gray-700 dark:text-gray-300">{value}</span>
+      <span className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 flex-shrink-0">{label}</span>
+      <span className="text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1 truncate">{value}</span>
     </div>
   );
 }

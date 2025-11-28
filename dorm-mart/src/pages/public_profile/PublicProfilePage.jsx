@@ -243,7 +243,7 @@ function PublicProfilePage() {
               <div className="text-center md:text-left min-w-0 max-w-full overflow-hidden flex-1">
                 <h1 className="text-2xl font-serif font-semibold text-slate-900 truncate block">{profile.name}</h1>
                 <p className="text-sm text-slate-500">@{profile.username}</p>
-                <p className="text-sm text-slate-500">{profile.email}</p>
+                <p className="text-sm text-slate-500 truncate" title={profile.email}>{profile.email}</p>
                 {profile.instagram && (
                   <a
                     href={profile.instagram}

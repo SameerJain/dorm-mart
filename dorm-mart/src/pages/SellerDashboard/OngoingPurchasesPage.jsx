@@ -319,7 +319,7 @@ function OngoingPurchasesPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                         <span className="text-sm font-bold text-red-700 dark:text-red-200">CANCELLED</span>
-                        <span className="text-sm text-red-600 dark:text-red-300">by {canceledByName}</span>
+                        <span className="text-sm text-red-600 dark:text-red-300 truncate min-w-0" title={canceledByName}>by {canceledByName}</span>
                     </div>
                 </div>
             );

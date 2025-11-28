@@ -193,7 +193,7 @@ if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
     exit;
 }
 
-$email = validateInput($emailRaw, 50, '/^[^@\s]+@buffalo\.edu$/');
+$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
 
 if ($email === false) {
     http_response_code(400);

@@ -68,7 +68,7 @@ if (containsXSSPattern($emailRaw)) {
     exit;
 }
 
-$email = validateInput($emailRaw, 50, '/^[^@\s]+@buffalo\.edu$/');
+$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
 $password = validateInput($passwordRaw, 64);
 
 if ($email === false || $password === false) {
@@ -92,7 +92,7 @@ if ($email === '' || $password === '') {
     echo json_encode(['ok' => false, 'error' => 'Missing required fields']);
     exit;
 }
-if (strlen($email) >= 50 || strlen($password) >= 64) {
+if (strlen($email) > 255 || strlen($password) > 64) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Username or password is too large']);
     exit;

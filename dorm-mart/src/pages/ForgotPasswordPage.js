@@ -93,8 +93,11 @@ function ForgotPasswordPage() {
   };
 
   function emailValidation(email) {
-    const pattern = /^[A-Za-z0-9]{1,15}@buffalo\.edu$/i;
+    const pattern = /^[^@\s]+@buffalo\.edu$/i;
     const trimmed = email.trim();
+
+    // Check length (255 characters max to match database limit)
+    if (trimmed.length > 255) return false;
 
     // Must match pattern first
     if (!pattern.test(trimmed)) return false;
@@ -162,7 +165,7 @@ function ForgotPasswordPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    maxLength={30}
+                    maxLength={255}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
                   />
                 </div>
