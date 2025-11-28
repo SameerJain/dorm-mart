@@ -119,23 +119,24 @@ try {
             $seller = $row['email'];
         }
 
-        // XSS PROTECTION: json_encode() automatically escapes special characters for JSON
-        // No need to manually escape - json_encode handles it safely
+        // XSS PROTECTION: Escape user-generated content before returning in JSON
+        // json_encode() escapes JSON special characters, but we also need HTML escaping
+        // for content that will be rendered in the browser
         $out[] = [
             'id'         => (int)$row['product_id'],
-            'title'      => $row['title'] ?? 'Untitled',
+            'title'      => escapeHtml($row['title'] ?? 'Untitled'),
             'price'      => $row['listing_price'] !== null ? (float)$row['listing_price'] : 0,
             'image'      => $image,      // <-- "/data/images/xxxx.png"
             'image_url'  => $image,
             'tags'       => $tags,
             'category'   => !empty($tags) ? $tags[0] : null,
-            'location'   => $row['item_location'] ?? 'North Campus',
-            'condition'  => $row['item_condition'] ?? null,
+            'location'   => escapeHtml($row['item_location'] ?? 'North Campus'),
+            'condition'  => escapeHtml($row['item_condition'] ?? ''),
             'created_at' => $createdAt,
-            'seller'     => $seller,
-            'sold_by'    => $seller,
+            'seller'     => escapeHtml($seller),
+            'sold_by'    => escapeHtml($seller),
             'rating'     => 4.7,
-            'status'     => $status,
+            'status'     => escapeHtml($status),
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],
         ];
@@ -145,11 +146,14 @@ try {
     exit;
 
 } catch (Throwable $e) {
+    error_log('landingListings error: ' . $e->getMessage());
     http_response_code(500);
+    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => $e->getMessage(),
+        'detail' => escapeHtml($e->getMessage()),
     ]);
     exit;
 }

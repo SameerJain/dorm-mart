@@ -46,15 +46,16 @@ try {
     $email    = (string)($profileRow['email'] ?? '');
     $username = derive_username($email);
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success'     => true,
         'profile'     => [
-            'name'        => $fullName !== '' ? $fullName : null,
-            'username'    => $username,
-            'email'       => $email,
+            'name'        => $fullName !== '' ? escapeHtml($fullName) : null,
+            'username'    => escapeHtml($username),
+            'email'       => escapeHtml($email),
             'image_url'   => format_profile_photo_url($profileRow['profile_photo'] ?? null),
             'bio'         => escapeHtml($profileRow['bio'] ?? ''),
-            'instagram'   => $profileRow['instagram'] ?? '',
+            'instagram'   => escapeHtml($profileRow['instagram'] ?? ''),
             'avg_rating'  => $ratingStats['avg_rating'],
             'review_count'=> $ratingStats['review_count'],
         ],
@@ -156,12 +157,13 @@ SQL;
             $buyerName = derive_username((string)($row['buyer_email'] ?? '')) ?: 'Buyer #' . (int)$row['buyer_user_id'];
         }
 
+        // XSS PROTECTION: Escape user-generated content before returning in JSON
         $reviews[] = [
             'review_id'      => (int)$row['review_id'],
             'product_id'     => (int)$row['product_id'],
-            'reviewer_name'  => $buyerName,
-            'reviewer_email' => $row['buyer_email'] ?? null,
-            'reviewer_username' => derive_username((string)($row['buyer_email'] ?? '')),
+            'reviewer_name'  => escapeHtml($buyerName),
+            'reviewer_email' => escapeHtml($row['buyer_email'] ?? ''),
+            'reviewer_username' => escapeHtml(derive_username((string)($row['buyer_email'] ?? ''))),
             'product_title'  => escapeHtml($row['product_title'] ?? 'Untitled product'),
             'review'         => escapeHtml($row['review_text'] ?? ''),
             'image_1'        => format_review_image_url($row['image1_url'] ?? null),

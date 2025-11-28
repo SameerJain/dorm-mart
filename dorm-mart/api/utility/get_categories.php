@@ -66,9 +66,11 @@ try {
     echo json_encode($data);
 
 } catch (Throwable $e) {
+    error_log('get_categories error: ' . $e->getMessage());
     http_response_code(500);
+    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
     echo json_encode([
         'ok'    => false,
-        'error' => $e->getMessage()
+        'error' => escapeHtml($e->getMessage())
     ]);
 }

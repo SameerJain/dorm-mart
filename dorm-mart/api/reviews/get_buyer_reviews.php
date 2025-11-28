@@ -70,13 +70,14 @@ SQL;
             $sellerName = derive_username((string)($row['seller_email'] ?? '')) ?: 'Seller #' . (int)$row['seller_user_id'];
         }
 
+        // XSS PROTECTION: Escape user-generated content before returning in JSON
         $reviews[] = [
             'rating_id'         => (int)$row['rating_id'],
             'product_id'        => (int)$row['product_id'],
             'seller_user_id'    => (int)$row['seller_user_id'],
-            'seller_name'       => $sellerName,
-            'seller_email'      => $row['seller_email'] ?? null,
-            'seller_username'   => derive_username((string)($row['seller_email'] ?? '')),
+            'seller_name'       => escapeHtml($sellerName),
+            'seller_email'      => escapeHtml($row['seller_email'] ?? ''),
+            'seller_username'   => escapeHtml(derive_username((string)($row['seller_email'] ?? ''))),
             'product_title'     => escapeHtml($row['product_title'] ?? 'Untitled product'),
             'review_text'       => escapeHtml($row['review_text'] ?? ''),
             'rating'            => (float)$row['rating'],

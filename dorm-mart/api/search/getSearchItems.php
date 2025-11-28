@@ -319,20 +319,21 @@ try {
             $seller = $row['email'];
         }
 
+        // XSS PROTECTION: Escape user-generated content before returning in JSON
         $out[] = [
             'id'         => (int)$row['product_id'],
-            'title'      => $row['title'] ?? 'Untitled',
+            'title'      => escapeHtml($row['title'] ?? 'Untitled'),
             'price'      => $row['listing_price'] !== null ? (float)$row['listing_price'] : 0,
             'image'      => $image,
             'image_url'  => $image,
             'tags'       => $tags,
             'category'   => !empty($tags) ? $tags[0] : null,
-            'location'   => $row['item_location'] ?? null,
-            'condition'  => $row['item_condition'] ?? null,
+            'location'   => escapeHtml($row['item_location'] ?? ''),
+            'condition'  => escapeHtml($row['item_condition'] ?? ''),
             'created_at' => $createdAt,
-            'seller'     => $seller,
-            'sold_by'    => $seller,
-            'status'     => $statusOut,
+            'seller'     => escapeHtml($seller),
+            'sold_by'    => escapeHtml($seller),
+            'status'     => escapeHtml($statusOut),
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],
         ];
@@ -342,11 +343,14 @@ try {
     exit;
 
 } catch (Throwable $e) {
+    error_log('getSearchItems error: ' . $e->getMessage());
     http_response_code(500);
+    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => $e->getMessage(),
+        'detail' => escapeHtml($e->getMessage()),
     ]);
     exit;
 }

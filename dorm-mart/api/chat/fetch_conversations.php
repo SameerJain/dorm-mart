@@ -71,6 +71,7 @@ $res = $stmt->get_result();          // requires mysqlnd (present in XAMPP)
 $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 
 // Extract first image from photos JSON for each conversation
+// XSS PROTECTION: Escape user-generated content before returning in JSON
 foreach ($rows as &$row) {
     $productImageUrl = null;
     if (!empty($row['product_photos'])) {
@@ -82,6 +83,11 @@ foreach ($rows as &$row) {
     }
     $row['product_image_url'] = $productImageUrl;
     unset($row['product_photos']); // Remove raw photos JSON from response
+    
+    // Escape user-generated fields
+    $row['user1_fname'] = escapeHtml($row['user1_fname'] ?? '');
+    $row['user2_fname'] = escapeHtml($row['user2_fname'] ?? '');
+    $row['product_title'] = escapeHtml($row['product_title'] ?? '');
 }
 
 echo json_encode(['success' => true, 'conversations' => $rows]);

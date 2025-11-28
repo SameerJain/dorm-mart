@@ -60,14 +60,15 @@ try {
         exit;
     }
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $cats = [];
     $c1 = trim((string)($row['interested_category_1'] ?? ''));
     $c2 = trim((string)($row['interested_category_2'] ?? ''));
     $c3 = trim((string)($row['interested_category_3'] ?? ''));
 
-    if ($c1 !== '') $cats[] = $c1;
-    if ($c2 !== '' && $c2 !== $c1) $cats[] = $c2;
-    if ($c3 !== '' && $c3 !== $c1 && $c3 !== $c2) $cats[] = $c3;
+    if ($c1 !== '') $cats[] = escapeHtml($c1);
+    if ($c2 !== '' && $c2 !== $c1) $cats[] = escapeHtml($c2);
+    if ($c3 !== '' && $c3 !== $c1 && $c3 !== $c2) $cats[] = escapeHtml($c3);
 
     $cats = array_slice($cats, 0, 3);
 
@@ -78,11 +79,14 @@ try {
     exit;
 
 } catch (Throwable $e) {
+    error_log('me.php error: ' . $e->getMessage());
     http_response_code(500);
+    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => $e->getMessage(),
+        'detail' => escapeHtml($e->getMessage()),
     ]);
     exit;
 }
