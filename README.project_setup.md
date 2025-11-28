@@ -68,8 +68,8 @@ The "homepage" field in your package.json tells the React build tools (like reac
     - The React Router reads that hash fragment (#/login) and renders the right component (your Login page). This is how SPA works.
 
 # Development Utilities
-- Clear forgot password rate limit: `php api/auth/utility/manage_forgot_password_rate_limiting.php`
-- Clear login lockout timer: `php api/auth/utility/reset_user_account_lockouts.php`
+- Clear forgot password rate limit: `php api/utility/manage_forgot_password_rate_limiting.php` (run from dorm-mart folder)
+- Clear login lockout timer: `php api/utility/reset_session_lockout.php` (run from dorm-mart folder)
 
 # Windows Powershell Build Scripts Commands
 

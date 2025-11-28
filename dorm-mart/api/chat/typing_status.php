@@ -55,20 +55,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $checkStmt->close();
 
-    // Insert or update typing status
-    $isTypingInt = $isTyping ? 1 : 0;
-    $stmt = $conn->prepare('INSERT INTO typing_status (conversation_id, user_id, is_typing, updated_at) 
-                            VALUES (?, ?, ?, NOW()) 
-                            ON DUPLICATE KEY UPDATE is_typing = ?, updated_at = NOW()');
-    $stmt->bind_param('iiii', $conversationId, $userId, $isTypingInt, $isTypingInt);
+    // Use transaction to ensure atomicity and prevent race conditions
+    $conn->begin_transaction();
     
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true]);
-    } else {
+    try {
+        // Insert or update typing status atomically
+        $isTypingInt = $isTyping ? 1 : 0;
+        $stmt = $conn->prepare('INSERT INTO typing_status (conversation_id, user_id, is_typing, updated_at) 
+                                VALUES (?, ?, ?, NOW()) 
+                                ON DUPLICATE KEY UPDATE is_typing = ?, updated_at = NOW()');
+        $stmt->bind_param('iiii', $conversationId, $userId, $isTypingInt, $isTypingInt);
+        
+        if ($stmt->execute()) {
+            $conn->commit();
+            $stmt->close();
+            echo json_encode(['success' => true]);
+        } else {
+            $conn->rollback();
+            $stmt->close();
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Failed to update typing status']);
+        }
+    } catch (Exception $e) {
+        $conn->rollback();
         http_response_code(500);
         echo json_encode(['success' => false, 'error' => 'Failed to update typing status']);
     }
-    $stmt->close();
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Get typing status for other person in conversation
@@ -105,6 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Get typing status for other user with their name, only if updated within last 8 seconds
     // Increased from 5 to 8 seconds to account for polling intervals and network delays
+    // The 8 second window accounts for network latency and polling intervals
+    // Note: 30-second continuous typing timeout is handled on the frontend
     $stmt = $conn->prepare('SELECT ts.is_typing, ua.first_name, ua.last_name 
                             FROM typing_status ts
                             INNER JOIN user_accounts ua ON ts.user_id = ua.user_id

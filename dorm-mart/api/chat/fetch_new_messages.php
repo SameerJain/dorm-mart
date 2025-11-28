@@ -126,6 +126,8 @@ if ($convId > 0) {
         
         if ($otherUserId > 0) {
             // Get typing status for other user with their name, only if updated within last 8 seconds
+            // The 8 second window accounts for network latency and polling intervals
+            // Note: 30-second continuous typing timeout is handled on the frontend
             $typingStmt = $conn->prepare('SELECT ts.is_typing, ua.first_name 
                                         FROM typing_status ts
                                         INNER JOIN user_accounts ua ON ts.user_id = ua.user_id
