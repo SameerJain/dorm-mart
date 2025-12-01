@@ -11,6 +11,7 @@ import Icon from './Icon'
 import { ChatContext } from "../../context/ChatContext";
 import { useContext } from 'react';
 
+// Main navigation bar component with search, notifications, chat, and menu dropdowns
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
