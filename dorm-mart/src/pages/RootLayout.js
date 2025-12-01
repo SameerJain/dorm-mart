@@ -4,7 +4,7 @@ import MainNav from "../components/MainNav/MainNav";
 import { fetch_me } from "../utils/handle_auth.js";
 import { loadUserTheme } from "../utils/load_theme.js";
 import { ChatContext } from "../context/ChatContext.js";
-import QnAModal from "./QnAPage/QnAModal.jsx";
+import FAQModal from "./FAQPage/FAQModal.jsx";
 
 // once user logs in, load websocket
 function RootLayout() {
@@ -18,17 +18,17 @@ function RootLayout() {
   // Check if we're viewing a conversation (activeConvId exists) or the list (no activeConvId)
   const isViewingConversation = chatContext?.activeConvId != null;
 
-  const [isQnAModalOpen, setIsQnAModalOpen] = useState(false);
+  const [isFAQModalOpen, setIsFAQModalOpen] = useState(false);
 
-  const handleQnAClick = (event) => {
+  const handleFAQClick = (event) => {
     // Remove focus from the button after click
     event.currentTarget.blur();
-    // Open the QnA modal
-    setIsQnAModalOpen(true);
+    // Open the FAQ modal
+    setIsFAQModalOpen(true);
   };
 
-  const handleCloseQnA = () => {
-    setIsQnAModalOpen(false);
+  const handleCloseFAQ = () => {
+    setIsFAQModalOpen(false);
   };
 
   useEffect(() => {
@@ -87,7 +87,7 @@ function RootLayout() {
 
       <button
         type="button"
-        onClick={handleQnAClick}
+        onClick={handleFAQClick}
         className="
           fixed bottom-7 right-7 z-50
           h-12 w-12 flex items-center justify-center
@@ -99,12 +99,12 @@ function RootLayout() {
           qna-bounce-z
           transition-transform
         "
-        aria-label="QnA"
+        aria-label="FAQ"
       >
         ?
       </button>
 
-      <QnAModal isOpen={isQnAModalOpen} onClose={handleCloseQnA} />
+      <FAQModal isOpen={isFAQModalOpen} onClose={handleCloseFAQ} />
 
     </>
   );
