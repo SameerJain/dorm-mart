@@ -162,10 +162,9 @@ function SellerDashboardFAQ() {
     <div className="space-y-6 text-sm text-gray-700 dark:text-gray-300">
       {SELLER_DASHBOARD_SECTIONS.map((section) => (
         <section key={section.title} className="space-y-3">
-          {/* section title: slightly larger than question size (1.35rem) */}
+          {/* Section title: visually distinct badge-style heading */}
           <h2
-            className="font-semibold text-gray-900 dark:text-gray-100"
-            style={{ fontSize: "1.5rem" }}
+            className="inline-block pl-2 pr-3 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-base md:text-lg font-semibold tracking-wide uppercase text-gray-900 dark:text-gray-100"
           >
             {section.title}
           </h2>
@@ -178,7 +177,7 @@ function SellerDashboardFAQ() {
                 className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
               >
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                  {currentIndex}. {item.question}
+                  {item.question}
                 </h3>
                 <p className="mt-1 whitespace-pre-line">
                   {item.answer}
