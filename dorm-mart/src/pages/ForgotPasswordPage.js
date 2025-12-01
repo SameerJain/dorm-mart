@@ -233,7 +233,7 @@ function ForgotPasswordPage() {
                     }}
                     className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer"
                   >
-                    Create account
+                    Create Account
                   </button>
                   <span className="w-1 h-1 bg-black rounded-full"></span>
                   <button
@@ -243,7 +243,7 @@ function ForgotPasswordPage() {
                     }}
                     className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-400 transition-colors duration-200 whitespace-nowrap bg-transparent border-none text-white cursor-pointer"
                   >
-                    Go to login
+                    Go To Login
                   </button>
                 </div>
               </div>

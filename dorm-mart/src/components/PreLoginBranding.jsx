@@ -10,11 +10,12 @@ function PreLoginBranding({ animate = false, animateText = false }) {
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: `url(${backgroundImage})`,
+            filter: 'brightness(1.15)',
           }}
         ></div>
 
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+        <div className="absolute inset-0 bg-black bg-opacity-30"></div>
 
         {/* Branding content */}
         <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">

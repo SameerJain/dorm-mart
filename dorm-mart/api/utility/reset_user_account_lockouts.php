@@ -90,10 +90,11 @@ try {
         echo json_encode($response, JSON_PRETTY_PRINT);
     }
 } catch (Exception $e) {
+    // XSS PROTECTION: Escape exception message to prevent XSS
     $errorResponse = [
         'success' => false,
         'error' => 'Failed to reset lockouts',
-        'message' => $e->getMessage()
+        'message' => escapeHtml($e->getMessage())
     ];
 
     if (php_sapi_name() === 'cli') {

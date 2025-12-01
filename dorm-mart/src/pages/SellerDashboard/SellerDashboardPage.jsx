@@ -595,8 +595,8 @@ function SellerDashboardPage() {
                                                 );
                                             })()}
 
-                                            {/* Edit button - only show if item can be edited */}
-                                            {listing.has_accepted_scheduled_purchase !== true && (
+                                            {/* Edit button - only show if item can be edited and is not sold */}
+                                            {listing.has_accepted_scheduled_purchase !== true && String(listing.status || '').toLowerCase() !== 'sold' && (
                                                 <button
                                                     onClick={() => navigate(`/app/product-listing/edit/${listing.id}`)}
                                                     className="font-medium text-sm sm:text-base text-blue-600 hover:text-blue-800"

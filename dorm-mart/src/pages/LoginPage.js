@@ -330,7 +330,7 @@ function LoginPage() {
                     }}
                     className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-400 transition-colors duration-200"
                   >
-                    create account
+                    Create Account
                   </a>
                   <span className="w-1 h-1 bg-black rounded-full"></span>
                   <a
@@ -341,7 +341,7 @@ function LoginPage() {
                     }}
                     className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-400 transition-colors duration-200"
                   >
-                    forgot password?
+                    Forgot Password?
                   </a>
                 </div>
               </div>

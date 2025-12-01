@@ -44,11 +44,12 @@ try {
     $stmt->execute();
     $res = $stmt->get_result();
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $unreads = [];
     while ($row = $res->fetch_assoc()) {
         $unreads[] = [
             'product_id'   => (int)$row['product_id'],
-            'title'        => $row['title'],
+            'title'        => escapeHtml($row['title'] ?? 'Untitled'),
             'image_url'    => $row['image_url'],
             'unread_count' => (int)$row['unread_count'],
         ];
