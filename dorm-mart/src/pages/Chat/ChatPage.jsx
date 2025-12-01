@@ -1120,6 +1120,23 @@ export default function ChatPage() {
                   if (isSellerConversation) messagesToBuyers.push(c);
                   else messagesToSellers.push(c);
                 });
+                
+                // Show empty state if no conversations exist
+                if (messagesToSellers.length === 0 && messagesToBuyers.length === 0) {
+                  return (
+                    <li className="px-4 py-8">
+                      <div className="text-center">
+                        <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium">
+                          No chats to display
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400 dark:text-gray-500 mt-2">
+                          Start a conversation to see chats here
+                        </p>
+                      </div>
+                    </li>
+                  );
+                }
+                
                 return (
                   <>
                     {messagesToSellers.length > 0 && (
@@ -1239,8 +1256,16 @@ export default function ChatPage() {
               aria-relevant="additions"
             >
               {!activeConvId ? (
-                <div className="flex h-full items-center justify-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Select a chat to view messages.</p>
+                <div className="flex h-full items-center justify-center px-4">
+                  {conversations.length === 0 ? (
+                    <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 text-center font-medium">
+                      Any chats with users will be displayed here
+                    </p>
+                  ) : (
+                    <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 text-center">
+                      Select a chat to view messages.
+                    </p>
+                  )}
                 </div>
               ) : chatByConvError[activeConvId] === true ? (
                 <p className="text-center text-sm text-red-600 dark:text-red-400">Something went wrong, please try again later</p>
