@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json');                      // Return JSON to the client
 
+// Include security utilities for escapeHtml function
+require_once __DIR__ . '/../security/security.php';
+
 require __DIR__ . '/db_connect.php';                            // Load your connection helper
 $conn = db();                                                   // Get a mysqli connection
 
@@ -47,9 +50,10 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {                              // Execute possibly multi-statement SQL
     $err = $conn->error;                                        // Capture the MySQL error message
     $conn->rollback();                                          // Undo any partial changes
+    // XSS PROTECTION: Escape error message to prevent XSS if filename or error contains malicious content
     echo json_encode([
       "success" => false,                       // Report failure (which file + why)
-      "message" => "Failed: $name — $err"
+      "message" => "Failed: " . escapeHtml($name) . " — " . escapeHtml($err)
     ]);
     exit;                                                       // Stop on first failure
   }
@@ -66,8 +70,10 @@ foreach ($files as $path) {
   $stmt->execute();                                             // Insert or update the timestamp
   $stmt->close();                                               // Free the statement
 
-  $conn->commit();                                              // Finalize this migration’s transaction
+  $conn->commit();                                              // Finalize this migration's transaction
   $ran[] = $name;                                               // Add to the list of executed files
 }
 
-echo json_encode(["success" => true, "applied" => $ran]);        // Return summary of executed files
+// XSS PROTECTION: Escape filenames before outputting in JSON (defense-in-depth)
+$escapedRan = array_map('escapeHtml', $ran);
+echo json_encode(["success" => true, "applied" => $escapedRan]);        // Return summary of executed files

@@ -141,15 +141,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $stmt->close();
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success' => true, 
         'is_typing' => $isTyping
     ];
     if ($isTyping && $typingUserFirstName) {
-        $response['typing_user_first_name'] = $typingUserFirstName;
+        $response['typing_user_first_name'] = escapeHtml($typingUserFirstName);
         // Only include last_name if available, but don't require it
         if ($typingUserLastName) {
-            $response['typing_user_last_name'] = $typingUserLastName;
+            $response['typing_user_last_name'] = escapeHtml($typingUserLastName);
         }
     }
     echo json_encode($response);

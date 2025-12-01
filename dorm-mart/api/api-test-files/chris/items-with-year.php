@@ -49,9 +49,16 @@ $stmt->bind_param('ss', $start, $end);                // bind date range params 
 $stmt->execute();                                     // run the query
 $res = $stmt->get_result();                           // fetch mysqli_result
 
+// XSS PROTECTION: Escape user-generated content before returning in JSON
 $rows = [];
 while ($row = $res->fetch_assoc()) {
-    $rows[] = $row;
+    $rows[] = [
+        'item_id' => (int)$row['item_id'],
+        'title' => escapeHtml($row['title'] ?? ''),
+        'sold_by' => escapeHtml($row['sold_by'] ?? ''),
+        'transacted_at' => $row['transacted_at'],
+        'image_url' => escapeHtml($row['image_url'] ?? '')
+    ];
 }
 
 echo json_encode(['success' => true, 'data' => $rows]);

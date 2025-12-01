@@ -60,7 +60,8 @@ $sql = "
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
   http_response_code(500);
-  echo json_encode(['success' => false, 'error' => 'Prepare failed', 'detail' => $db->error]);
+  // XSS PROTECTION: Escape database error message to prevent XSS
+  echo json_encode(['success' => false, 'error' => 'Prepare failed', 'detail' => escapeHtml($conn->error)]);
   exit;
 }
 

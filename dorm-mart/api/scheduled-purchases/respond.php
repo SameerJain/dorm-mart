@@ -361,6 +361,7 @@ try {
 
     $responseAtIso = (new DateTime('now', new DateTimeZone('UTC')))->format(DateTime::ATOM);
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success' => true,
         'data' => [
@@ -370,11 +371,11 @@ try {
             'seller_user_id' => (int)$row['seller_user_id'],
             'buyer_user_id' => $buyerId,
             'inventory_product_id' => (int)$row['inventory_product_id'],
-            'meet_location' => (string)$row['meet_location'],
+            'meet_location' => escapeHtml($row['meet_location'] ?? ''),
             'meeting_at' => $meetingAtIso,
             'buyer_response_at' => $responseAtIso,
             'item' => [
-                'title' => (string)$row['item_title'],
+                'title' => escapeHtml($row['item_title'] ?? 'Untitled'),
             ],
         ],
     ];

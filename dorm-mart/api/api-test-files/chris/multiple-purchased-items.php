@@ -23,9 +23,17 @@ $sql = "SELECT *
 
 $res = $conn->query($sql);
 
+// XSS PROTECTION: Escape user-generated content before returning in JSON
 $rows = [];
 while ($row = $res->fetch_assoc()) {
-    $rows[] = $row;
+    $rows[] = [
+        'item_id' => isset($row['item_id']) ? (int)$row['item_id'] : null,
+        'title' => escapeHtml($row['title'] ?? ''),
+        'sold_by' => escapeHtml($row['sold_by'] ?? ''),
+        'transacted_at' => $row['transacted_at'] ?? null,
+        'image_url' => escapeHtml($row['image_url'] ?? ''),
+        'buyer_user_id' => isset($row['buyer_user_id']) ? (int)$row['buyer_user_id'] : null,
+    ];
 }
 
 echo json_encode(['success' => true, 'data' => $rows]);

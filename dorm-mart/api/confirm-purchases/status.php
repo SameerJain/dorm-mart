@@ -120,10 +120,11 @@ try {
         }
     }
 
+    // XSS PROTECTION: Escape user-generated content
     $scheduledInfo = [
         'request_id' => (int)$schedRow['request_id'],
         'buyer_user_id' => (int)$schedRow['buyer_user_id'],
-        'meet_location' => $schedRow['meet_location'],
+        'meet_location' => escapeHtml($schedRow['meet_location'] ?? ''),
         'meeting_at' => $meetingIso,
     ];
 

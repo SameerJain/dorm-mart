@@ -718,7 +718,7 @@ export default function ViewReceipt() {
                       <button
                         onClick={handleMessageSeller}
                         disabled={!normalized.sellerId || msgLoading || isSellerViewingOwnProduct}
-                        className={`w-full rounded-full font-medium py-2 ${
+                        className={`w-full rounded-full font-medium py-2 px-3 ${
                           isSellerViewingOwnProduct
                             ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white"
                             : "bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"

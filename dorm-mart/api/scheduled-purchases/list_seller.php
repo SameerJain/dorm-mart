@@ -126,42 +126,44 @@ try {
             $canceledByUserId = (int)$row['canceled_by_user_id'];
             $canceledByFirstName = isset($row['canceled_by_first_name']) ? (string)$row['canceled_by_first_name'] : '';
             $canceledByLastName = isset($row['canceled_by_last_name']) ? (string)$row['canceled_by_last_name'] : '';
+            // XSS PROTECTION: Escape user-generated content
             $canceledBy = [
                 'user_id' => $canceledByUserId,
-                'first_name' => $canceledByFirstName,
-                'last_name' => $canceledByLastName,
+                'first_name' => escapeHtml($canceledByFirstName),
+                'last_name' => escapeHtml($canceledByLastName),
             ];
         }
 
         $hasCompletedConfirm = isset($row['has_completed_confirm']) && ($row['has_completed_confirm'] === 1 || $row['has_completed_confirm'] === '1');
 
+        // XSS PROTECTION: Escape user-generated content before returning in JSON
         $records[] = [
             'request_id' => (int)$row['request_id'],
             'inventory_product_id' => (int)$row['inventory_product_id'],
             'seller_user_id' => (int)$row['seller_user_id'],
             'buyer_user_id' => (int)$row['buyer_user_id'],
             'conversation_id' => $row['conversation_id'] !== null ? (int)$row['conversation_id'] : null,
-            'meet_location' => (string)$row['meet_location'],
+            'meet_location' => escapeHtml($row['meet_location'] ?? ''),
             'meeting_at' => $meetingAtIso,
             'verification_code' => (string)$row['verification_code'],
-            'description' => isset($row['description']) ? (string)$row['description'] : null,
+            'description' => isset($row['description']) ? escapeHtml((string)$row['description']) : null,
             'status' => (string)$row['status'],
             'buyer_response_at' => $responseAtIso,
             'created_at' => $createdAtIso ? $createdAtIso : $row['created_at'],
             'updated_at' => $row['updated_at'],
             'negotiated_price' => $negotiatedPrice,
             'is_trade' => $isTrade,
-            'trade_item_description' => $tradeItemDescription,
+            'trade_item_description' => $tradeItemDescription !== null ? escapeHtml($tradeItemDescription) : null,
             'canceled_by' => $canceledBy,
             'has_completed_confirm' => $hasCompletedConfirm,
             'item' => [
-                'title' => (string)$row['item_title'],
+                'title' => escapeHtml($row['item_title'] ?? 'Untitled'),
                 'photos' => $photos,
                 'listing_price' => isset($row['item_listing_price']) ? (float)$row['item_listing_price'] : null,
             ],
             'buyer' => [
-                'first_name' => (string)$row['buyer_first_name'],
-                'last_name' => (string)$row['buyer_last_name'],
+                'first_name' => escapeHtml($row['buyer_first_name'] ?? ''),
+                'last_name' => escapeHtml($row['buyer_last_name'] ?? ''),
             ],
         ];
     }

@@ -70,6 +70,13 @@ try {
         echo json_encode(['success' => false, 'error' => 'Review text must be 250 characters or less']);
         exit;
     }
+    
+    // XSS PROTECTION: Check for XSS patterns in review text
+    if ($reviewText !== '' && containsXSSPattern($reviewText)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid characters in review text']);
+        exit;
+    }
 
     $conn = db();
     $conn->set_charset('utf8mb4');
@@ -181,6 +188,7 @@ try {
     $stmt->close();
     $conn->close();
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     echo json_encode([
         'success' => true,
         'rating_id' => $ratingId,
@@ -190,7 +198,7 @@ try {
             'seller_user_id' => (int)$ratingData['seller_user_id'],
             'buyer_user_id' => (int)$ratingData['buyer_user_id'],
             'rating' => (float)$ratingData['rating'],
-            'review_text' => $ratingData['review_text'],
+            'review_text' => escapeHtml($ratingData['review_text'] ?? ''),
             'created_at' => $ratingData['created_at'],
             'updated_at' => $ratingData['updated_at'],
         ],

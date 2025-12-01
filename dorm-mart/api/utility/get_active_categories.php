@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+// Include security utilities for escapeHtml function
+require_once __DIR__ . '/../security/security.php';
+
 // CORS headers to allow frontend access
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -56,16 +59,20 @@ try {
     $categories = array_keys($categoriesSet);
     sort($categories, SORT_STRING | SORT_FLAG_CASE);
     
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
+    $escapedCategories = array_map('escapeHtml', $categories);
+    
     $conn->close();
     
     // Return the array of active categories
-    echo json_encode($categories);
+    echo json_encode($escapedCategories);
 
 } catch (Throwable $e) {
     http_response_code(500);
+    // XSS PROTECTION: Escape exception message to prevent XSS
     echo json_encode([
         'ok'    => false,
-        'error' => $e->getMessage()
+        'error' => escapeHtml($e->getMessage())
     ]);
 }
 

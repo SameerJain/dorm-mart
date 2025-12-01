@@ -559,7 +559,7 @@ export default function ViewProduct() {
                       <button
                         onClick={handleMessageSeller}
                         disabled={!normalized.sellerId || msgLoading}
-                        className="w-full max-w-xs rounded-full font-medium py-2 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
+                        className="w-full max-w-xs rounded-full font-medium py-2 px-3 bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 text-white"
                       >
                         {msgLoading ? "Opening chat..." : "Message Seller"}
                       </button>

@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json');
 
+// Include security utilities for escapeHtml function
+require_once __DIR__ . '/../security/security.php';
+
 // reuse your existing env loader + $conn creation
 require __DIR__ . '/db_connect.php'; // or paste your env+mysqli code here
 
@@ -38,7 +41,8 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {
     $err = $conn->error;
     $conn->rollback();
-    echo json_encode(["success" => false, "message" => "Failed: $name — $err"]);
+    // XSS PROTECTION: Escape error message to prevent XSS if filename or error contains malicious content
+    echo json_encode(["success" => false, "message" => "Failed: " . escapeHtml($name) . " — " . escapeHtml($err)]);
     exit;
   }
 
@@ -58,4 +62,6 @@ foreach ($files as $path) {
   $ran[] = $name;
 }
 
-echo json_encode(["success" => true, "applied" => $ran]);
+// XSS PROTECTION: Escape filenames before outputting in JSON (defense-in-depth)
+$escapedRan = array_map('escapeHtml', $ran);
+echo json_encode(["success" => true, "applied" => $escapedRan]);

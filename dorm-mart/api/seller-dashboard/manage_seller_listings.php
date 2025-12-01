@@ -134,6 +134,7 @@ try {
         $acceptTrades = isset($row['trades']) ? ((int)$row['trades'] === 1) : false;
         $itemMeetLocation = isset($row['meet_location']) ? trim((string)$row['meet_location']) : null;
 
+        // XSS PROTECTION: Escape user-generated content before returning in JSON
         $data[] = [
             'id' => (int)$row['product_id'],
             'title' => escapeHtml((string)$row['title']),
@@ -147,7 +148,7 @@ try {
             'has_accepted_scheduled_purchase' => $hasAcceptedScheduledPurchase,
             'priceNegotiable' => $priceNegotiable,
             'acceptTrades' => $acceptTrades,
-            'meet_location' => $itemMeetLocation,
+            'meet_location' => $itemMeetLocation !== null ? escapeHtml($itemMeetLocation) : null,
             'wishlisted' => $row['wishlisted']
         ];
     }

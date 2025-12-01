@@ -314,13 +314,14 @@ try {
         $createdIso = gmdate('Y-m-d\TH:i:s\Z');
     }
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     echo json_encode([
         'success'     => true,
         'conv_id'     => $convId,
         'message_id'  => $msgId,
         'message'     => [
             'message_id' => $msgId,
-            'content'    => $content,       // caption (possibly empty string)
+            'content'    => escapeHtml($content),       // caption (possibly empty string) - XSS PROTECTION
             'created_at' => $createdIso,    // ISO-8601 UTC
             'image_url'  => $imageRelUrl,   // relative public path
         ],

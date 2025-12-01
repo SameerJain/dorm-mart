@@ -380,7 +380,7 @@ function CreateAccountPage() {
                     onClick={(e) => { e.preventDefault(); navigate('/login'); }}
                     className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-300 transition-colors duration-200"
                   >
-                    already have an account? log in
+                    Already Have An Account? Log In
                   </a>
                   <span className="w-1 h-1 bg-black rounded-full" />
                   <a
@@ -388,7 +388,7 @@ function CreateAccountPage() {
                     onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }}
                     className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-300 transition-colors duration-200"
                   >
-                    forgot password?
+                    Forgot Password?
                   </a>
                 </div>
               </div>

@@ -62,6 +62,7 @@ function ProductListingPage() {
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [showTopErrorBanner, setShowTopErrorBanner] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [isSold, setIsSold] = useState(false);
 
   // success modal
   const [showSuccess, setShowSuccess] = useState(false);
@@ -241,6 +242,21 @@ function ProductListingPage() {
 
         if (ignore) return;
 
+        // Prevent editing sold items
+        if (data.sold === true) {
+          setIsSold(true);
+          setLoadError("Cannot edit sold items.");
+          setServerMsg("Cannot edit sold items. Please return to the seller dashboard.");
+          setLoadingExisting(false);
+          // Redirect to seller dashboard after a short delay
+          setTimeout(() => {
+            navigate("/app/seller-dashboard", { replace: true });
+          }, 2000);
+          return;
+        }
+
+        setIsSold(false);
+
         // Populate form fields
         setTitle(data.title || "");
         
@@ -346,6 +362,7 @@ function ProductListingPage() {
       setErrors({});
       setServerMsg(null);
       setLoadError(null);
+      setIsSold(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
@@ -799,6 +816,14 @@ function ProductListingPage() {
   async function publishListing(e) {
     e.preventDefault();
     setServerMsg(null);
+    
+    // Prevent submission if item is sold
+    if (isEdit && isSold) {
+      setServerMsg("Cannot edit sold items.");
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    
     if (!validateAll()) {
       // Scroll to top and show error banner
       formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });

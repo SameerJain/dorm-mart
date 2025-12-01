@@ -391,6 +391,7 @@ try {
         $updateStmt->close();
     }
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
         'success' => true,
         'data' => [
@@ -399,7 +400,7 @@ try {
             'conversation_id' => $conversationId,
             'seller_user_id' => $sellerId,
             'buyer_user_id' => $buyerId,
-            'meet_location' => $meetLocation,
+            'meet_location' => escapeHtml($meetLocation),
             'meeting_at' => $meetingAt->format(DateTime::ATOM),
             'verification_code' => $verificationCode,
             'status' => 'pending',

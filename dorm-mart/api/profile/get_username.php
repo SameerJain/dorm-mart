@@ -54,10 +54,11 @@ try {
 
     $username = derive_username((string)$row['email']);
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     echo json_encode([
         'success' => true,
         'user_id' => $requestedId,
-        'username' => $username,
+        'username' => escapeHtml($username),
     ]);
 } catch (Throwable $e) {
     error_log('get_username.php error: ' . $e->getMessage());

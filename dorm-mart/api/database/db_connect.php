@@ -2,8 +2,10 @@
 
 function db(): mysqli
 {
-
+    // Include security utilities for escapeHtml function
     $root = dirname(__DIR__, 2);
+    require_once $root . '/api/security/security.php';
+    
     require_once $root . '/api/utility/load_env.php';
     load_env();
 
@@ -23,7 +25,8 @@ function db(): mysqli
 
     // check if db connected successfully
     if ($conn->connect_error) {
-        die(json_encode(["success" => false, "message" => "Connection failed: " . $conn->connect_error]));
+        // XSS PROTECTION: Escape database connection error message to prevent XSS
+        die(json_encode(["success" => false, "message" => "Connection failed: " . escapeHtml($conn->connect_error)]));
     }
 
     // SQL INJECTION PROTECTION: Escape database name for use in SQL queries
@@ -35,7 +38,8 @@ function db(): mysqli
         // db doesn't exist — create it
         // Use backticks for identifier escaping in CREATE DATABASE
         if (!$conn->query("CREATE DATABASE `$dbname`")) {
-            die(json_encode(["success" => false, "message" => "Failed to create database: " . $conn->error]));
+            // XSS PROTECTION: Escape database error message to prevent XSS
+            die(json_encode(["success" => false, "message" => "Failed to create database: " . escapeHtml($conn->error)]));
         }
     }
 
