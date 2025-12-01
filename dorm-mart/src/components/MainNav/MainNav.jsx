@@ -7,6 +7,7 @@ import settingIcon from '../../assets/icons/icons8-setting-96.png'
 import marketIcon from '../../assets/icons/icons8-market-96.png';
 import searchIcon from '../../assets/icons/icons8-search-96.png';
 import homeIcon from '../../assets/icons/icons8-home-96.png';
+import questionIcon from '../../assets/icons/icons8-question-mark-96.png';
 import Icon from './Icon'
 import { ChatContext } from "../../context/ChatContext";
 import { useContext } from 'react';
@@ -355,6 +356,17 @@ function MainNav() {
                             >
                                 <img src={settingIcon} alt="" className="h-6 w-6" />
                                 <span>Settings</span>
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                navigate("/app/faq");
+                                closeMobileMenuAndMarket();
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                            >
+                                <img src={questionIcon} alt="" className="h-6 w-6" />
+                                <span>FAQ</span>
                             </button>
                         </div>
                     )}
