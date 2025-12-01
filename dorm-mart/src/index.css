@@ -156,3 +156,21 @@ html.dark input, html.dark textarea, html.dark select {
   0% { transform: translateY(0); }
   to { transform: translateY(calc(-100% - var(--gap))); }
 }
+
+/* QnA button: bounce in "z-axis" (scale in/out) on hover */
+@keyframes qna-bounce-z {
+  0% {
+    transform: translateZ(0) scale(1);     /* start at normal size */
+  }
+  40% {
+    transform: translateZ(0) scale(1.12);  /* quickly pop out a bit */
+  }
+  100% {
+    transform: translateZ(0) scale(1);     /* return to normal */
+  }
+}
+
+/* Apply the animation only while the element is hovered */
+.qna-bounce-z:hover {
+  animation: qna-bounce-z 220ms ease-out;  /* short pop animation */
+}
