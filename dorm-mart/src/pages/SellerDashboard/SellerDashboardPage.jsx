@@ -84,7 +84,7 @@ function SellerDashboardPage() {
 
     const openViewProduct = (id) => {
         if (!id) return;
-        navigate(`/app/viewProduct/${id}`);
+        navigate(`/app/viewProduct/${id}`, { state: { fromDashboard: true } });
     };
 
     // Calculate summary metrics from listings data (using item_status)

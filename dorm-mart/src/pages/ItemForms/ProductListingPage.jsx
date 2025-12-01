@@ -1087,6 +1087,7 @@ function ProductListingPage() {
                   <div className="flex flex-col gap-2">
                   <select
                     value={selectedCategory}
+                    disabled={categories.length >= CATEGORIES_MAX}
                     onChange={(e) => {
                       const selected = e.target.value;
                       if (selected) {
@@ -1127,7 +1128,9 @@ function ProductListingPage() {
                       }
                     }}
                     className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors.categories
+                      categories.length >= CATEGORIES_MAX
+                        ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800"
+                        : errors.categories
                         ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                     }`}

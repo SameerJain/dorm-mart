@@ -355,7 +355,7 @@ export default function ViewProduct() {
         </div>
         <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 text-center">Product Details</h1>
         <div className="flex items-center gap-2 justify-end">
-          {isSellerViewingOwnProduct ? (
+          {isSellerViewingOwnProduct && !location.state?.fromDashboard ? (
             <button
               onClick={() => navigate('/app/seller-dashboard')}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"

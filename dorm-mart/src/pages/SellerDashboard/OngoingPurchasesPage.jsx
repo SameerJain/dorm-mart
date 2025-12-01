@@ -458,8 +458,8 @@ function OngoingPurchasesPage() {
                     {renderNextStepsInfo(req)}
 
                     {/* Other party */}
-                    <div>
-                        <p className={`text-sm ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                    <div className="min-w-0">
+                        <p className={`text-sm truncate min-w-0 ${isCancelled || isDeclined ? 'text-red-700 dark:text-red-200' : isCompleted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-600 dark:text-gray-300'}`} title={isBuyer ? `${req.seller?.first_name || ''} ${req.seller?.last_name || ''}`.trim() : `${req.buyer?.first_name || ''} ${req.buyer?.last_name || ''}`.trim()}>
                             {isBuyer ? 'Seller' : 'Buyer'}: {isBuyer 
                                 ? `${req.seller?.first_name || ''} ${req.seller?.last_name || ''}`.trim() 
                                 : `${req.buyer?.first_name || ''} ${req.buyer?.last_name || ''}`.trim()}
@@ -479,7 +479,7 @@ function OngoingPurchasesPage() {
                                 </svg>
                                 <span className={`text-xs font-semibold uppercase tracking-wide ${locationText}`}>Location</span>
                             </div>
-                            <p className={`text-base font-bold ${locationTextBold}`}>{req.meet_location || 'Not provided'}</p>
+                            <p className={`text-base font-bold truncate ${locationTextBold}`} title={req.meet_location || 'Not provided'}>{req.meet_location || 'Not provided'}</p>
                         </div>
                         <div className={`${meetingBg} rounded-lg p-2 shadow-md`}>
                             <div className="flex items-center gap-1.5 mb-1">

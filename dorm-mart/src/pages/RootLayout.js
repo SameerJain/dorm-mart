@@ -45,6 +45,11 @@ function RootLayout() {
     };
   }, [navigate]);
 
+  // Scroll to top when navigating to a new page
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   // Show loading state while checking authentication
   if (isChecking) {
     return (
