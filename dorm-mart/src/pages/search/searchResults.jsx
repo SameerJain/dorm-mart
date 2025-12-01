@@ -309,12 +309,12 @@ export default function SearchResults() {
                         </div>
 
                         {/* Middle details */}
-                        <div className="flex flex-col gap-0.5 md:gap-1 pr-2">
-                          <p className="text-sm md:text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">{it.title}</p>
-                          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-col gap-0.5 md:gap-1 pr-2 min-w-0">
+                          <p className="text-sm md:text-base font-semibold text-gray-900 dark:text-gray-100 truncate" title={it.title}>{it.title}</p>
+                          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 min-w-0">
                             {it.itemCondition ? <><span className="font-medium">Condition:</span> {it.itemCondition} · </> : null}
                             {it.itemLocation ? <><span className="font-medium">Location:</span> {it.itemLocation} · </> : null}
-                            <span className="font-medium">Seller:</span> {it.seller}
+                            <span className="font-medium">Seller:</span> <span className="truncate inline-block max-w-full" title={it.seller}>{it.seller}</span>
                           </p>
                           <p className="text-xs text-gray-400 dark:text-gray-500">{it.createdAt ? `Posted ${formatDate(it.createdAt)}` : null}</p>
                         </div>

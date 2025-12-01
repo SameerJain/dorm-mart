@@ -204,9 +204,12 @@ function LoginPage() {
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">Dorm Mart</h1>
-          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">
+          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed mb-3 sm:mb-4">
             Wastage, who?
           </h2>
+          <p className="text-base sm:text-lg text-gray-600 opacity-80 max-w-sm mx-auto leading-relaxed px-4">
+            Your campus marketplace for buying and selling. Connect with fellow students and save money.
+          </p>
         </div>
 
         <div className="w-full max-w-md relative z-10">
