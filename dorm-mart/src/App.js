@@ -37,6 +37,8 @@ import { ChatProvider } from "./context/ChatContext.js";
 import ChatPage from "./pages/Chat/ChatPage.jsx";
 // Notification
 import NotificationPage from "./pages/Notification/NotificationPage.jsx";
+// FAQ
+import FAQPage from "./pages/FAQPage/FAQPage.jsx";
 
 export const router = createHashRouter([
   // Welcome page
@@ -58,108 +60,112 @@ export const router = createHashRouter([
       </ChatProvider>
     ),
     children: [
-    { index: true,
-      element: <LandingPage /> 
-    },
-      // Search Results
-      { path: "listings", element: <SearchResults /> },
-      // Product Listing
-      {
-        path: "product-listing",
-        children: [
-          { index: true, element: <ProductListingPage /> },
-          { path: "new", element: <ProductListingPage key="new" /> },
-          { path: "edit/:id", element: <ProductListingPage key="edit" /> },
-        ],
+      { index: true,
+        element: <LandingPage /> 
       },
-      // View Product
-      { path: "viewProduct", element: <ViewProduct /> },
-      { path: "viewProduct/:id", element: <ViewProduct /> },
-      { path: "viewproduct", element: <ViewProduct /> },
-      { path: "viewproduct/:id", element: <ViewProduct /> },
-      { path: "viewReceipt", element: <ViewReceipt /> },
-      { path: "viewReceipt/:id", element: <ViewReceipt /> },
-      { path: "viewreceipt", element: <ViewReceipt /> },
-      { path: "viewreceipt/:id", element: <ViewReceipt /> },
-      {
-        path: "purchase-history",
-        element: <PurchaseHistoryLayout />,
-        children: [
-          { index: true, element: <PurchaseHistoryPage /> },
-          { path: "item-detail/:id", element: <ItemDetailPage /> },
-        ],
-      },
-      {
-        path: "notification",
-        children: [
-          { index: true, element: < NotificationPage />}
-        ] 
-      },
-      {
-        path: "chat",
-        children: [
-          { index: true, element: < ChatPage/>}
-        ]
-      },
-      // Wishlist
-      {
-        path: "wishlist",
-        element: <WishlistPage />,
-      },
-      {
-        path: "profile",
-        element: <PublicProfilePage />,
-      },
-      // Seller Dashboard
-      {
-        path: "seller-dashboard",
-        element: <SellerDashboardPage />,
-      },
-      {
-        path: "seller-dashboard/schedule-purchase",
-        element: <SchedulePurchasePage />,
-      },
-      {
-        path: "seller-dashboard/confirm-purchase",
-        element: <ConfirmPurchasePage />,
-      },
-      {
-        path: "seller-dashboard/ongoing-purchases",
-        element: <OngoingPurchasesPage />,
-      },
-      {
-        path: "scheduled-purchases/mark-completed/:requestId",
-        element: <MarkCompletedPage />,
-      },
-      {
-        path: "scheduled-purchases/report-issue/:requestId",
-        element: <ReportIssuePage />,
-      },
-      // Settings (under /app)
-      {
-        path: "setting",
-        children: [
-          { index: true, element: <Navigate to="/app/setting/my-profile" replace /> },
-          { path: "my-profile", element: <MyProfilePage /> },
-          { path: "change-password", element: <ChangePasswordPage /> },
-          { path: "buyer-reviews", element: <BuyerReviewsPage /> },
-          // User Preferences
-          { path: "user-preferences", element: <UserPreferences /> },
-          // Stubs for yet-to-be-implemented pages (intentionally 404)
-          {
-            path: "personal-information",
-            loader: () => {
-              throw new Response("Not Found", { status: 404 });
+        // Search Results
+        { path: "listings", element: <SearchResults /> },
+        // Product Listing
+        {
+          path: "product-listing",
+          children: [
+            { index: true, element: <ProductListingPage /> },
+            { path: "new", element: <ProductListingPage key="new" /> },
+            { path: "edit/:id", element: <ProductListingPage key="edit" /> },
+          ],
+        },
+        // View Product
+        { path: "viewProduct", element: <ViewProduct /> },
+        { path: "viewProduct/:id", element: <ViewProduct /> },
+        { path: "viewproduct", element: <ViewProduct /> },
+        { path: "viewproduct/:id", element: <ViewProduct /> },
+        { path: "viewReceipt", element: <ViewReceipt /> },
+        { path: "viewReceipt/:id", element: <ViewReceipt /> },
+        { path: "viewreceipt", element: <ViewReceipt /> },
+        { path: "viewreceipt/:id", element: <ViewReceipt /> },
+        {
+          path: "purchase-history",
+          element: <PurchaseHistoryLayout />,
+          children: [
+            { index: true, element: <PurchaseHistoryPage /> },
+            { path: "item-detail/:id", element: <ItemDetailPage /> },
+          ],
+        },
+        {
+          path: "notification",
+          children: [
+            { index: true, element: < NotificationPage />}
+          ] 
+        },
+        {
+          path: "chat",
+          children: [
+            { index: true, element: < ChatPage/>}
+          ]
+        },
+        // Wishlist
+        {
+          path: "wishlist",
+          element: <WishlistPage />,
+        },
+        {
+          path: "profile",
+          element: <PublicProfilePage />,
+        },
+        // Seller Dashboard
+        {
+          path: "seller-dashboard",
+          element: <SellerDashboardPage />,
+        },
+        {
+          path: "seller-dashboard/schedule-purchase",
+          element: <SchedulePurchasePage />,
+        },
+        {
+          path: "seller-dashboard/confirm-purchase",
+          element: <ConfirmPurchasePage />,
+        },
+        {
+          path: "seller-dashboard/ongoing-purchases",
+          element: <OngoingPurchasesPage />,
+        },
+        {
+          path: "scheduled-purchases/mark-completed/:requestId",
+          element: <MarkCompletedPage />,
+        },
+        {
+          path: "scheduled-purchases/report-issue/:requestId",
+          element: <ReportIssuePage />,
+        },
+        // Settings (under /app)
+        {
+          path: "setting",
+          children: [
+            { index: true, element: <Navigate to="/app/setting/my-profile" replace /> },
+            { path: "my-profile", element: <MyProfilePage /> },
+            { path: "change-password", element: <ChangePasswordPage /> },
+            { path: "buyer-reviews", element: <BuyerReviewsPage /> },
+            // User Preferences
+            { path: "user-preferences", element: <UserPreferences /> },
+            // Stubs for yet-to-be-implemented pages (intentionally 404)
+            {
+              path: "personal-information",
+              loader: () => {
+                throw new Response("Not Found", { status: 404 });
+              },
             },
-          },
-          {
-            path: "security-options",
-            loader: () => {
-              throw new Response("Not Found", { status: 404 });
+            {
+              path: "security-options",
+              loader: () => {
+                throw new Response("Not Found", { status: 404 });
+              },
             },
-          },
-        ],
-      },
+          ],
+        },
+        {
+          path: "faq",
+          element: <FAQPage />,
+        },
     ],
   },
 ]);
