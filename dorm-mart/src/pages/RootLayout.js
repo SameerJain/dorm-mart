@@ -8,7 +8,6 @@ import FAQModal from "./FAQPage/FAQModal.jsx";
 
 // once user logs in, load websocket
 function RootLayout() {
-  
   const navigate = useNavigate();
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -33,7 +32,7 @@ function RootLayout() {
 
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const checkAuth = async () => {
       try {
         await fetch_me(controller.signal);
@@ -43,7 +42,7 @@ function RootLayout() {
         loadUserTheme();
       } catch (error) {
         // AbortError means component unmounted, don't update state or navigate
-        if (error.name === 'AbortError') {
+        if (error.name === "AbortError") {
           return;
         }
         // Not authenticated, redirect to login
@@ -53,7 +52,7 @@ function RootLayout() {
     };
 
     checkAuth();
-    
+
     // Cleanup: abort fetch if component unmounts
     return () => {
       controller.abort();
@@ -85,27 +84,30 @@ function RootLayout() {
       </div>
       <Outlet />
 
-      <button
-        type="button"
-        onClick={handleFAQClick}
-        className="
-          fixed bottom-7 right-7 z-50
-          h-12 w-12 flex items-center justify-center
-          rounded-full shadow-lg
-          bg-blue-600 text-white
-          hover:bg-blue-700
-          dark:bg-blue-500 dark:hover:bg-blue-600
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-          qna-bounce-z
-          transition-transform
-        "
-        aria-label="FAQ"
-      >
-        ?
-      </button>
+      {/* FAQ button + modal only on md and larger */}
+      {/* `hidden md:block` hides everything inside this wrapper on small screens */}
+      <div className="hidden md:block">
+        <button
+          type="button"
+          onClick={handleFAQClick}
+          className="
+            fixed bottom-7 right-7 z-50
+            h-12 w-12 flex items-center justify-center
+            rounded-full shadow-lg
+            bg-blue-600 text-white
+            hover:bg-blue-700
+            dark:bg-blue-500 dark:hover:bg-blue-600
+            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+            qna-bounce-z
+            transition-transform
+          "
+          aria-label="FAQ"
+        >
+          ?
+        </button>
 
-      <FAQModal isOpen={isFAQModalOpen} onClose={handleCloseFAQ} />
-
+        <FAQModal isOpen={isFAQModalOpen} onClose={handleCloseFAQ} />
+      </div>
     </>
   );
 }
