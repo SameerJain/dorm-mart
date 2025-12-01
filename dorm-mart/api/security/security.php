@@ -308,7 +308,8 @@ function containsXSSPattern($input) {
         return false;
     }
     
-    // Common XSS attack patterns to detect
+    // Filter: Detects common XSS attack patterns (e.g., <script>, javascript:, event handlers)
+    // This provides first-layer defense before data reaches the database
     $xssPatterns = [
         '/<script/i',           // Script tags in any case
         '/javascript:/i',        // JavaScript: protocol
