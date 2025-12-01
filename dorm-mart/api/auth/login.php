@@ -60,8 +60,8 @@ if (strpos($ct, 'application/json') !== false) {
     $passwordRaw = (string)($_POST['password'] ?? '');
 }
 
-// XSS PROTECTION: Check for XSS patterns in email field (single check, no duplication)
-// Note: SQL injection is already prevented by prepared statements
+// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+// Note: SQL injection prevented by prepared statements
 if (containsXSSPattern($emailRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Only University at Buffalo email addresses are permitted (@buffalo.edu)']);

@@ -254,12 +254,15 @@ function validateUserAccess($requestedUserId, $loggedInUserId) {
 // ============================================================================
 
 /**
- * Escape HTML output to prevent XSS
+ * Escape HTML output to prevent XSS using HTML entity encoding
+ * 
+ * Encoding is more foolproof than filtering - converts <script> to &lt;script&gt;
+ * Use for HTML email templates and server-rendered HTML (not JSON APIs - React handles those)
+ * 
  * @param string $str String to escape
- * @return string Escaped string
+ * @return string Escaped string with HTML entities
  */
 function escapeHtml($str) {
-    // XSS PROTECTION: HTML encode output to prevent XSS attacks
     return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
 }
 
@@ -292,29 +295,34 @@ function validateInput($input, $maxLength = 255, $allowedChars = null) {
 }
 
 /**
- * Check if input contains XSS attack patterns
+ * Check if input contains XSS attack patterns (first layer defense)
+ * 
+ * Filtering provides early detection, but encoding is more foolproof for output.
+ * Use before database storage; combine with encoding for complete protection.
+ * 
  * @param string $input Input to check
- * @return bool True if XSS pattern detected
+ * @return bool True if XSS pattern detected, false otherwise
  */
 function containsXSSPattern($input) {
     if (!is_string($input)) {
         return false;
     }
     
+    // Common XSS attack patterns to detect
     $xssPatterns = [
-        '/<script/i',
-        '/javascript:/i',
-        '/onerror=/i',
-        '/onload=/i',
-        '/onclick=/i',
-        '/onmouseover=/i',
-        '/<iframe/i',
-        '/<object/i',
-        '/<embed/i',
-        '/<img[^>]*on/i',
-        '/<svg[^>]*on/i',
-        '/expression\s*\(/i',
-        '/vbscript:/i'
+        '/<script/i',           // Script tags in any case
+        '/javascript:/i',        // JavaScript: protocol
+        '/onerror=/i',           // Event handlers: onerror
+        '/onload=/i',            // Event handlers: onload
+        '/onclick=/i',           // Event handlers: onclick
+        '/onmouseover=/i',       // Event handlers: onmouseover
+        '/<iframe/i',           // iframe tags
+        '/<object/i',            // object tags
+        '/<embed/i',             // embed tags
+        '/<img[^>]*on/i',        // img tags with event handlers
+        '/<svg[^>]*on/i',        // svg tags with event handlers
+        '/expression\s*\(/i',   // CSS expression()
+        '/vbscript:/i'           // VBScript protocol
     ];
     
     foreach ($xssPatterns as $pattern) {

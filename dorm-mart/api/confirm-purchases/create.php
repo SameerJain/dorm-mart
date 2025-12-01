@@ -65,7 +65,7 @@ try {
         echo json_encode(['success' => false, 'error' => 'Notes cannot exceed 2000 characters']);
         exit;
     }
-    // XSS PROTECTION: Check for XSS patterns in sellerNotes
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if ($sellerNotes !== '' && containsXSSPattern($sellerNotes)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in seller notes']);
@@ -100,7 +100,7 @@ try {
             echo json_encode(['success' => false, 'error' => 'Failure notes cannot exceed 1000 characters']);
             exit;
         }
-        // XSS PROTECTION: Check for XSS patterns in failureReasonNotes
+        // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
         if ($failureReasonNotes !== null && $failureReasonNotes !== '' && containsXSSPattern($failureReasonNotes)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Invalid characters in failure reason notes']);

@@ -93,7 +93,7 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
 
-        // XSS PROTECTION: Escape user data before inserting into HTML email template
+        // XSS PROTECTION: Encoding (Layer 2) - HTML entity encoding (more foolproof than filtering)
         $firstName = escapeHtml($user['first_name'] ?: 'Student');
         $resetLinkEscaped = escapeHtml($resetLink);
         $subject = 'Reset Your Password - Dorm Mart';
@@ -188,8 +188,8 @@ if (strpos($ct, 'application/json') !== false) {
     $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
 }
 
-// XSS PROTECTION: Check for XSS patterns in email field
-// Note: SQL injection is already prevented by prepared statements
+// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+// Note: SQL injection prevented by prepared statements
 if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid input format']);

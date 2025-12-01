@@ -66,18 +66,20 @@ try {
 
   $descriptionRaw = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
 
-  // XSS PROTECTION: Check for XSS patterns in user-visible fields
-  // Note: SQL injection is already prevented by prepared statements
+  // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+  // Note: SQL injection prevented by prepared statements
   if ($titleRaw !== '' && containsXSSPattern($titleRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in title']);
     exit;
   }
+  // XSS PROTECTION: Filtering (Layer 1)
   if ($descriptionRaw !== null && $descriptionRaw !== '' && containsXSSPattern($descriptionRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in description']);
     exit;
   }
+  // XSS PROTECTION: Filtering (Layer 1)
   if ($itemLocationRaw !== null && $itemLocationRaw !== '' && containsXSSPattern($itemLocationRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in location']);

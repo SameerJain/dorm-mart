@@ -146,11 +146,11 @@ function sendPromoWelcomeEmail(array $user): array
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
+        // XSS PROTECTION: Encoding (Layer 2) - HTML entity encoding (more foolproof than filtering)
         $first   = escapeHtml($user['firstName'] ?: 'Student');
         $subject = 'Welcome to Dorm Mart Promotional Updates';
 
         // HTML email content - Subtle improvements to dark theme
-        // XSS PROTECTION: User data is escaped before insertion into HTML email template
         $html = <<<HTML
 <!doctype html>
 <html>

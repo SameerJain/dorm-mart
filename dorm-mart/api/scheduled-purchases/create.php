@@ -38,7 +38,7 @@ try {
     $meetingAtRaw = isset($payload['meeting_at']) ? trim((string)$payload['meeting_at']) : '';
     $description = isset($payload['description']) ? trim((string)$payload['description']) : '';
     
-    // XSS PROTECTION: Check for XSS patterns in description
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if ($description !== '' && containsXSSPattern($description)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in description']);
@@ -52,7 +52,7 @@ try {
     $tradeItemDescription = isset($payload['trade_item_description']) && $payload['trade_item_description'] !== null
         ? trim((string)$payload['trade_item_description']) : null;
 
-    // XSS PROTECTION: Check for XSS patterns in tradeItemDescription
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if ($tradeItemDescription !== null && $tradeItemDescription !== '' && containsXSSPattern($tradeItemDescription)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in trade item description']);
@@ -69,7 +69,7 @@ try {
         ? trim((string)$payload['meet_location'])
         : '';
 
-    // XSS PROTECTION: Check for XSS patterns in customMeetLocation
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if ($customMeetLocation !== '' && containsXSSPattern($customMeetLocation)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in meet location']);

@@ -71,7 +71,7 @@ try {
         exit;
     }
     
-    // XSS PROTECTION: Check for XSS patterns in review text
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if ($reviewText !== '' && containsXSSPattern($reviewText)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in review text']);

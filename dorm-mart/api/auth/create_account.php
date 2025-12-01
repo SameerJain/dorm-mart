@@ -126,7 +126,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
-        // XSS PROTECTION: Escape user data before inserting into HTML email template
+        // XSS PROTECTION: Encoding (Layer 2) - HTML entity encoding (more foolproof than filtering)
         $first   = escapeHtml($user['firstName'] ?: 'Student');
         $tempPasswordEscaped = escapeHtml($tempPassword);
         $subject = 'Welcome to Dorm Mart';
