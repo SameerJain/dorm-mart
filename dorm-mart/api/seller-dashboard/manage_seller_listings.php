@@ -55,6 +55,7 @@ try {
                     i.trades,
                     i.wishlisted,
                     i.item_location AS meet_location,
+                    -- Ongoing purchases: Check if item has any accepted scheduled purchase requests
                     CASE 
                         WHEN EXISTS (
                             SELECT 1 FROM scheduled_purchase_requests spr 
