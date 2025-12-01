@@ -228,10 +228,11 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
         $sellerName = $meta['seller_name'] ?? 'Unknown seller';
         $imageUrl = $meta['image_url'] ?? '';
 
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $rows[] = [
             'item_id' => $productId,
-            'title' => escapeHtml($title),
-            'sold_by' => escapeHtml($sellerName),
+            'title' => $title,
+            'sold_by' => $sellerName,
             'transacted_at' => $entry['transacted_at'],
             'image_url' => format_purchase_history_image_url($meta['image_url'] ?? ''),
             'categories' => $meta['categories'] ?? [],
@@ -338,10 +339,11 @@ function load_legacy_purchased_items(mysqli $conn, int $userId, string $start, s
     $tempRows = [];
     while ($row = $res->fetch_assoc()) {
         $productIds[] = (int)$row['item_id'];
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $tempRows[(int)$row['item_id']] = [
             'item_id' => (int)$row['item_id'],
-            'title' => escapeHtml($row['title'] ?? ''),
-            'sold_by' => escapeHtml($row['sold_by'] ?? ''),
+            'title' => $row['title'] ?? '',
+            'sold_by' => $row['sold_by'] ?? '',
             'transacted_at' => $row['transacted_at'] ?? '',
             'image_url' => format_purchase_history_image_url($row['image_url'] ?? ''),
         ];

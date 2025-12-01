@@ -117,19 +117,19 @@ try {
         $seller = (string)$row['email'];
     }
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $out = [
         // core
         'product_id'    => (int)$row['product_id'],
-        'title'         => escapeHtml($row['title'] ?? 'Untitled'),
-        'description'   => escapeHtml($row['description'] ?? ''),
+        'title'         => $row['title'] ?? 'Untitled',
+        'description'   => $row['description'] ?? '',
         'listing_price' => $row['listing_price'] !== null ? (float)$row['listing_price'] : null,
 
         // normalized fields expected by frontend
         'tags'          => $tags,                 // derived from categories
         'categories'    => $row['categories'] ?? null, // raw JSON string for compatibility
-        'item_location' => escapeHtml($row['item_location'] ?? ''),
-        'item_condition'=> escapeHtml($row['item_condition'] ?? ''),
+        'item_location' => $row['item_location'] ?? '',
+        'item_condition'=> $row['item_condition'] ?? '',
         'photos'        => $photos,               // array of paths/urls
         'trades'        => (bool)$row['trades'],
         'price_nego'    => (bool)$row['price_nego'],
@@ -141,8 +141,8 @@ try {
         'sold_to'       => isset($row['sold_to']) ? (int)$row['sold_to'] : null,
 
         // seller display helpers
-        'seller'        => escapeHtml($seller),
-        'email'         => escapeHtml($row['email'] ?? ''),
+        'seller'        => $seller,
+        'email'         => $row['email'] ?? '',
 
         // convenience timestamp-like field
         'created_at'    => !empty($row['date_listed']) ? ($row['date_listed'] . ' 00:00:00') : null,
@@ -159,7 +159,7 @@ try {
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => escapeHtml($e->getMessage()),
+        'detail' => $e->getMessage(), // Note: No HTML encoding needed for JSON - React handles XSS protection
     ]);
     exit;
 }

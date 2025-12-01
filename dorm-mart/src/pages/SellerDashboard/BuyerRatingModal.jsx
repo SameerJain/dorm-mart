@@ -264,9 +264,9 @@ function BuyerRatingModal({
 
         {/* Content */}
         <div className="px-6 py-6">
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Product: <span className="font-medium text-gray-900 dark:text-gray-100">{productTitle}</span>
+          <div className="mb-4 min-w-0">
+            <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
+              Product: <span className="font-medium text-gray-900 dark:text-gray-100 break-words">{productTitle}</span>
             </p>
           </div>
 

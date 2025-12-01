@@ -77,14 +77,14 @@ try {
         'seller_user_id' => (int)$review['seller_user_id'],
         'rating' => (float)$review['rating'],
         'product_rating' => isset($review['product_rating']) ? (float)$review['product_rating'] : null,
-        'review_text' => escapeHtml($review['review_text']),
+        'review_text' => $review['review_text'], // Note: No HTML encoding needed for JSON - React handles XSS protection
         'image1_url' => $review['image1_url'] ?? null,
         'image2_url' => $review['image2_url'] ?? null,
         'image3_url' => $review['image3_url'] ?? null,
         'created_at' => $review['created_at'],
         'updated_at' => $review['updated_at'],
-        'buyer_name' => escapeHtml($buyerName),
-        'buyer_email' => escapeHtml($review['email'] ?? '')
+        'buyer_name' => $buyerName,
+        'buyer_email' => $review['email'] ?? ''
     ];
 
     echo json_encode([

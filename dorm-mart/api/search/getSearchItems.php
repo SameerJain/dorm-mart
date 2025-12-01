@@ -319,21 +319,21 @@ try {
             $seller = $row['email'];
         }
 
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $out[] = [
             'id'         => (int)$row['product_id'],
-            'title'      => escapeHtml($row['title'] ?? 'Untitled'),
+            'title'      => $row['title'] ?? 'Untitled',
             'price'      => $row['listing_price'] !== null ? (float)$row['listing_price'] : 0,
             'image'      => $image,
             'image_url'  => $image,
             'tags'       => $tags,
             'category'   => !empty($tags) ? $tags[0] : null,
-            'location'   => escapeHtml($row['item_location'] ?? ''),
-            'condition'  => escapeHtml($row['item_condition'] ?? ''),
+            'location'   => $row['item_location'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
+            'condition'  => $row['item_condition'] ?? '',
             'created_at' => $createdAt,
-            'seller'     => escapeHtml($seller),
-            'sold_by'    => escapeHtml($seller),
-            'status'     => escapeHtml($statusOut),
+            'seller'     => $seller,
+            'sold_by'    => $seller,
+            'status'     => $statusOut,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],
         ];
@@ -350,7 +350,7 @@ try {
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => escapeHtml($e->getMessage()),
+        'detail' => $e->getMessage(), // Note: No HTML encoding needed for JSON - React handles XSS protection
     ]);
     exit;
 }

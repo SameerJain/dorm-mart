@@ -58,17 +58,17 @@ try {
     $email    = (string)($userRow['email'] ?? '');
     $username = derive_username($email);
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $response = [
         'success' => true,
         'profile' => [
             'user_id'     => $userId,
-            'name'        => $fullName !== '' ? escapeHtml($fullName) : null,
-            'username'    => escapeHtml($username),
-            'email'       => escapeHtml($email),
+            'name'        => $fullName !== '' ? $fullName : null,
+            'username'    => $username,
+            'email'       => $email,
             'image_url'   => format_profile_photo_url($userRow['profile_photo'] ?? null),
-            'bio'         => escapeHtml($userRow['bio'] ?? ''),
-            'instagram'   => escapeHtml($userRow['instagram'] ?? ''),
+            'bio'         => $userRow['bio'] ?? '',
+            'instagram'   => $userRow['instagram'] ?? '',
             'avg_rating'  => $ratingStats['avg_rating'],
             'review_count'=> $ratingStats['review_count'],
         ],
@@ -141,9 +141,10 @@ function fetch_active_listings(mysqli $conn, int $userId): array
     $listings = [];
     while ($row = $result->fetch_assoc()) {
         $photoUrl = extract_first_photo($row['photos'] ?? null);
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $listings[] = [
             'product_id' => (int)$row['product_id'],
-            'title'      => escapeHtml($row['title'] ?? 'Untitled'),
+            'title'      => $row['title'] ?? 'Untitled',
             'price'      => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
             'status'     => $row['item_status'] ?? 'AVAILABLE',
             'image_url'  => $photoUrl,
@@ -222,15 +223,15 @@ SQL;
             $buyerName = derive_username((string)($row['buyer_email'] ?? '')) ?: 'Buyer #' . (int)$row['buyer_user_id'];
         }
 
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $reviews[] = [
             'review_id'         => (int)$row['review_id'],
             'product_id'        => (int)$row['product_id'],
-            'reviewer_name'     => escapeHtml($buyerName),
-            'reviewer_email'    => escapeHtml($row['buyer_email'] ?? ''),
-            'reviewer_username' => escapeHtml(derive_username((string)($row['buyer_email'] ?? ''))),
-            'product_title'     => escapeHtml($row['product_title'] ?? 'Untitled product'),
-            'review'            => escapeHtml($row['review_text'] ?? ''),
+            'reviewer_name'     => $buyerName,
+            'reviewer_email'    => $row['buyer_email'] ?? '',
+            'reviewer_username' => derive_username((string)($row['buyer_email'] ?? '')),
+            'product_title'     => $row['product_title'] ?? 'Untitled product',
+            'review'            => $row['review_text'] ?? '',
             'image_1'           => format_review_image_url($row['image1_url'] ?? null),
             'image_2'           => format_review_image_url($row['image2_url'] ?? null),
             'image_3'           => format_review_image_url($row['image3_url'] ?? null),

@@ -134,12 +134,12 @@ try {
         $acceptTrades = isset($row['trades']) ? ((int)$row['trades'] === 1) : false;
         $itemMeetLocation = isset($row['meet_location']) ? trim((string)$row['meet_location']) : null;
 
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $data[] = [
             'id' => (int)$row['product_id'],
-            'title' => escapeHtml((string)$row['title']),
+            'title' => (string)$row['title'],
             'price' => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
-            'status' => escapeHtml($status),
+            'status' => $status,
             'buyer_user_id' => $buyerId !== null ? (int)$buyerId : null,
             'seller_user_id' => (int)$row['seller_id'],
             'created_at' => $row['date_listed'],
@@ -148,7 +148,7 @@ try {
             'has_accepted_scheduled_purchase' => $hasAcceptedScheduledPurchase,
             'priceNegotiable' => $priceNegotiable,
             'acceptTrades' => $acceptTrades,
-            'meet_location' => $itemMeetLocation !== null ? escapeHtml($itemMeetLocation) : null,
+            'meet_location' => $itemMeetLocation,
             'wishlisted' => $row['wishlisted']
         ];
     }
@@ -160,14 +160,14 @@ try {
     error_log('Stack trace: ' . $e->getTraceAsString());
 
     http_response_code(500);
-    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
     $debug = true; // Temporarily enabled for debugging
     echo json_encode([
         'success' => false, 
-        'error' => escapeHtml($e->getMessage()),
-        'file' => $debug ? escapeHtml($e->getFile()) : null,
+        'error' => $e->getMessage(),
+        'file' => $debug ? $e->getFile() : null,
         'line' => $debug ? $e->getLine() : null,
-        'trace' => $debug ? escapeHtml($e->getTraceAsString()) : null
+        'trace' => $debug ? $e->getTraceAsString() : null
     ]);
 }

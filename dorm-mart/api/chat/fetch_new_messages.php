@@ -93,8 +93,7 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
-    $row['content'] = escapeHtml($row['content'] ?? '');
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $messages[] = $row;
 }
 $stmt->close();
@@ -143,8 +142,8 @@ if ($convId > 0) {
                 $typingRow = $typingRes->fetch_assoc();
                 $typingStatus['is_typing'] = (bool)(int)$typingRow['is_typing'];
                 if ($typingStatus['is_typing'] && !empty($typingRow['first_name'])) {
-                    // XSS PROTECTION: Escape user-generated content
-                    $typingStatus['typing_user_first_name'] = escapeHtml($typingRow['first_name']);
+                    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
+                    $typingStatus['typing_user_first_name'] = $typingRow['first_name'];
                 }
             }
             $typingStmt->close();

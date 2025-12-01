@@ -148,14 +148,14 @@ try {
             'conversation_id' => $conversationId,
             'seller_user_id' => (int)$schedRow['seller_user_id'],
             'buyer_user_id' => (int)$schedRow['buyer_user_id'],
-            'item_title' => escapeHtml($schedRow['item_title'] ?? 'Untitled'),
-            'buyer_name' => escapeHtml($buyerFullName),
-            'meet_location' => escapeHtml($schedRow['meet_location'] ?? ''),
+            'item_title' => $schedRow['item_title'] ?? 'Untitled', // Note: No HTML encoding needed for JSON - React handles XSS protection
+            'buyer_name' => $buyerFullName,
+            'meet_location' => $schedRow['meet_location'] ?? '',
             'meeting_at' => $meetingIso,
-            'description' => escapeHtml($schedRow['description'] ?? ''),
+            'description' => $schedRow['description'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
             'negotiated_price' => $schedRow['negotiated_price'] !== null ? (float)$schedRow['negotiated_price'] : null,
             'is_trade' => (bool)$schedRow['is_trade'],
-            'trade_item_description' => escapeHtml($schedRow['trade_item_description'] ?? ''),
+            'trade_item_description' => $schedRow['trade_item_description'] ?? '',
             'default_final_price' => $defaultPrice,
             'available_failure_reasons' => [
                 ['value' => 'buyer_no_show', 'label' => 'Buyer no showed'],

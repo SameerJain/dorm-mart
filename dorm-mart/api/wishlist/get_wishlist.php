@@ -105,19 +105,19 @@ try {
             $sellerName = (string)$row['email'];
         }
 
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $items[] = [
             'wishlist_id' => (int)$row['wishlist_id'],
             'product_id' => (int)$row['product_id'],
-            'title' => escapeHtml((string)$row['title']),
+            'title' => (string)$row['title'],
             'price' => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
             'image_url' => $imageUrl,
             'categories' => $categories,
             'tags' => $categories, // For compatibility with ItemCardNew
-            'seller' => escapeHtml($sellerName),
+            'seller' => $sellerName,
             'seller_id' => (int)$row['seller_id'],
-            'item_location' => escapeHtml($row['item_location'] ?? ''),
-            'item_condition' => escapeHtml($row['item_condition'] ?? ''),
+            'item_location' => $row['item_location'] ?? '',
+            'item_condition' => $row['item_condition'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
             'status' => $row['item_status'] ?? 'Active',
             'created_at' => $row['created_at'],
             'date_listed' => $row['date_listed'],

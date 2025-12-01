@@ -400,7 +400,7 @@ try {
             'conversation_id' => $conversationId,
             'seller_user_id' => $sellerId,
             'buyer_user_id' => $buyerId,
-            'meet_location' => escapeHtml($meetLocation),
+            'meet_location' => $meetLocation, // Note: No HTML encoding needed for JSON - React handles XSS protection
             'meeting_at' => $meetingAt->format(DateTime::ATOM),
             'verification_code' => $verificationCode,
             'status' => 'pending',

@@ -155,10 +155,10 @@ function BuyerReviewsModal({
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      <p className="text-base font-semibold text-gray-900 dark:text-gray-100 break-words">
                         {review.seller_name}
                       </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
                         {review.product_title}
                       </p>
                     </div>

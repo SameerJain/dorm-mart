@@ -99,8 +99,7 @@ while ($row = $res->fetch_assoc()) {
             $confirmStatusStmt->close();
         }
     }
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
-    $row['content'] = escapeHtml($row['content'] ?? '');
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $messages[] = $row;
 }
 $stmt->close();

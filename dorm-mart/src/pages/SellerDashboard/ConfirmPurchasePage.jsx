@@ -343,7 +343,6 @@ export default function ConfirmPurchasePage() {
                     </span>
                     <input
                       type="number"
-                      step="0.01"
                       min="0"
                       max={PRICE_LIMITS.max}
                       value={finalPrice}

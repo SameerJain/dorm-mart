@@ -50,10 +50,10 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {                              // Execute possibly multi-statement SQL
     $err = $conn->error;                                        // Capture the MySQL error message
     $conn->rollback();                                          // Undo any partial changes
-    // XSS PROTECTION: Escape error message to prevent XSS if filename or error contains malicious content
+    // Note: No HTML encoding needed for JSON - React handles XSS protection
     echo json_encode([
       "success" => false,                       // Report failure (which file + why)
-      "message" => "Failed: " . escapeHtml($name) . " — " . escapeHtml($err)
+      "message" => "Failed: " . $name . " — " . $err
     ]);
     exit;                                                       // Stop on first failure
   }

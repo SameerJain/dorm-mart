@@ -60,8 +60,8 @@ $sql = "
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
   http_response_code(500);
-  // XSS PROTECTION: Escape database error message to prevent XSS
-  echo json_encode(['success' => false, 'error' => 'Prepare failed', 'detail' => escapeHtml($conn->error)]);
+  // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
+  echo json_encode(['success' => false, 'error' => 'Prepare failed', 'detail' => $conn->error]);
   exit;
 }
 
@@ -85,10 +85,10 @@ foreach ($rows as &$row) {
     $row['product_image_url'] = $productImageUrl;
     unset($row['product_photos']); // Remove raw photos JSON from response
     
-    // Escape user-generated fields
-    $row['user1_fname'] = escapeHtml($row['user1_fname'] ?? '');
-    $row['user2_fname'] = escapeHtml($row['user2_fname'] ?? '');
-    $row['product_title'] = escapeHtml($row['product_title'] ?? '');
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
+    $row['user1_fname'] = $row['user1_fname'] ?? '';
+    $row['user2_fname'] = $row['user2_fname'] ?? '';
+    $row['product_title'] = $row['product_title'] ?? '';
 }
 
 echo json_encode(['success' => true, 'conversations' => $rows]);

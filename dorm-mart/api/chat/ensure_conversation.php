@@ -197,8 +197,8 @@ try {
 
     // Add product details to conversation row for consistency with fetch_conversations.php
     if ($productRow) {
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
-        $conversationRow['product_title'] = escapeHtml((string)($productRow['title'] ?? ''));
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
+        $conversationRow['product_title'] = (string)($productRow['title'] ?? '');
         $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int)$productRow['seller_id'] : null;
         
         // Extract first image URL for product_image_url
@@ -243,10 +243,10 @@ try {
             }
         }
 
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $productDetails = [
             'product_id' => (int)$productRow['product_id'],
-            'title' => escapeHtml((string)($productRow['title'] ?? '')),
+            'title' => (string)($productRow['title'] ?? ''),
             'image_url' => $firstImage,
         ];
     }
@@ -329,13 +329,13 @@ try {
             $autoMsgStmt->close();
 
             $createdIso = gmdate('Y-m-d\TH:i:s\Z');
-            // XSS PROTECTION: Escape user-generated content before returning in JSON
+            // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
             $autoMessage = [
                 'message_id' => (int)$autoMsgId,
                 'conv_id' => $convId,
                 'sender_id' => $buyerId,
                 'receiver_id' => $sellerId,
-                'content' => escapeHtml($previewContent),
+                'content' => $previewContent,
                 'metadata' => $metadata,
                 'created_at' => $createdIso,
             ];
@@ -357,7 +357,7 @@ try {
         }
     }
 
-    // XSS PROTECTION: Escape user-generated names before returning in JSON
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     echo json_encode([
         'success' => true,
         'conversation' => $conversationRow,
@@ -365,12 +365,12 @@ try {
         'seller_user_id' => $sellerId,
         'conv_id' => $convId,
         'product' => $productDetails,
-        'buyer_name' => escapeHtml($buyerName ?? ''),
-        'seller_name' => escapeHtml($sellerName ?? ''),
-        'buyer_first_name' => escapeHtml($buyerFirst ?? ''),
-        'buyer_last_name' => escapeHtml($buyerLast ?? ''),
-        'seller_first_name' => escapeHtml($sellerFirst ?? ''),
-        'seller_last_name' => escapeHtml($sellerLast ?? ''),
+        'buyer_name' => $buyerName ?? '',
+        'seller_name' => $sellerName ?? '',
+        'buyer_first_name' => $buyerFirst ?? '',
+        'buyer_last_name' => $buyerLast ?? '',
+        'seller_first_name' => $sellerFirst ?? '',
+        'seller_last_name' => $sellerLast ?? '',
         'auto_message' => $autoMessage,
     ]);
 } catch (Throwable $e) {

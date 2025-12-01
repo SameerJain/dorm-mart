@@ -58,8 +58,8 @@ WHERE product_id = ?";
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
     http_response_code(500);
-    // XSS PROTECTION: Escape database error message to prevent XSS
-    echo json_encode(['ok'=>false,'error'=>'DB prepare failed','detail'=>escapeHtml($conn->error)]);
+    // Note: No HTML encoding needed for JSON - React handles XSS protection
+    echo json_encode(['ok'=>false,'error'=>'DB prepare failed','detail'=>$conn->error]);
     exit;
 }
 
@@ -68,7 +68,7 @@ $stmt->bind_param('i', $productId);  // 'i' = integer type, safely bound as para
 if (!$stmt->execute()) {
     http_response_code(500);
     // XSS PROTECTION: Escape database error message to prevent XSS
-    echo json_encode(['ok'=>false,'error'=>'DB execute failed','detail'=>escapeHtml($stmt->error)]);
+    echo json_encode(['ok'=>false,'error'=>'DB execute failed','detail'=>$stmt->error]); // Note: No HTML encoding needed for JSON - React handles XSS protection
     exit;
 }
 
@@ -96,14 +96,14 @@ $row['product_id']  = (int)$row['product_id'];
 $row['listing_price']= $row['listing_price'] !== null ? (float)$row['listing_price'] : null;
 $row['final_price']  = $row['final_price'] !== null ? (float)$row['final_price'] : null;
 
-// XSS PROTECTION: Escape user-generated content before returning in JSON
+// Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
 $productOutput = [
     'product_id' => $row['product_id'],
-    'title' => escapeHtml($row['title'] ?? 'Untitled'),
+    'title' => $row['title'] ?? 'Untitled',
     'tags' => $row['tags'],
-    'meet_location' => escapeHtml($row['meet_location'] ?? ''),
-    'item_condition' => escapeHtml($row['item_condition'] ?? ''),
-    'description' => escapeHtml($row['description'] ?? ''),
+    'meet_location' => $row['meet_location'] ?? '',
+    'item_condition' => $row['item_condition'] ?? '',
+    'description' => $row['description'] ?? '',
     'photos' => $row['photos'],
     'listing_price' => $row['listing_price'],
     'trades' => $row['trades'],

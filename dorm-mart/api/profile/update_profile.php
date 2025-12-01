@@ -218,7 +218,7 @@ function fetch_updated_fields(mysqli $conn, int $userId): array
 
     return [
         'image_url' => format_profile_photo_url($row['profile_photo'] ?? null),
-        'bio'       => escapeHtml($row['bio'] ?? ''),
+        'bio'       => $row['bio'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
         'instagram' => $row['instagram'] ?? '',
     ];
 }

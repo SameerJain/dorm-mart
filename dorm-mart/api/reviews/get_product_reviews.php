@@ -95,14 +95,14 @@ try {
             'seller_user_id' => (int)$row['seller_user_id'],
             'rating' => (float)$row['rating'],
             'product_rating' => isset($row['product_rating']) ? (float)$row['product_rating'] : null,
-            'review_text' => escapeHtml($row['review_text']),
+            'review_text' => $row['review_text'], // Note: No HTML encoding needed for JSON - React handles XSS protection
             'image1_url' => $row['image1_url'] ?? null,
             'image2_url' => $row['image2_url'] ?? null,
             'image3_url' => $row['image3_url'] ?? null,
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
-            'buyer_name' => escapeHtml($buyerName),
-            'buyer_email' => escapeHtml($row['email'] ?? '')
+            'buyer_name' => $buyerName,
+            'buyer_email' => $row['email'] ?? ''
         ];
     }
     
