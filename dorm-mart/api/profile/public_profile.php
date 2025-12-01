@@ -31,6 +31,7 @@ try {
         echo json_encode(['success' => false, 'error' => 'Username is required']);
         exit;
     }
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (strlen($usernameParam) > 64 || containsXSSPattern($usernameParam)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid username']);

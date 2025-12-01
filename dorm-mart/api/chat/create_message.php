@@ -44,8 +44,8 @@ if ($sender === '' || $receiver === '' || $contentRaw === '') {
     exit;
 }
 
-// XSS PROTECTION: Check for XSS patterns in message content
-// Note: SQL injection is already prevented by prepared statements
+// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+// Note: SQL injection prevented by prepared statements
 if (containsXSSPattern($contentRaw)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid characters in message']);

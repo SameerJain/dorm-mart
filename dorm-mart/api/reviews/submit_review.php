@@ -100,7 +100,7 @@ try {
     $image2Url = $validateImageUrl($image2Url);
     $image3Url = $validateImageUrl($image3Url);
 
-    // XSS protection for review text
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (containsXSSPattern($reviewText)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in review text']);

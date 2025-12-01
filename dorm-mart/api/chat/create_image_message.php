@@ -58,7 +58,7 @@ if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
-/* XSS protection on caption text only */
+/* XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage */
 if ($contentRaw !== '' && containsXSSPattern($contentRaw)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid characters in caption']);

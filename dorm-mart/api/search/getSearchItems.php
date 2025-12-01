@@ -43,8 +43,8 @@ try {
     $qRaw      = isset($body['q']) ? trim((string)$body['q']) : (isset($body['search']) ? trim((string)$body['search']) : '');
     $category  = isset($body['category']) ? trim((string)$body['category']) : '';
     
-    // XSS PROTECTION: Check for XSS patterns in search query
-    // Note: SQL injection is already prevented by prepared statements
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+    // Note: SQL injection prevented by prepared statements
     if ($qRaw !== '' && containsXSSPattern($qRaw)) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Invalid characters in search query']);

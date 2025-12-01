@@ -132,6 +132,7 @@ function sanitize_bio_value($value): ?string
     if ($bio === '') {
         return null;
     }
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (containsXSSPattern($bio)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in bio']);
@@ -155,6 +156,7 @@ function sanitize_link_value($value): ?string
         echo json_encode(['success' => false, 'error' => 'Link is too long']);
         exit;
     }
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (containsXSSPattern($link)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in link']);
@@ -177,6 +179,7 @@ function sanitize_profile_photo_value($value): ?string
         echo json_encode(['success' => false, 'error' => 'Profile photo URL is too long']);
         exit;
     }
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (containsXSSPattern($url)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid characters in profile photo URL']);
