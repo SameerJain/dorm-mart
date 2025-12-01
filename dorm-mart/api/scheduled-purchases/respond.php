@@ -371,11 +371,11 @@ try {
             'seller_user_id' => (int)$row['seller_user_id'],
             'buyer_user_id' => $buyerId,
             'inventory_product_id' => (int)$row['inventory_product_id'],
-            'meet_location' => escapeHtml($row['meet_location'] ?? ''),
+            'meet_location' => $row['meet_location'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
             'meeting_at' => $meetingAtIso,
             'buyer_response_at' => $responseAtIso,
             'item' => [
-                'title' => escapeHtml($row['item_title'] ?? 'Untitled'),
+                'title' => $row['item_title'] ?? 'Untitled',
             ],
         ],
     ];

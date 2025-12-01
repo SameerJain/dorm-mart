@@ -30,10 +30,10 @@ function StarRating({ rating = 0 }) {
 function ProductCard({ product, onView }) {
   const hasProductLink = Boolean(product.product_id);
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md min-w-0 overflow-hidden">
       <img src={product.image_url || FALLBACK_AVATAR} alt={product.title} className="h-40 w-full rounded-t-2xl object-cover" />
-      <div className="flex flex-col gap-2 p-4">
-        <p className="text-base font-semibold text-slate-900 truncate">{product.title}</p>
+      <div className="flex flex-col gap-2 p-4 min-w-0">
+        <p className="text-base font-semibold text-slate-900 truncate" title={product.title}>{product.title}</p>
         <p className="text-sm text-slate-500">${Number(product.price || 0).toFixed(2)}</p>
         <button
           type="button"
@@ -54,9 +54,9 @@ function ReviewCard({ review }) {
   return (
     <article className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-col">
-          <p className="text-base font-semibold text-slate-900">{review.reviewer_name}</p>
-          <p className="text-sm text-slate-500">{review.product_title}</p>
+        <div className="flex flex-col min-w-0 flex-1">
+          <p className="text-base font-semibold text-slate-900 truncate" title={review.reviewer_name}>{review.reviewer_name}</p>
+          <p className="text-sm text-slate-500 truncate" title={review.product_title}>{review.product_title}</p>
         </div>
         <StarRating rating={review.rating} />
       </div>
@@ -242,7 +242,7 @@ function PublicProfilePage() {
               </div>
               <div className="text-center md:text-left min-w-0 max-w-full overflow-hidden flex-1">
                 <h1 className="text-2xl font-serif font-semibold text-slate-900 truncate block">{profile.name}</h1>
-                <p className="text-sm text-slate-500">@{profile.username}</p>
+                <p className="text-sm text-slate-500 truncate" title={`@${profile.username}`}>@{profile.username}</p>
                 <p className="text-sm text-slate-500 truncate" title={profile.email}>{profile.email}</p>
                 {profile.instagram && (
                   <a
@@ -267,7 +267,7 @@ function PublicProfilePage() {
               )}
             </div>
           </div>
-          {profile.bio && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 line-clamp-3">{profile.bio}</p>}
+          {profile.bio && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-700 break-words overflow-wrap-anywhere">{profile.bio}</p>}
         </header>
 
         <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">

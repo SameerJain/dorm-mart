@@ -77,11 +77,23 @@ export default function LandingPage() {
   };
   const [exploreLimit, setExploreLimit] = useState(computeExploreLimit);
 
-  // rotating statement in blue
-  const rotatingLines = [
-    "Welcome to Dorm Mart!",
-    "Happy Shopping!",
-  ];
+  // rotating statement in blue - mobile only shows "Happy Shopping!"
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const rotatingLines = isMobile 
+    ? ["Happy Shopping!"]
+    : [
+        "Welcome to Dorm Mart!",
+        "Happy Shopping!",
+      ];
   const [bannerIdx, setBannerIdx] = useState(0);
 
   // correct URLs

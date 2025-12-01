@@ -147,10 +147,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'is_typing' => $isTyping
     ];
     if ($isTyping && $typingUserFirstName) {
-        $response['typing_user_first_name'] = escapeHtml($typingUserFirstName);
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
+        $response['typing_user_first_name'] = $typingUserFirstName;
         // Only include last_name if available, but don't require it
         if ($typingUserLastName) {
-            $response['typing_user_last_name'] = escapeHtml($typingUserLastName);
+            $response['typing_user_last_name'] = $typingUserLastName;
         }
     }
     echo json_encode($response);

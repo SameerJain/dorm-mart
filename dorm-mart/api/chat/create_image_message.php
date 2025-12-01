@@ -321,7 +321,7 @@ try {
         'message_id'  => $msgId,
         'message'     => [
             'message_id' => $msgId,
-            'content'    => escapeHtml($content),       // caption (possibly empty string) - XSS PROTECTION
+            'content'    => $content,       // caption (possibly empty string) - Note: No HTML encoding needed for JSON - React handles XSS protection
             'created_at' => $createdIso,    // ISO-8601 UTC
             'image_url'  => $imageRelUrl,   // relative public path
         ],

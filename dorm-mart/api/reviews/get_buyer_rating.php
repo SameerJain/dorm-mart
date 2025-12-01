@@ -95,7 +95,7 @@ try {
         'seller_user_id' => (int)$rating['seller_user_id'],
         'buyer_user_id' => (int)$rating['buyer_user_id'],
         'rating' => (float)$rating['rating'],
-        'review_text' => escapeHtml($rating['review_text'] ?? ''),
+        'review_text' => $rating['review_text'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
         'created_at' => $rating['created_at'],
         'updated_at' => $rating['updated_at']
     ];

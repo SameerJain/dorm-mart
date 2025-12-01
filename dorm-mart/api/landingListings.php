@@ -119,24 +119,22 @@ try {
             $seller = $row['email'];
         }
 
-        // XSS PROTECTION: Escape user-generated content before returning in JSON
-        // json_encode() escapes JSON special characters, but we also need HTML escaping
-        // for content that will be rendered in the browser
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $out[] = [
             'id'         => (int)$row['product_id'],
-            'title'      => escapeHtml($row['title'] ?? 'Untitled'),
+            'title'      => $row['title'] ?? 'Untitled',
             'price'      => $row['listing_price'] !== null ? (float)$row['listing_price'] : 0,
             'image'      => $image,      // <-- "/data/images/xxxx.png"
             'image_url'  => $image,
             'tags'       => $tags,
             'category'   => !empty($tags) ? $tags[0] : null,
-            'location'   => escapeHtml($row['item_location'] ?? 'North Campus'),
-            'condition'  => escapeHtml($row['item_condition'] ?? ''),
+            'location'   => $row['item_location'] ?? 'North Campus',
+            'condition'  => $row['item_condition'] ?? '',
             'created_at' => $createdAt,
-            'seller'     => escapeHtml($seller),
-            'sold_by'    => escapeHtml($seller),
+            'seller'     => $seller,
+            'sold_by'    => $seller,
             'rating'     => 4.7,
-            'status'     => escapeHtml($status),
+            'status'     => $status,
             'trades'     => (bool)$row['trades'],
             'price_nego' => (bool)$row['price_nego'],
         ];
@@ -153,7 +151,7 @@ try {
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => escapeHtml($e->getMessage()),
+        'detail' => $e->getMessage(), // Note: No HTML encoding needed for JSON - React handles XSS protection
     ]);
     exit;
 }

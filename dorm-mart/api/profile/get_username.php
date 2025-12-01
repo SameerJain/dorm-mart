@@ -54,11 +54,11 @@ try {
 
     $username = derive_username((string)$row['email']);
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     echo json_encode([
         'success' => true,
         'user_id' => $requestedId,
-        'username' => escapeHtml($username),
+        'username' => $username,
     ]);
 } catch (Throwable $e) {
     error_log('get_username.php error: ' . $e->getMessage());

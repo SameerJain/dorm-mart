@@ -231,16 +231,16 @@ function fetchProductPayload(mysqli $conn, int $productId): ?array
         $seller = (string)$row['email'];
     }
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     return [
         'product_id'    => (int)$row['product_id'],
-        'title'         => escapeHtml($row['title'] ?? 'Untitled'),
-        'description'   => escapeHtml($row['description'] ?? ''),
+        'title'         => $row['title'] ?? 'Untitled',
+        'description'   => $row['description'] ?? '',
         'listing_price' => $row['listing_price'] !== null ? (float)$row['listing_price'] : null,
         'tags'          => $tags,
         'categories'    => $row['categories'] ?? null,
-        'item_location' => escapeHtml($row['item_location'] ?? ''),
-        'item_condition'=> escapeHtml($row['item_condition'] ?? ''),
+        'item_location' => $row['item_location'] ?? '',
+        'item_condition'=> $row['item_condition'] ?? '',
         'photos'        => $photos,
         'trades'        => (bool)$row['trades'],
         'price_nego'    => (bool)$row['price_nego'],
@@ -250,8 +250,8 @@ function fetchProductPayload(mysqli $conn, int $productId): ?array
         'final_price'   => $row['final_price'] !== null ? (float)$row['final_price'] : null,
         'date_sold'     => $row['date_sold'] ?? null,
         'sold_to'       => isset($row['sold_to']) ? (int)$row['sold_to'] : null,
-        'seller'        => escapeHtml($seller !== '' ? $seller : 'Unknown Seller'),
-        'email'         => escapeHtml($row['email'] ?? ''),
+        'seller'        => $seller !== '' ? $seller : 'Unknown Seller', // Note: No HTML encoding needed for JSON - React handles XSS protection
+        'email'         => $row['email'] ?? '',
         'created_at'    => !empty($row['date_listed']) ? ($row['date_listed'] . ' 00:00:00') : null,
     ];
 }
@@ -277,28 +277,28 @@ function buildReceiptPayload(array $confirmRow, array $scheduledRow, array $snap
     $negotiatedPrice = $scheduledRow['negotiated_price'] ?? ($snapshot['negotiated_price'] ?? null);
     $isTrade = isset($scheduledRow['is_trade']) ? (bool)$scheduledRow['is_trade'] : (isset($snapshot['is_trade']) ? (bool)$snapshot['is_trade'] : null);
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     return [
         'receipt_id' => (int)$confirmRow['confirm_request_id'],
         'inventory_product_id' => (int)$confirmRow['inventory_product_id'],
-        'status' => escapeHtml($confirmRow['status'] ?? ''),
+        'status' => $confirmRow['status'] ?? '',
         'final_price' => $finalPrice,
-        'seller_notes' => escapeHtml($confirmRow['seller_notes'] ?? ''),
-        'failure_reason' => escapeHtml($confirmRow['failure_reason'] ?? ''),
-        'failure_reason_notes' => escapeHtml($confirmRow['failure_reason_notes'] ?? ''),
+        'seller_notes' => $confirmRow['seller_notes'] ?? '',
+        'failure_reason' => $confirmRow['failure_reason'] ?? '',
+        'failure_reason_notes' => $confirmRow['failure_reason_notes'] ?? '',
         'purchase_date' => $purchaseDateIso,
-        'meet_location' => escapeHtml($meetLocation ?? ''),
+        'meet_location' => $meetLocation ?? '',
         'negotiated_price' => coerceFloat($negotiatedPrice),
-        'trade_item_description' => escapeHtml($scheduledRow['trade_item_description'] ?? ($snapshot['trade_item_description'] ?? '')),
+        'trade_item_description' => $scheduledRow['trade_item_description'] ?? ($snapshot['trade_item_description'] ?? ''),
         'is_trade' => $isTrade,
-        'comments' => escapeHtml($scheduledRow['description'] ?? ''),
+        'comments' => $scheduledRow['description'] ?? '',
         'buyer_notes' => null,
         'buyer_user_id' => (int)$confirmRow['buyer_user_id'],
         'seller_user_id' => (int)$confirmRow['seller_user_id'],
-        'buyer_name' => escapeHtml($buyerName),
-        'seller_name' => escapeHtml($sellerName),
-        'buyer_email' => escapeHtml($scheduledRow['buyer_email'] ?? ''),
-        'seller_email' => escapeHtml($scheduledRow['seller_email'] ?? ''),
+        'buyer_name' => $buyerName,
+        'seller_name' => $sellerName,
+        'buyer_email' => $scheduledRow['buyer_email'] ?? '',
+        'seller_email' => $scheduledRow['seller_email'] ?? '',
         'snapshot' => $snapshot,
     ];
 }

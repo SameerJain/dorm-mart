@@ -126,7 +126,9 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
-        $first   = $user['firstName'] ?: 'Student';
+        // XSS PROTECTION: Escape user data before inserting into HTML email template
+        $first   = escapeHtml($user['firstName'] ?: 'Student');
+        $tempPasswordEscaped = escapeHtml($tempPassword);
         $subject = 'Welcome to Dorm Mart';
 
         // Use HTML entities for punctuation (— →) to avoid mojibake in some clients
@@ -143,7 +145,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
       <p style="color:#eee;">Dear {$first},</p>
       <p style="color:#eee;">Welcome to <strong>Dorm Mart</strong> &mdash; the student marketplace for UB.</p>
       <p style="color:#eee;">Here is your temporary (current) password. <strong>DO NOT</strong> share this with anyone.</p>
-      <p style="font-size:20px;color:#fff;"><strong>{$tempPassword}</strong></p>
+      <p style="font-size:20px;color:#fff;"><strong>{$tempPasswordEscaped}</strong></p>
       <p style="color:#eee;">If you want to change this password, go to <em>Settings &rarr; Change Password</em>.</p>
       <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
       <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
@@ -154,9 +156,10 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
 </html>
 HTML;
 
-        // Plain-text part: stick to ASCII symbols
+        // Plain-text part: stick to ASCII symbols (no HTML escaping needed for plain text)
+        $firstPlain = $user['firstName'] ?: 'Student';
         $text = <<<TEXT
-Dear {$first},
+Dear {$firstPlain},
 
 Welcome to Dorm Mart - the student marketplace for UB.
 

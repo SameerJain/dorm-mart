@@ -681,7 +681,6 @@ function SchedulePurchasePage() {
                                         </span>
                                         <input
                                             type="number"
-                                            step="0.01"
                                             min="0"
                                             max={PRICE_LIMITS.max}
                                             value={negotiatedPrice}

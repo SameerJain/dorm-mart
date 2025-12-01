@@ -124,7 +124,7 @@ try {
     $scheduledInfo = [
         'request_id' => (int)$schedRow['request_id'],
         'buyer_user_id' => (int)$schedRow['buyer_user_id'],
-        'meet_location' => escapeHtml($schedRow['meet_location'] ?? ''),
+        'meet_location' => $schedRow['meet_location'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
         'meeting_at' => $meetingIso,
     ];
 

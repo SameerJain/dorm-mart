@@ -199,7 +199,7 @@ function LoginPage() {
 
       {/* Right side - Login form (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 py-8 sm:py-12 md:py-8 h-screen pre-login-bg relative overflow-y-auto md:overflow-hidden"
+        className="w-full md:w-1/2 flex flex-col items-center justify-start md:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:py-8 pb-8 sm:pb-12 md:pb-8 h-screen pre-login-bg relative overflow-y-auto md:overflow-hidden"
       >
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
@@ -347,6 +347,11 @@ function LoginPage() {
               </div>
             </div>
           </div>
+          
+          {/* Tagline - Mobile only, outside login card */}
+          <p className="md:hidden mt-6 sm:mt-8 text-base sm:text-lg text-gray-600 opacity-80 max-w-sm mx-auto leading-relaxed text-center px-4">
+            Your campus marketplace for buying and selling. Connect with fellow students and save money.
+          </p>
         </div>
       </div>
     </div>

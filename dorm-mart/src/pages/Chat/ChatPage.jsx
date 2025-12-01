@@ -1146,24 +1146,24 @@ export default function ChatPage() {
           >
             {/* Header */}
             <div className={`relative border-4 ${headerBgColor} px-5 py-4 overflow-hidden`}>
-              <div className="flex items-center justify-between min-w-0">
-                <div className="flex flex-col flex-shrink-0">
+              <div className="flex items-center justify-between min-w-0 gap-2">
+                <div className="flex flex-col min-w-0 flex-shrink overflow-hidden max-w-[60px] md:max-w-[100px]">
                   {activeReceiverId ? (
                     <button
                       type="button"
                       onClick={handleProfileHeaderClick}
-                      className="text-left text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                      className="text-left text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full"
                     >
-                      <span className="md:hidden">{activeLabelFirstName}</span>
-                      <span className="hidden md:inline">{activeLabel}</span>
+                      <span className="md:hidden block w-full truncate" title={activeLabelFirstName}>{activeLabelFirstName}</span>
+                      <span className="hidden md:inline-block w-full truncate" title={activeLabel}>{activeLabel}</span>
                     </button>
                   ) : (
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      <span className="md:hidden">{activeLabelFirstName}</span>
-                      <span className="hidden md:inline">{activeLabel}</span>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-0 w-full">
+                      <span className="md:hidden block w-full truncate" title={activeLabelFirstName}>{activeLabelFirstName}</span>
+                      <span className="hidden md:inline-block w-full truncate" title={activeLabel}>{activeLabel}</span>
                     </h2>
                   )}
-                  <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400">Direct message</p>
+                  <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400 truncate w-full">Direct message</p>
                 </div>
 
                 {(activeConversation?.productTitle || activeConversation?.productId) && (
@@ -1174,7 +1174,7 @@ export default function ChatPage() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {activeConversation?.productImageUrl && (
                     <div className="inline-flex items-center justify-center h-[44px] w-[44px] rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden shrink-0 bg-gray-200 dark:bg-gray-700">
                                 <img
