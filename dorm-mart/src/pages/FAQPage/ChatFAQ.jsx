@@ -4,11 +4,13 @@ import React from "react";
 // Static list of FAQ entries for the Chat page
 const CHAT_FAQ_ITEMS = [
   {
-    question: "I don’t have any chat messages. How can I start chatting with sellers or buyers?",
-    answer: `Only buyers can initiate a chat first. As buyers explore our platform in search of items 
-they are interested in or want to purchase, they can send the first message to sellers using the 
-“Message Seller” button on item detail pages. Sellers can’t initiate a chat with buyers first, 
-since we don’t want sellers advertising their items by directly approaching buyers.`,
+    question: "How do I start a conversation with someone?",
+    answer: `Only buyers can send the first message to start a conversation. When buyers find an item in which they are interested in, they will start a conversation via "Message Seller" button on a item's detail page.`,
+  },
+  {
+    question: "How do we use the chat for?",
+    answer: `The chat is used for sellers and buyers to communicate to make a trade happen. They can chat to inquire or share more details of an item, negotiate on the final price, and schedule the location and time to trade an item.
+    `
   },
   {
     question: "What is Schedule Purchase?",
@@ -61,9 +63,9 @@ function ChatFAQ() {
           className="pb-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
         >
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-            {index + 1}. {item.question}
+            {item.question}
           </h3>
-          <p className="mt-1 whitespace-pre-line">
+          <p className="mt-1">
             {item.answer}
           </p>
         </div>
