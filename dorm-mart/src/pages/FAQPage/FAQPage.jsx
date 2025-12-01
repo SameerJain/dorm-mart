@@ -89,8 +89,8 @@ function FAQPage() {
               flex-row md:flex-col
               flex-none
               overflow-x-auto md:overflow-visible
-              pb-1 md:pb-0
-              mb-1 md:mb-0
+              pb-3 md:pb-0
+              mb-2 md:mb-0
             "
           >
             <button
