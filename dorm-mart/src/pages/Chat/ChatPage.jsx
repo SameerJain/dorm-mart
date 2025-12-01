@@ -163,6 +163,17 @@ export default function ChatPage() {
     if (!activeLabel || activeLabel === "Select a chat") return activeLabel;
     return activeLabel.split(' ')[0];
   }, [activeLabel]);
+
+  /** Split activeLabel into first and last name for desktop display */
+  const { firstName: activeFirstName, lastName: activeLastName } = useMemo(() => {
+    if (!activeLabel || activeLabel === "Select a chat") {
+      return { firstName: activeLabel, lastName: '' };
+    }
+    const parts = activeLabel.trim().split(/\s+/);
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+    return { firstName, lastName };
+  }, [activeLabel]);
   const activeReceiverId = activeConversation?.receiverId ?? navigationState?.receiverId ?? null;
   const activeReceiverUsername = activeReceiverId ? usernameMap[activeReceiverId] : null;
   const activeProfilePath = activeReceiverUsername
@@ -1109,6 +1120,23 @@ export default function ChatPage() {
                   if (isSellerConversation) messagesToBuyers.push(c);
                   else messagesToSellers.push(c);
                 });
+                
+                // Show empty state if no conversations exist
+                if (messagesToSellers.length === 0 && messagesToBuyers.length === 0) {
+                  return (
+                    <li className="px-4 py-8">
+                      <div className="text-center">
+                        <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium">
+                          No chats to display
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400 dark:text-gray-500 mt-2">
+                          Start a conversation to see chats here
+                        </p>
+                      </div>
+                    </li>
+                  );
+                }
+                
                 return (
                   <>
                     {messagesToSellers.length > 0 && (
@@ -1147,23 +1175,29 @@ export default function ChatPage() {
             {/* Header */}
             <div className={`relative border-4 ${headerBgColor} px-5 py-4 overflow-hidden`}>
               <div className="flex items-center justify-between min-w-0 gap-2">
-                <div className="flex flex-col min-w-0 flex-shrink overflow-hidden max-w-[60px] md:max-w-[100px]">
+                <div className="flex flex-col min-w-0 flex-shrink overflow-hidden max-w-[120px] md:max-w-[200px] -ml-1">
                   {activeReceiverId ? (
                     <button
                       type="button"
                       onClick={handleProfileHeaderClick}
-                      className="text-left text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full"
+                      className="text-left text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 min-w-0 w-full flex flex-col"
                     >
                       <span className="md:hidden block w-full truncate" title={activeLabelFirstName}>{activeLabelFirstName}</span>
-                      <span className="hidden md:inline-block w-full truncate" title={activeLabel}>{activeLabel}</span>
+                      <span className="hidden md:block w-full break-words min-w-0 leading-tight" title={activeLabel}>
+                        <span className="block break-words">{activeFirstName}</span>
+                        {activeLastName && <span className="block break-words">{activeLastName}</span>}
+                      </span>
                     </button>
                   ) : (
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-0 w-full">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-0 w-full flex flex-col">
                       <span className="md:hidden block w-full truncate" title={activeLabelFirstName}>{activeLabelFirstName}</span>
-                      <span className="hidden md:inline-block w-full truncate" title={activeLabel}>{activeLabel}</span>
+                      <span className="hidden md:block w-full break-words min-w-0 leading-tight" title={activeLabel}>
+                        <span className="block break-words">{activeFirstName}</span>
+                        {activeLastName && <span className="block break-words">{activeLastName}</span>}
+                      </span>
                     </h2>
                   )}
-                  <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400 truncate w-full">Direct message</p>
+                  <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400 truncate w-full mt-0.5">Direct message</p>
                 </div>
 
                 {(activeConversation?.productTitle || activeConversation?.productId) && (
@@ -1222,8 +1256,16 @@ export default function ChatPage() {
               aria-relevant="additions"
             >
               {!activeConvId ? (
-                <div className="flex h-full items-center justify-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Select a chat to view messages.</p>
+                <div className="flex h-full items-center justify-center px-4">
+                  {conversations.length === 0 ? (
+                    <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 text-center font-medium">
+                      Any chats with users will be displayed here
+                    </p>
+                  ) : (
+                    <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 text-center">
+                      Select a chat to view messages.
+                    </p>
+                  )}
                 </div>
               ) : chatByConvError[activeConvId] === true ? (
                 <p className="text-center text-sm text-red-600 dark:text-red-400">Something went wrong, please try again later</p>
