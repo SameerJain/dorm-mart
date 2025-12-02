@@ -207,7 +207,7 @@ function CreateAccountPage() {
       <PreLoginBranding />
 
       {/* Right side - Create Account form (full width on mobile/tablet, 50% on desktop) */}
-      <div className="w-full md:w-1/2 flex flex-col items-center md:justify-center justify-start p-4 sm:p-6 md:p-8 lg:p-6 pt-6 sm:pt-8 md:pt-8 h-screen overflow-y-auto md:overflow-hidden pre-login-bg relative">
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-start md:justify-center p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 pt-6 sm:pt-8 h-screen overflow-y-auto md:overflow-hidden pre-login-bg relative">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="md:hidden mb-4 sm:mb-6 text-center w-full relative z-10">
           <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
@@ -215,8 +215,8 @@ function CreateAccountPage() {
           </h1>
           <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">Wastage, who?</h2>
         </div>
-        <div className="w-full max-w-md relative z-10">
-          <div className="p-4 sm:p-6 md:p-8 lg:p-6 rounded-lg relative bg-blue-600">
+        <div className="w-full max-w-sm sm:max-w-md md:max-w-sm lg:max-w-md relative z-10">
+          <div className="px-4 sm:px-6 md:px-5 lg:px-6 py-2.5 sm:py-4 md:py-3 lg:py-4 rounded-lg relative bg-blue-600">
             {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
@@ -227,45 +227,45 @@ function CreateAccountPage() {
 
             <div className="relative z-10">
               {/* Header with dot */}
-              <div className="text-center mb-4 sm:mb-6 md:mb-8">
-                <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4" />
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white leading-tight">Create Account</h2>
+              <div className="text-center mb-2.5 sm:mb-4 md:mb-2.5 lg:mb-3">
+                <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-3 md:h-3 bg-black rounded-full mx-auto mb-2 sm:mb-3 md:mb-1.5" />
+                <h2 className="text-2xl sm:text-3xl md:text-2xl lg:text-3xl font-serif text-white leading-tight">Create Account</h2>
               </div>
 
               {/* Form - Improved spacing and touch targets */}
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-2.5 lg:space-y-3">
                 {/* First Name */}
                 <div>
-                  <label className="block text-sm sm:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5">First Name</label>
+                  <label className="block text-sm sm:text-base md:text-sm lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">First Name</label>
                   <input
                     type="text"
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
                     maxLength={30}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
+                    className="w-full min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-2.5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-base"
                   />
                   {errors.firstName && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.firstName}</p>}
                 </div>
 
                 {/* Last Name */}
                 <div>
-                  <label className="block text-sm sm:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5">Last Name</label>
+                  <label className="block text-sm sm:text-base md:text-sm lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">Last Name</label>
                   <input
                     type="text"
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
                     maxLength={30}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
+                    className="w-full min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-2.5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-base"
                   />
                   {errors.lastName && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.lastName}</p>}
                 </div>
 
                 {/* Graduation Date */}
                 <div>
-                  <label className="block text-sm sm:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5">Graduation Date (Month / Year)</label>
-                  <div className="flex gap-3 sm:gap-4">
+                  <label className="block text-sm sm:text-base md:text-sm lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">Graduation Date (Month / Year)</label>
+                  <div className="flex gap-3 sm:gap-4 md:gap-3">
                     <input
                       type="number"
                       name="gradMonth"
@@ -273,7 +273,7 @@ function CreateAccountPage() {
                       onChange={handleChange}
                       placeholder="MM"
                       maxLength={2}
-                      className="w-1/2 min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
+                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-2.5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-base"
                     />
                     <input
                       type="number"
@@ -282,7 +282,7 @@ function CreateAccountPage() {
                       onChange={handleChange}
                       placeholder="YYYY"
                       maxLength={4}
-                      className="w-1/2 min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
+                      className="w-1/2 min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-2.5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-base"
                     />
                   </div>
                   {errors.gradDate && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.gradDate}</p>}
@@ -290,29 +290,29 @@ function CreateAccountPage() {
 
                 {/* Email */}
                 <div>
-                  <label className="block text-sm sm:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5">University Email Address</label>
+                  <label className="block text-sm sm:text-base md:text-sm lg:text-base font-semibold text-gray-200 mb-2 sm:mb-2.5 md:mb-2">University Email Address</label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
                     maxLength={255}
-                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
+                    className="w-full min-h-[44px] px-4 sm:px-5 md:px-4 py-3 sm:py-3.5 md:py-2.5 lg:py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg md:text-base"
                   />
                   {errors.email && <p className="text-sm font-medium text-red-500 mt-1.5 leading-relaxed">{errors.email}</p>}
                 </div>
 
                 {/* Checkboxes - Improved touch targets */}
-                <div className="space-y-3 sm:space-y-4">
+                <div className="space-y-3 sm:space-y-4 md:space-y-2.5 lg:space-y-3">
                   <label className="flex items-start text-gray-100 min-h-[44px] py-2">
                     <input
                       type="checkbox"
                       name="terms"
                       checked={formData.terms}
                       onChange={handleChange}
-                      className="mt-1 mr-3 h-5 w-5 sm:h-6 sm:w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
+                      className="mt-1 mr-3 h-5 w-5 sm:h-6 sm:w-6 md:h-5 md:w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                     />
-                    <span className="select-none text-sm sm:text-base leading-relaxed pt-0.5">
+                    <span className="select-none text-sm sm:text-base md:text-sm lg:text-base leading-relaxed pt-0.5">
                       I agree to the{" "}
                       <a
                         href={termsPdf}
@@ -343,9 +343,9 @@ function CreateAccountPage() {
                       name="promos"
                       checked={formData.promos}
                       onChange={handleChange}
-                      className="mt-1 mr-3 h-5 w-5 sm:h-6 sm:w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
+                      className="mt-1 mr-3 h-5 w-5 sm:h-6 sm:w-6 md:h-5 md:w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                     />
-                    <span className="select-none text-sm sm:text-base leading-relaxed pt-0.5">
+                    <span className="select-none text-sm sm:text-base md:text-sm lg:text-base leading-relaxed pt-0.5">
                       I want to receive promotional news on my email
                     </span>
                   </label>
@@ -355,7 +355,7 @@ function CreateAccountPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-full min-h-[44px] text-white py-3 sm:py-3.5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 font-medium text-base sm:text-lg active:scale-95
+                  className={`w-full min-h-[44px] text-white py-3 sm:py-3.5 md:py-2.5 lg:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 font-medium text-base sm:text-lg md:text-base active:scale-95
                     ${loading ? 'bg-sky-300 cursor-not-allowed' : 'bg-sky-500 hover:bg-sky-600 hover:scale-105 hover:shadow-lg'}
                   `}
                 >
@@ -373,8 +373,8 @@ function CreateAccountPage() {
               </form>
 
               {/* Links - Improved touch targets and spacing */}
-              <div className="mt-6 sm:mt-8 mb-4 sm:mb-6 text-center">
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base text-white">
+              <div className="mt-4 sm:mt-6 md:mt-3 lg:mt-3.5 mb-2.5 sm:mb-4 md:mb-2 lg:mb-2.5 text-center">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base md:text-sm lg:text-base text-white">
                   <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); navigate('/login'); }}
