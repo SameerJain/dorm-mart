@@ -67,13 +67,15 @@ export default function LandingPage() {
   const [errorUser, setErrorUser] = useState(false);
   const [errorItems, setErrorItems] = useState(false);
   const [activeTab, setActiveTab] = useState("forYou");
+  const MIN_EXPLORE_ITEMS = 30;
   const computeExploreLimit = () => {
-    if (typeof window === "undefined") return 12;
+    if (typeof window === "undefined") return MIN_EXPLORE_ITEMS;
     const width = window.innerWidth;
-    if (width >= 1536) return 15; // 5 columns x 3 rows
-    if (width >= 1280) return 12; // 4 columns x 3 rows
-    if (width >= 768) return 9; // 3 columns x 3 rows
-    return 6; // 2 columns x 3 rows
+    if (width >= 1536) return 42; // 6 columns x 7 rows
+    if (width >= 1280) return 36; // 6 columns x 6 rows
+    if (width >= 1024) return 32; // 4 columns x 8 rows
+    if (width >= 768) return 30; // 3 columns x 10 rows
+    return MIN_EXPLORE_ITEMS; // keep mobile at 30+ scrollable items
   };
   const [exploreLimit, setExploreLimit] = useState(computeExploreLimit);
 
@@ -285,16 +287,27 @@ export default function LandingPage() {
   // dedupe into interests and explore
   const { itemsByInterest, exploreItems } = useMemo(() => {
     const MAX_TOTAL_ITEMS = 50;
-    const exploreCap = Math.min(MAX_TOTAL_ITEMS, exploreLimit);
+    const exploreCap = Math.min(
+      MAX_TOTAL_ITEMS,
+      Math.max(MIN_EXPLORE_ITEMS, exploreLimit)
+    );
+    const shuffleArray = (arr) => {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
 
     if (!interests.length) {
-      // No interests: all items go to explore, limited to row cap
-      return { itemsByInterest: {}, exploreItems: allItems.slice(0, exploreCap) };
+      // No interests: randomize across everything so older items still surface
+      const shuffled = shuffleArray(allItems);
+      return { itemsByInterest: {}, exploreItems: shuffled.slice(0, exploreCap) };
     }
 
     const byInterest = {};
     interests.forEach((c) => (byInterest[c] = []));
-    const used = new Set();
 
     allItems.forEach((item) => {
       const itemCat = (item.category || "").toLowerCase();
@@ -321,15 +334,12 @@ export default function LandingPage() {
       }
 
       if (best) {
-        const bucket = byInterest[best.ic];
-        if (bucket.length < 10) {
-          bucket.push(item);
-        }
-        used.add(item.id);
+        byInterest[best.ic].push(item);
       }
     });
 
-    // Sort each interest bucket: primary tag (category) first, then by newest date
+    // Sort each interest bucket: primary tag (category) first, then by newest date, then keep top 10 visible
+    const used = new Set();
     const cmp = (cat) => (a, b) => {
       const catLower = (cat || "").toLowerCase();
       const aPrimary = Array.isArray(a.tags) && a.tags[0]
@@ -345,18 +355,20 @@ export default function LandingPage() {
     };
 
     Object.keys(byInterest).forEach((cat) => {
-      byInterest[cat].sort(cmp(cat));
+      const sorted = byInterest[cat].sort(cmp(cat));
+      const visible = sorted.slice(0, 10);
+      byInterest[cat] = visible;
+      visible.forEach((item) => used.add(item.id));
     });
 
-    // Count total items in interest categories
-    const interestItemCount = Object.values(byInterest).flat().length;
-    
-    // Calculate remaining slots for explore items
-    const remainingSlots = Math.max(0, MAX_TOTAL_ITEMS - interestItemCount);
-    
-    // Get explore items and limit to remaining slots
-    const allExploreItems = allItems.filter((it) => !used.has(it.id));
-    const limitedExploreItems = allExploreItems.slice(0, Math.min(remainingSlots, exploreCap));
+    // Get explore items (randomized) and keep at least the requested explore minimum
+    const allExploreItems = shuffleArray(
+      allItems.filter((it) => !used.has(it.id))
+    );
+    const limitedExploreItems = allExploreItems.slice(
+      0,
+      Math.min(exploreCap, allExploreItems.length)
+    );
 
     return {
       itemsByInterest: byInterest,
@@ -629,6 +641,9 @@ export default function LandingPage() {
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Randomized picks from across campus.
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    Showing at least 30 items so you can browse deeper.
                   </p>
                 </header>
 
