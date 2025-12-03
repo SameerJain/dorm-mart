@@ -93,7 +93,9 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim($user['first_name'] . ' ' . $user['last_name']));
 
-        $firstName = $user['first_name'] ?: 'Student';
+        // XSS PROTECTION: Encoding (Layer 2) - HTML entity encoding (more foolproof than filtering)
+        $firstName = escapeHtml($user['first_name'] ?: 'Student');
+        $resetLinkEscaped = escapeHtml($resetLink);
         $subject = 'Reset Your Password - Dorm Mart';
 
         // Simplified email template (minimal like create_account.php)
@@ -110,7 +112,7 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
       <p style="color:#eee;">Dear {$firstName},</p>
       <p style="color:#eee;">You requested to reset your password for your Dorm Mart account.</p>
       <p style="margin:20px 0;">
-        <a href="{$resetLink}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
+        <a href="{$resetLinkEscaped}" style="background:#007bff;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">Reset Password</a>
       </p>
       <p style="color:#eee;">This link will expire in 1 hour for security reasons.</p>
       <p style="color:#eee;">Best regards,<br/>The Dorm Mart Team</p>
@@ -122,9 +124,10 @@ function sendPasswordResetEmail(array $user, string $resetLink, string $envLabel
 </html>
 HTML;
 
-        // Plain-text version for faster delivery
+        // Plain-text version for faster delivery (no HTML escaping needed for plain text)
+        $firstNamePlain = $user['first_name'] ?: 'Student';
         $text = <<<TEXT
-Dear {$firstName},
+Dear {$firstNamePlain},
 
 You requested to reset your password for your Dorm Mart account.
 
@@ -185,15 +188,15 @@ if (strpos($ct, 'application/json') !== false) {
     $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
 }
 
-// XSS PROTECTION: Check for XSS patterns in email field
-// Note: SQL injection is already prevented by prepared statements
+// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+// Note: SQL injection prevented by prepared statements
 if ($emailRaw !== '' && containsXSSPattern($emailRaw)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid input format']);
     exit;
 }
 
-$email = validateInput($emailRaw, 50, '/^[^@\s]+@buffalo\.edu$/');
+$email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
 
 if ($email === false) {
     http_response_code(400);

@@ -2,7 +2,7 @@
 // Session + persistent login helpers
 
 const REMEMBER_COOKIE = 'remember_token';
-const REMEMBER_TTL_DAYS = 30; // persistent login length
+const REMEMBER_TTL_DAYS = 7; // persistent login length
 
 function auth_boot_session(): void
 {

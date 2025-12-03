@@ -29,8 +29,13 @@ deploy-aptitude.sh
 deploy-local.sh
 deploy-cattle.sh
 
+/media/*
+!/media/profile-photos/
+!/media/profile-photos/**
+
 # Test file Sameer made to test login api
 body.json
+cookies.txt
 
 # VS Code
 .vscode/

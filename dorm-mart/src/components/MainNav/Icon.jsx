@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 
-function Icon({ to, src, alt, badge }) {
-
+function Icon({ to, src, alt, badge, onClick, liRef, children }) {
   const showBadge = Number(badge) > 0;
-  
+
   return (
-    <li>
-      {/* relative: positioning context for the absolute badge */}
-      <Link to={to} className="relative inline-block">
+    // liRef lets parent attach a ref (e.g., for click-outside logic)
+    <li ref={liRef} className="relative">
+      {/* onClick lets the parent control behavior (like toggling a dropdown) */}
+      <Link to={to} className="relative inline-block" onClick={onClick}>
         <img
           src={src}
           alt={alt}
@@ -15,7 +15,6 @@ function Icon({ to, src, alt, badge }) {
         />
         {showBadge && (
           <span
-            // absolute: pin to the corner; ring: small white border to separate from bg
             className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-xs leading-5 text-center ring-2 ring-white"
             aria-label={`${badge} unread`}
           >
@@ -23,6 +22,9 @@ function Icon({ to, src, alt, badge }) {
           </span>
         )}
       </Link>
+
+      {/* children lets you attach a dropdown underneath the icon */}
+      {children}
     </li>
   );
 }

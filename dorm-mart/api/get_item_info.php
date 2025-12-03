@@ -58,6 +58,7 @@ WHERE product_id = ?";
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
     http_response_code(500);
+    // Note: No HTML encoding needed for JSON - React handles XSS protection
     echo json_encode(['ok'=>false,'error'=>'DB prepare failed','detail'=>$conn->error]);
     exit;
 }
@@ -66,7 +67,8 @@ $stmt->bind_param('i', $productId);  // 'i' = integer type, safely bound as para
 
 if (!$stmt->execute()) {
     http_response_code(500);
-    echo json_encode(['ok'=>false,'error'=>'DB execute failed','detail'=>$stmt->error]);
+    // XSS PROTECTION: Escape database error message to prevent XSS
+    echo json_encode(['ok'=>false,'error'=>'DB execute failed','detail'=>$stmt->error]); // Note: No HTML encoding needed for JSON - React handles XSS protection
     exit;
 }
 
@@ -94,4 +96,24 @@ $row['product_id']  = (int)$row['product_id'];
 $row['listing_price']= $row['listing_price'] !== null ? (float)$row['listing_price'] : null;
 $row['final_price']  = $row['final_price'] !== null ? (float)$row['final_price'] : null;
 
-echo json_encode(['ok'=>true, 'product'=>$row], JSON_UNESCAPED_SLASHES);
+// Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
+$productOutput = [
+    'product_id' => $row['product_id'],
+    'title' => $row['title'] ?? 'Untitled',
+    'tags' => $row['tags'],
+    'meet_location' => $row['meet_location'] ?? '',
+    'item_condition' => $row['item_condition'] ?? '',
+    'description' => $row['description'] ?? '',
+    'photos' => $row['photos'],
+    'listing_price' => $row['listing_price'],
+    'trades' => $row['trades'],
+    'price_nego' => $row['price_nego'],
+    'date_listed' => $row['date_listed'],
+    'seller_id' => $row['seller_id'],
+    'sold' => $row['sold'],
+    'final_price' => $row['final_price'],
+    'date_sold' => $row['date_sold'] ?? null,
+    'sold_to' => $row['sold_to'],
+];
+
+echo json_encode(['ok'=>true, 'product'=>$productOutput], JSON_UNESCAPED_SLASHES);

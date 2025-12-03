@@ -48,16 +48,41 @@ export function useTheme() {
       }
 
       try {
-        // First clear any existing theme to prevent cross-user contamination
-        document.documentElement.classList.remove('dark');
-
-        // Try localStorage first for immediate application
+        // Check current theme state before clearing
+        const currentThemeInDOM = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        
+        // Check localStorage first to see if we should preserve the theme
+        let shouldPreserveTheme = false;
         if (userId) {
           const userThemeKey = `userTheme_${userId}`;
           const localTheme = localStorage.getItem(userThemeKey);
-          if (localTheme) {
+          if (localTheme && localTheme === currentThemeInDOM) {
+            // Current theme matches localStorage for this user - preserve it
+            // This prevents flash/reset when navigating between pages
+            shouldPreserveTheme = true;
+            setTheme(localTheme);
+            // Theme is already applied, no need to re-apply
+          } else if (localTheme) {
+            // localStorage exists but doesn't match - apply it (user switch scenario)
             setTheme(localTheme);
             applyTheme(localTheme);
+            // Don't clear since we just applied it
+            shouldPreserveTheme = true;
+          }
+        }
+        
+        // Only clear theme if we're not preserving it (prevents cross-user contamination)
+        if (!shouldPreserveTheme) {
+          document.documentElement.classList.remove('dark');
+          
+          // Try localStorage after clearing (for cases where localStorage wasn't set yet)
+          if (userId) {
+            const userThemeKey = `userTheme_${userId}`;
+            const localTheme = localStorage.getItem(userThemeKey);
+            if (localTheme) {
+              setTheme(localTheme);
+              applyTheme(localTheme);
+            }
           }
         }
 

@@ -68,13 +68,19 @@ function getPrefs(mysqli $conn, int $userId)
   }
   
   // Build interests array from the 3 category columns
+  // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
   $interests = [];
   if ($userRow) {
-    $interests = array_filter([
+    $rawInterests = array_filter([
       $userRow['interested_category_1'] ?? null,
       $userRow['interested_category_2'] ?? null,
       $userRow['interested_category_3'] ?? null
     ]);
+    foreach ($rawInterests as $interest) {
+      if ($interest !== null && $interest !== '') {
+        $interests[] = (string)$interest;
+      }
+    }
   }
   
   $result = [
@@ -140,7 +146,8 @@ function sendPromoWelcomeEmail(array $user): array
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
-        $first   = $user['firstName'] ?: 'Student';
+        // XSS PROTECTION: Encoding (Layer 2) - HTML entity encoding (more foolproof than filtering)
+        $first   = escapeHtml($user['firstName'] ?: 'Student');
         $subject = 'Welcome to Dorm Mart Promotional Updates';
 
         // HTML email content - Subtle improvements to dark theme
@@ -192,11 +199,12 @@ function sendPromoWelcomeEmail(array $user): array
 </html>
 HTML;
 
-        // Plain-text version
+        // Plain-text version (no HTML escaping needed for plain text)
+        $firstPlain = $user['firstName'] ?: 'Student';
         $text = <<<TEXT
 Promotional Updates - Dorm Mart
 
-Dear {$first},
+Dear {$firstPlain},
 
 Thank you for opting into promotional updates from Dorm Mart!
 

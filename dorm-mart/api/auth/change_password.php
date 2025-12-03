@@ -76,7 +76,7 @@ try {
   // handle $userId. Even if malicious SQL is in $userId, it cannot execute
   // because it's bound as an integer parameter, not concatenated into SQL.
   // ============================================================================
-  $stmt = $conn->prepare('SELECT hash_pass FROM user_accounts WHERE user_id = ? LIMIT 1');
+  $stmt = $conn->prepare('SELECT hash_pass, email FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $userId);  // 'i' = integer type, safely bound as parameter
   $stmt->execute();
   $res = $stmt->get_result();
@@ -91,6 +91,10 @@ try {
 
   $row = $res->fetch_assoc();
   $stmt->close();
+  
+  // Block password change for testuser@buffalo.edu
+  $userEmail = (string)($row['email'] ?? '');
+  $isTestUser = ($userEmail === 'testuser@buffalo.edu');
 
   /* Verify current password
    * SECURITY NOTE: password_verify() compares the user-provided
@@ -109,6 +113,14 @@ try {
     $conn->close();
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'New password must differ from current']);
+    exit;
+  }
+
+  // Block password change for testuser@buffalo.edu - return success but don't actually update
+  if ($isTestUser) {
+    $conn->close();
+    // Return success without actually changing the password or destroying session
+    echo json_encode(['ok' => true]);
     exit;
   }
 

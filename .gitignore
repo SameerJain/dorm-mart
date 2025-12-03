@@ -43,3 +43,8 @@ dorm-mart/.env.*
 
 #Local deployment files
 deploy.bat
+
+# Cookie files (contains sensitive session data)
+cookies.txt
+cookies_buyer.txt
+cookies_seller.txt

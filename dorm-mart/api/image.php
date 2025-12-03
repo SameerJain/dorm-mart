@@ -38,7 +38,7 @@ if (isset($_GET['file']) && $_GET['file'] !== '') {
     stream_image($path);
 }
 
-// 2) ?url=/data/images/filename.png
+// 2) ?url=/data/images/filename.png OR /media/review-images/filename.jpg OR /media/chat-images/filename.jpg
 if (isset($_GET['url']) && $_GET['url'] !== '') {
     $url = $_GET['url'];
 
@@ -48,18 +48,49 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
         $url = substr($url, 0, $qpos);
     }
 
-    // url should start with /data/images/
+    $projectRoot = dirname(__DIR__);
+    $path = null;
+
+    // Handle /data/images/ paths (legacy)
     $prefix = '/data/images/';
     if (strpos($url, $prefix) === 0) {
         $file = substr($url, strlen($prefix));
-    } else {
-        // maybe someone passed just filename, handle that too
+        $file = basename($file);
+        $path = $IMAGE_DIR . DIRECTORY_SEPARATOR . $file;
+    }
+    // Handle /media/review-images/ paths
+    elseif (strpos($url, '/media/review-images/') === 0) {
+        $file = substr($url, strlen('/media/review-images/'));
+        $file = basename($file);
+        $mediaPath = $projectRoot . '/media/review-images/' . $file;
+        if (file_exists($mediaPath)) {
+            $path = $mediaPath;
+        }
+    }
+    // Handle /media/chat-images/ paths
+    elseif (strpos($url, '/media/chat-images/') === 0) {
+        $file = substr($url, strlen('/media/chat-images/'));
+        $file = basename($file);
+        $mediaPath = $projectRoot . '/media/chat-images/' . $file;
+        if (file_exists($mediaPath)) {
+            $path = $mediaPath;
+        }
+    }
+    // Handle other /media/ paths
+    elseif (strpos($url, '/media/') === 0) {
+        $file = substr($url, strlen('/media/'));
+        $mediaPath = $projectRoot . '/media/' . $file;
+        if (file_exists($mediaPath)) {
+            $path = $mediaPath;
+        }
+    }
+    // Fallback: maybe someone passed just filename
+    else {
         $file = basename($url);
+        $path = $IMAGE_DIR . DIRECTORY_SEPARATOR . $file;
     }
 
-    $file = basename($file);
-    $path = $IMAGE_DIR . DIRECTORY_SEPARATOR . $file;
-    if (!file_exists($path)) {
+    if ($path === null || !file_exists($path)) {
         http_response_code(404);
         exit('Image not found');
     }

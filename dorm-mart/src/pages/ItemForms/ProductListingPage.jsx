@@ -1,10 +1,24 @@
 // src/pages/ItemForms/ProductListingPage.jsx
-import React, { useState, useRef, useEffect } from "react";
-import { useParams, useMatch, useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useParams, useMatch, useNavigate, useLocation } from "react-router-dom";
+import { MEET_LOCATION_OPTIONS } from "../../constants/meetLocations";
+
+// Check if price string contains meme numbers (666, 67, 420, 69, 80085, 8008, 5318008, 1488, 42069, 6969, 42042, 66666)
+function containsMemePrice(priceString) {
+  if (!priceString) return false;
+  // Extract all digits from the price string (remove dollar signs, spaces, decimal points, etc.)
+  const digitsOnly = String(priceString).replace(/[^\d]/g, '');
+  if (!digitsOnly) return false;
+  
+  const memeNumbers = ['666', '67', '420', '69', '80085', '8008', '5318008', '1488', '42069', '6969', '42042', '66666'];
+  // Check if any meme number sequence appears anywhere in the digit string
+  return memeNumbers.some(meme => digitsOnly.includes(meme));
+}
 
 function ProductListingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // robust matcher for /product-listing/new in different mount contexts
   const matchNewAbs = useMatch({ path: "/product-listing/new", end: true });
@@ -40,13 +54,22 @@ function ProductListingPage() {
   );
   const [images, setImages] = useState([]); // [{file, url}, ...]
   const fileInputRef = useRef();
+  const formTopRef = useRef(null);
+  const scrollPositionRef = useRef(0);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverMsg, setServerMsg] = useState(null);
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  const [showTopErrorBanner, setShowTopErrorBanner] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [isSold, setIsSold] = useState(false);
 
   // success modal
   const [showSuccess, setShowSuccess] = useState(false);
-  const [createdProdId, setCreatedProdId] = useState(null);
+
+  // API base URL (respects .env)
+  const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+  const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
 
   // categories dropdown state
   const [availableCategories, setAvailableCategories] = useState([]);
@@ -57,28 +80,78 @@ function ProductListingPage() {
   const CATEGORIES_MAX = 3;
 
   const LIMITS = {
-    title: 70,
+    title: 50,
     description: 1000,
-    price: 999999.99,
+    price: 9999.99,
     priceMin: 0.01,
+    images: 6,
   };
+
+  // File type restrictions (same as chat)
+  const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+  const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+  const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
   // ========== CROPPER STATE ==========
   const [showCropper, setShowCropper] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const [cropImgEl, setCropImgEl] = useState(null);
   const [pendingFileName, setPendingFileName] = useState("");
-  const previewBoxSize = 480;
+  
+  // Responsive preview box size - smaller on mobile
+  const [previewBoxSize, setPreviewBoxSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const isMobile = window.innerWidth < 768;
+      return isMobile ? Math.min(480, window.innerWidth - 80) : 480;
+    }
+    return 480;
+  });
+
+  // Update preview box size on window resize
+  useEffect(() => {
+    const updatePreviewSize = () => {
+      const isMobile = window.innerWidth < 768;
+      setPreviewBoxSize(isMobile ? Math.min(480, window.innerWidth - 80) : 480);
+    };
+
+    window.addEventListener('resize', updatePreviewSize);
+    return () => window.removeEventListener('resize', updatePreviewSize);
+  }, []);
+
+  // Prevent body scroll when cropper modal is open
+  useEffect(() => {
+    if (showCropper) {
+      // Store current scroll position
+      scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollPositionRef.current}px`;
+      document.body.style.width = '100%';
+    } else {
+      // Restore scroll position
+      const scrollY = scrollPositionRef.current;
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      // Use requestAnimationFrame to ensure DOM is updated before scrolling
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+      });
+    }
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+    };
+  }, [showCropper]);
 
   // we still keep React state for display/selection so UI updates,
   // but we ALSO mirror them in refs so drag reads the latest values.
-  const [displayInfo, setDisplayInfo] = useState({
-    dx: 0,
-    dy: 0,
-    dw: 0,
-    dh: 0,
-    scale: 1,
-  });
   const displayInfoRef = useRef({
     dx: 0,
     dy: 0,
@@ -142,12 +215,140 @@ function ProductListingPage() {
   }, []);
 
   // ============================================
-  // MODE-AWARE RESET
+  // FETCH EXISTING LISTING (EDIT MODE)
   // ============================================
   useEffect(() => {
-    if (isEdit) {
-      // fetch existing (not implemented here)
-    } else if (isNew) {
+    if (!isEdit || !id) return;
+
+    let ignore = false;
+    async function loadExistingListing() {
+      try {
+        setLoadingExisting(true);
+        setLoadError(null);
+        setServerMsg(null);
+
+        const res = await fetch(`${API_BASE}/viewProduct.php?product_id=${encodeURIComponent(id)}`, {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to load listing: HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (!data || !data.product_id) {
+          throw new Error("Invalid listing data received");
+        }
+
+        if (ignore) return;
+
+        // Prevent editing sold items
+        if (data.sold === true) {
+          setIsSold(true);
+          setLoadError("Cannot edit sold items.");
+          setServerMsg("Cannot edit sold items. Please return to the seller dashboard.");
+          setLoadingExisting(false);
+          // Redirect to seller dashboard after a short delay
+          setTimeout(() => {
+            navigate("/app/seller-dashboard", { replace: true });
+          }, 2000);
+          return;
+        }
+
+        setIsSold(false);
+
+        // Populate form fields
+        setTitle(data.title || "");
+        
+        // Handle categories (can be tags array or categories JSON)
+        let cats = [];
+        if (Array.isArray(data.tags)) {
+          cats = data.tags;
+        } else if (data.categories) {
+          try {
+            const parsed = typeof data.categories === 'string' 
+              ? JSON.parse(data.categories) 
+              : data.categories;
+            if (Array.isArray(parsed)) {
+              cats = parsed;
+            }
+          } catch (e) {
+            console.warn("Failed to parse categories:", e);
+          }
+        }
+        setCategories(cats);
+
+        setItemLocation(data.item_location || "");
+        setCondition(data.item_condition || "");
+        setDescription(data.description || "");
+        setPrice(data.listing_price || "");
+        setAcceptTrades(data.trades === true || data.trades === 1);
+        setPriceNegotiable(data.price_nego === true || data.price_nego === 1);
+
+        // Handle existing photos
+        let existingPhotos = [];
+        if (Array.isArray(data.photos)) {
+          existingPhotos = data.photos;
+        } else if (typeof data.photos === 'string' && data.photos) {
+          try {
+            const parsed = JSON.parse(data.photos);
+            if (Array.isArray(parsed)) {
+              existingPhotos = parsed;
+            }
+          } catch (e) {
+            // If not JSON, treat as comma-separated
+            existingPhotos = data.photos.split(',').map(s => s.trim()).filter(Boolean);
+          }
+        }
+
+        // Convert existing photo URLs to image objects for display
+        // Store original URLs separately so we can send them back
+        const imageObjects = existingPhotos.map(url => {
+          // Proxy images through image.php if needed (same logic as viewProduct)
+          const raw = String(url);
+          let proxiedUrl = url;
+          if (/^https?:\/\//i.test(raw)) {
+            proxiedUrl = `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+          } else if (raw.startsWith('/data/images/') || raw.startsWith('/images/')) {
+            proxiedUrl = `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
+          } else if (raw.startsWith("/")) {
+            proxiedUrl = `${PUBLIC_BASE}${raw}`;
+          }
+          
+          return {
+            file: null, // No file object for existing images
+            url: proxiedUrl,
+            originalUrl: url, // Store original URL for submission
+          };
+        });
+        setImages(imageObjects);
+
+        setSelectedCategory("");
+        setErrors({}); // This already clears all errors including images
+      } catch (e) {
+        if (!ignore) {
+          console.error("Error loading existing listing:", e);
+          setLoadError(e?.message || "Failed to load listing data.");
+          setServerMsg(e?.message || "Failed to load listing data.");
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingExisting(false);
+        }
+      }
+    }
+
+    loadExistingListing();
+    return () => {
+      ignore = true;
+    };
+  }, [id, isEdit, API_BASE, PUBLIC_BASE]);
+
+  // ============================================
+  // MODE-AWARE RESET (NEW MODE)
+  // ============================================
+  useEffect(() => {
+    if (isNew) {
       setTitle(defaultForm.title);
       setCategories([...defaultForm.categories]);
       setItemLocation(defaultForm.itemLocation);
@@ -160,9 +361,11 @@ function ProductListingPage() {
       setSelectedCategory("");
       setErrors({});
       setServerMsg(null);
+      setLoadError(null);
+      setIsSold(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isNew]);
+  }, [isNew]);
 
   // ============================================
   // INPUT HANDLER
@@ -170,7 +373,31 @@ function ProductListingPage() {
   const handleInputChange = (field, value, setter) => {
     if (field === "title" && value.length > LIMITS.title) return;
     if (field === "description" && value.length > LIMITS.description) return;
-    if (field === "price" && value > LIMITS.price) return;
+    
+    // For price (text input), validate format: only digits and at most one decimal point
+    if (field === "price") {
+      // Allow empty string
+      if (value === "") {
+        setter(value);
+        return;
+      }
+      
+      // Count decimal points - only allow one
+      const decimalCount = (value.match(/\./g) || []).length;
+      if (decimalCount > 1) return;
+      
+      // Check if value matches valid number format (non-negative digits with optional decimal point)
+      // Allow: "40", "40.5", "40.99", "0.5", ".5", etc.
+      // Reject: "40.5.5", "abc", "40a", "-40", etc.
+      const validPricePattern = /^\d*\.?\d*$/;
+      
+      // Check if value matches valid pattern
+      if (!validPricePattern.test(value)) return;
+      
+      // Validate numeric limit if value is not empty and is a valid number
+      if (value !== "" && !isNaN(parseFloat(value)) && parseFloat(value) > LIMITS.price) return;
+    }
+    
     setter(value);
     if (errors[field]) {
       setErrors((prev) => {
@@ -184,29 +411,6 @@ function ProductListingPage() {
   // ============================================
   // CATEGORY HANDLERS
   // ============================================
-  const addCategory = () => {
-    if (!selectedCategory) {
-      setErrors((p) => ({ ...p, categories: "Select a category" }));
-      return;
-    }
-    if (categories.includes(selectedCategory)) return;
-    if (categories.length >= CATEGORIES_MAX) {
-      setErrors((p) => ({
-        ...p,
-        categories: `Select at most ${CATEGORIES_MAX} categories`,
-      }));
-      return;
-    }
-    const next = [...categories, selectedCategory];
-    setCategories(next);
-    setSelectedCategory("");
-    setErrors((p) => {
-      const ne = { ...p };
-      if (next.length && next.length <= CATEGORIES_MAX) delete ne.categories;
-      return ne;
-    });
-  };
-
   const removeCategory = (val) => {
     const next = categories.filter((c) => c !== val);
     setCategories(next);
@@ -256,6 +460,8 @@ function ProductListingPage() {
 
     if (price === "") {
       newErrors.price = "Price is required";
+    } else if (containsMemePrice(price)) {
+      newErrors.price = "The price has a meme input in it. Please try a different price.";
     } else if (Number(price) < LIMITS.priceMin) {
       newErrors.price = `Minimum price is $${LIMITS.priceMin.toFixed(2)}`;
     } else if (Number(price) > LIMITS.price) {
@@ -268,29 +474,105 @@ function ProductListingPage() {
       newErrors.categories = `Select at most ${CATEGORIES_MAX} categories`;
     }
 
-    if (!itemLocation || itemLocation === "<Select Option>") {
+    if (!itemLocation) {
       newErrors.itemLocation = "Select an item location";
     }
-    if (!condition || condition === "<Select Option>") {
+    if (!condition || condition === "") {
       newErrors.condition = "Select an item condition";
+    }
+
+    if (!images || images.length === 0) {
+      newErrors.images = "At least one image is required";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Clear image error when images are added
+  useEffect(() => {
+    if (images.length > 0 && errors.images) {
+      setErrors((prev) => {
+        const ne = { ...prev };
+        delete ne.images;
+        return ne;
+      });
+    }
+  }, [images.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ============================================
   // IMAGE UPLOAD + 1:1 ENFORCEMENT
   // ============================================
+  function isAllowedType(f) {
+    // Prefer MIME, but fall back to extension if needed
+    if (f.type && ALLOWED_MIME.has(f.type)) return true;
+
+    const name = (f.name || "").toLowerCase();
+    const ext = ALLOWED_EXTS.has(
+      name.slice(name.lastIndexOf(".")) // includes dot
+    );
+    return ext;
+  }
+
   function onFileChange(e) {
     const files = Array.from(e.target.files || []).slice(0, 1);
     if (!files.length) return;
 
+    // Check image limit
+    if (images.length >= LIMITS.images) {
+      setErrors((prev) => ({
+        ...prev,
+        images: `Maximum ${LIMITS.images} images allowed.`,
+      }));
+      e.target.value = null;
+      return;
+    }
+
     const file = files[0];
+
+    // Validate file size
+    if (file.size > MAX_BYTES) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Image is too large. Max size is 2 MB.",
+      }));
+      e.target.value = null;
+      return;
+    }
+
+    // Validate file type
+    if (!isAllowedType(file)) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Only JPG/JPEG, PNG, and WEBP images are allowed.",
+      }));
+      e.target.value = null;
+      return;
+    }
+
+    // Clear file size and type errors if validation passes
+    if (errors.images && (errors.images.includes("Image is too large") || errors.images.includes("Only JPG/JPEG"))) {
+      setErrors((prev) => {
+        const ne = { ...prev };
+        delete ne.images;
+        return ne;
+      });
+    }
+
     const reader = new FileReader();
     reader.onload = function (ev) {
       const img = new Image();
       img.onload = function () {
+        // Check image limit again before adding (in case user added images while file was loading)
+        if (images.length >= LIMITS.images) {
+          setErrors((prev) => ({
+            ...prev,
+            images: `Maximum ${LIMITS.images} images allowed.`,
+          }));
+          e.target.value = null;
+          return;
+        }
+
         const w = img.width;
         const h = img.height;
         if (w === h) {
@@ -302,7 +584,24 @@ function ProductListingPage() {
               url: ev.target.result,
             },
           ]);
+          // Clear image error when image is added
+          if (errors.images) {
+            setErrors((prev) => {
+              const ne = { ...prev };
+              delete ne.images;
+              return ne;
+            });
+          }
         } else {
+          // Check image limit before opening cropper
+          if (images.length >= LIMITS.images) {
+            setErrors((prev) => ({
+              ...prev,
+              images: `Maximum ${LIMITS.images} images allowed.`,
+            }));
+            e.target.value = null;
+            return;
+          }
           // open cropper
           setCropImageSrc(ev.target.result);
           setCropImgEl(img);
@@ -344,7 +643,6 @@ function ProductListingPage() {
       dh: dispH,
       scale,
     };
-    setDisplayInfo(di);
     displayInfoRef.current = di;
 
     const fixedSize = Math.min(dispW, dispH);
@@ -363,7 +661,10 @@ function ProductListingPage() {
   function startDrag(e) {
     e.preventDefault();
     draggingRef.current = true;
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    // Handle both mouse and touch events
+    const clientX = e.clientX ?? (e.touches?.[0]?.clientX ?? 0);
+    const clientY = e.clientY ?? (e.touches?.[0]?.clientY ?? 0);
+    dragStartRef.current = { x: clientX, y: clientY };
     selectionStartRef.current = {
       x: selectionRef.current.x,
       y: selectionRef.current.y,
@@ -378,8 +679,12 @@ function ProductListingPage() {
     const dragStart = dragStartRef.current;
     const size = selectionRef.current.size;
 
-    let newX = selStart.x + (e.clientX - dragStart.x);
-    let newY = selStart.y + (e.clientY - dragStart.y);
+    // Handle both mouse and touch events
+    const clientX = e.clientX ?? (e.touches?.[0]?.clientX ?? 0);
+    const clientY = e.clientY ?? (e.touches?.[0]?.clientY ?? 0);
+
+    let newX = selStart.x + (clientX - dragStart.x);
+    let newY = selStart.y + (clientY - dragStart.y);
 
     const minX = di.dx;
     const minY = di.dy;
@@ -396,7 +701,11 @@ function ProductListingPage() {
     setSelection(newSel);
   }
 
-  function onCropMouseUp() {
+  function onCropMouseUp(e) {
+    // Prevent default touch behavior
+    if (e) {
+      e.preventDefault();
+    }
     draggingRef.current = false;
   }
 
@@ -406,6 +715,19 @@ function ProductListingPage() {
   function handleCropConfirm() {
     if (!cropImgEl || !cropImageSrc) {
       setShowCropper(false);
+      return;
+    }
+
+    // Check image limit before adding cropped image
+    if (images.length >= LIMITS.images) {
+      setErrors((prev) => ({
+        ...prev,
+        images: `Maximum ${LIMITS.images} images allowed.`,
+      }));
+      setShowCropper(false);
+      setCropImageSrc(null);
+      setCropImgEl(null);
+      setPendingFileName("");
       return;
     }
 
@@ -441,12 +763,35 @@ function ProductListingPage() {
           setShowCropper(false);
           return;
         }
+        
+        // Check image limit again before adding (in case user added images while cropping)
+        if (images.length >= LIMITS.images) {
+          setErrors((prev) => ({
+            ...prev,
+            images: `Maximum ${LIMITS.images} images allowed.`,
+          }));
+          setShowCropper(false);
+          setCropImageSrc(null);
+          setCropImgEl(null);
+          setPendingFileName("");
+          return;
+        }
+
         const finalFile = new File([blob], pendingFileName, {
           type: "image/png",
         });
         const finalUrl = URL.createObjectURL(blob);
 
         setImages((prev) => [...prev, { file: finalFile, url: finalUrl }]);
+
+        // Clear image error when cropped image is added
+        if (errors.images) {
+          setErrors((prev) => {
+            const ne = { ...prev };
+            delete ne.images;
+            return ne;
+          });
+        }
 
         setShowCropper(false);
         setCropImageSrc(null);
@@ -471,7 +816,22 @@ function ProductListingPage() {
   async function publishListing(e) {
     e.preventDefault();
     setServerMsg(null);
-    if (!validateAll()) return;
+    
+    // Prevent submission if item is sold
+    if (isEdit && isSold) {
+      setServerMsg("Cannot edit sold items.");
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    
+    if (!validateAll()) {
+      // Scroll to top and show error banner
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setShowTopErrorBanner(true);
+      return;
+    }
+    // Hide error banner on successful validation
+    setShowTopErrorBanner(false);
 
     const fd = new FormData();
     fd.append("mode", isEdit ? "update" : "create");
@@ -485,19 +845,32 @@ function ProductListingPage() {
     fd.append("acceptTrades", acceptTrades ? "1" : "0");
     fd.append("priceNegotiable", priceNegotiable ? "1" : "0");
 
-    images.forEach((img, i) => {
+    // Separate existing photos (no file) from new uploads (has file)
+    const existingPhotoUrls = [];
+    images.forEach((img) => {
       if (img?.file) {
+        // New upload - add as file
         fd.append(
           "images[]",
           img.file,
-          img.file.name || `image_${i}.png` || `image_${i}.jpg`
+          img.file.name || `image_${Date.now()}.png`
         );
+      } else if (img?.originalUrl) {
+        // Existing photo - store original URL to send back
+        existingPhotoUrls.push(img.originalUrl);
       }
     });
 
+    // In edit mode, send existing photos that should be kept
+    if (isEdit && existingPhotoUrls.length > 0) {
+      existingPhotoUrls.forEach((url) => {
+        fd.append("existingPhotos[]", url);
+      });
+    }
+
     try {
       setSubmitting(true);
-      const res = await fetch("api/seller-dashboard/product_listing.php", {
+      const res = await fetch(`${API_BASE}/seller-dashboard/product_listing.php`, {
         method: "POST",
         body: fd,
         credentials: "include",
@@ -516,21 +889,28 @@ function ProductListingPage() {
       }
 
       const pid = data?.prod_id ?? data?.product_id ?? null;
-      setCreatedProdId(pid);
-      setShowSuccess(true);
+      
+      if (isEdit) {
+        // For edit mode, redirect back to where user came from, or dashboard
+        const returnTo = location.state?.returnTo || "/app/seller-dashboard";
+        navigate(returnTo);
+      } else {
+        // For new listings, show success modal
+        setShowSuccess(true);
 
-      // reset
-      setTitle(defaultForm.title);
-      setCategories([]);
-      setItemLocation(defaultForm.itemLocation);
-      setCondition(defaultForm.condition);
-      setDescription(defaultForm.description);
-      setPrice(defaultForm.price);
-      setAcceptTrades(defaultForm.acceptTrades);
-      setPriceNegotiable(defaultForm.priceNegotiable);
-      setImages([]);
-      setSelectedCategory("");
-      setErrors({});
+        // reset form
+        setTitle(defaultForm.title);
+        setCategories([]);
+        setItemLocation(defaultForm.itemLocation);
+        setCondition(defaultForm.condition);
+        setDescription(defaultForm.description);
+        setPrice(defaultForm.price);
+        setAcceptTrades(defaultForm.acceptTrades);
+        setPriceNegotiable(defaultForm.priceNegotiable);
+        setImages([]);
+        setSelectedCategory("");
+        setErrors({});
+      }
     } catch (err) {
       setServerMsg(err?.message || "Network error.");
     } finally {
@@ -558,11 +938,65 @@ function ProductListingPage() {
         </div>
 
         {serverMsg && (
-          <div className="mb-4 rounded-lg border p-3 text-sm bg-white">
+          <div className={`mb-4 rounded-lg border p-3 text-sm ${
+            loadError ? "bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300" 
+            : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+          }`}>
             {serverMsg}
           </div>
         )}
 
+        {loadingExisting && (
+          <div className="mb-4 rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20 p-4">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+              <p className="text-blue-700 dark:text-blue-300 font-medium">Loading existing listing data...</p>
+            </div>
+          </div>
+        )}
+
+        {loadingExisting ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400 text-lg">Loading listing data...</p>
+          </div>
+        ) : (
+        <div ref={formTopRef}>
+        {/* Top-of-Form Error Banner */}
+        {showTopErrorBanner && Object.keys(errors).length > 0 && (() => {
+          const errorCount = Object.keys(errors).length;
+          const showSpecificErrors = errorCount <= 2;
+          
+          return (
+            <div className="mb-6 rounded-lg border-2 border-red-500 dark:border-red-600 bg-red-50 dark:bg-red-950/20 p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  {showSpecificErrors ? (
+                    <>
+                      <h3 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">
+                        A few things need your attention:
+                      </h3>
+                      <ul className="list-disc list-inside space-y-1">
+                        {Object.values(errors).map((error, index) => (
+                          <li key={index} className="text-sm text-red-800 dark:text-red-300">
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p className="text-lg font-semibold text-red-900 dark:text-red-200">
+                      Please fill out the missing information.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         <div className="space-y-6">
           {/* Basic Information */}
           <div className="bg-white dark:bg-gray-950/50 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
@@ -591,7 +1025,7 @@ function ProductListingPage() {
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Be specific and descriptive to attract buyers
+                    Be specific and descriptive to attract buyers.
                   </p>
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     {title.length}/{LIMITS.title}
@@ -612,14 +1046,23 @@ function ProductListingPage() {
                   </label>
                   <select
                     value={condition}
-                    onChange={(e) => setCondition(e.target.value)}
+                    onChange={(e) => {
+                      setCondition(e.target.value);
+                      if (errors.condition) {
+                        setErrors((prev) => {
+                          const ne = { ...prev };
+                          delete ne.condition;
+                          return ne;
+                        });
+                      }
+                    }}
                     className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.condition
                         ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                     }`}
                   >
-                    <option>{"<Select Option>"}</option>
+                    <option value="" disabled>Select An Option</option>
                     <option>Like New</option>
                     <option>Excellent</option>
                     <option>Good</option>
@@ -635,17 +1078,46 @@ function ProductListingPage() {
               </div>
 
               {/* Categories */}
-              <div>
-                <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Categories <span className="text-red-500">*</span>
-                </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Categories <span className="text-red-500">*</span>
+                  </label>
 
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => {
-                        setSelectedCategory(e.target.value);
+                  <div className="flex flex-col gap-2">
+                  <select
+                    value={selectedCategory}
+                    disabled={categories.length >= CATEGORIES_MAX}
+                    onChange={(e) => {
+                      const selected = e.target.value;
+                      if (selected) {
+                        // Automatically add the selected category
+                        setSelectedCategory(selected);
+                        // Check if already added
+                        if (categories.includes(selected)) {
+                          setSelectedCategory("");
+                          return;
+                        }
+                        // Check max limit
+                        if (categories.length >= CATEGORIES_MAX) {
+                          setErrors((p) => ({
+                            ...p,
+                            categories: `Select at most ${CATEGORIES_MAX} categories`,
+                          }));
+                          setSelectedCategory("");
+                          return;
+                        }
+                        // Add the category
+                        const next = [...categories, selected];
+                        setCategories(next);
+                        setSelectedCategory("");
+                        setErrors((p) => {
+                          const ne = { ...p };
+                          if (next.length && next.length <= CATEGORIES_MAX) delete ne.categories;
+                          return ne;
+                        });
+                      } else {
+                        setSelectedCategory("");
                         if (errors.categories) {
                           setErrors((p) => {
                             const ne = { ...p };
@@ -653,38 +1125,29 @@ function ProductListingPage() {
                             return ne;
                           });
                         }
-                      }}
-                      className={`flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                        errors.categories
-                          ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
-                          : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
-                      }`}
-                    >
-                      <option value="">{`<Select Option>`}</option>
-                      {catLoading && <option disabled>Loading...</option>}
-                      {!catLoading && selectableOptions.length === 0 && (
-                        <option disabled>
-                          {catFetchError || "No categories available"}
-                        </option>
-                      )}
-                      {selectableOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={addCategory}
-                      disabled={
-                        !selectedCategory || categories.length >= CATEGORIES_MAX
                       }
-                      className="px-5 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      Add
-                    </button>
-                  </div>
+                    }}
+                    className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      categories.length >= CATEGORIES_MAX
+                        ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800"
+                        : errors.categories
+                        ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
+                        : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    }`}
+                  >
+                    <option value="" disabled>Select An Option</option>
+                    {catLoading && <option disabled>Loading...</option>}
+                    {!catLoading && selectableOptions.length === 0 && (
+                      <option disabled>
+                        {catFetchError || "No categories available"}
+                      </option>
+                    )}
+                    {selectableOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
 
                   {/* Selected chips */}
                   <div className="flex flex-wrap gap-2">
@@ -716,11 +1179,12 @@ function ProductListingPage() {
                   </div>
                 </div>
 
-                {errors.categories && (
-                  <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                    {errors.categories}
-                  </p>
-                )}
+                  {errors.categories && (
+                    <p className="text-red-600 dark:text-red-400 text-sm mt-1">
+                      {errors.categories}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Description */}
@@ -748,7 +1212,7 @@ function ProductListingPage() {
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Provide detailed information about your item
+                    Provide detailed information about your item.
                   </p>
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     {description.length}/{LIMITS.description}
@@ -777,18 +1241,28 @@ function ProductListingPage() {
                 </label>
                 <select
                   value={itemLocation}
-                  onChange={(e) => setItemLocation(e.target.value)}
+                  onChange={(e) => {
+                    setItemLocation(e.target.value);
+                    if (errors.itemLocation) {
+                      setErrors((prev) => {
+                        const ne = { ...prev };
+                        delete ne.itemLocation;
+                        return ne;
+                      });
+                    }
+                  }}
                   className={`w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                     errors.itemLocation
                       ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
                       : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                   }`}
                 >
-                  <option>{"<Select Option>"}</option>
-                  <option>North Campus</option>
-                  <option>South Campus</option>
-                  <option>Ellicott</option>
-                  <option>Other</option>
+                  <option value="" disabled>Select An Option</option>
+                  {MEET_LOCATION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
+                    <option key={opt.value || "unselected"} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
                 {errors.itemLocation && (
                   <p className="text-red-600 dark:text-red-400 text-sm mt-1">
@@ -807,26 +1281,19 @@ function ProductListingPage() {
                     $
                   </span>
                   <input
-                    type="number"
+                    type="text"
                     value={price}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (value === "")
-                        handleInputChange("price", "", setPrice);
-                      else {
-                        const numValue = parseFloat(value);
-                        if (!isNaN(numValue))
-                          handleInputChange("price", numValue, setPrice);
-                      }
+                      // Store raw string value to preserve exact user input
+                      // Only convert to number when needed (validation/submission)
+                      handleInputChange("price", value, setPrice);
                     }}
                     className={`w-full pl-8 pr-4 py-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.price
                         ? "border-red-500 bg-red-50/70 dark:bg-red-950/20"
                         : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
                     }`}
-                    step="0.01"
-                    min={LIMITS.priceMin}
-                    max={LIMITS.price}
                     placeholder="0.00"
                   />
                 </div>
@@ -876,9 +1343,13 @@ function ProductListingPage() {
             </div>
 
             {/* Photos */}
-            <div className="bg-white dark:bg-gray-950/30 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 mt-6">
+            <div className={`bg-white dark:bg-gray-950/30 rounded-2xl shadow-sm border p-6 mt-6 ${
+              errors.images
+                ? "border-red-500 dark:border-red-600"
+                : "border-gray-200 dark:border-gray-800"
+            }`}>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-6">
-                Photos &amp; Media (1:1 enforced)
+                Photos <span className="text-red-500">*</span>
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
@@ -914,20 +1385,43 @@ function ProductListingPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 multiple
                 onChange={onFileChange}
                 className="hidden"
               />
               <button
-                onClick={() => fileInputRef.current.click()}
-                className="w-full py-4 px-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Store scroll position before opening file dialog
+                  scrollPositionRef.current = window.scrollY || window.pageYOffset || 0;
+                  fileInputRef.current.click();
+                }}
+                disabled={images.length >= LIMITS.images}
+                className={`w-full py-4 px-6 border-2 border-dashed rounded-lg font-medium transition-colors ${
+                  images.length >= LIMITS.images
+                    ? "border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
+                    : errors.images
+                    ? "border-red-500 dark:border-red-600 text-red-600 dark:text-red-400 hover:border-red-600 dark:hover:border-red-500"
+                    : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-200 hover:border-blue-500 hover:text-blue-600"
+                }`}
               >
-                + Add Photos (we will force 1:1)
+                + Add Photos
               </button>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
-                We enforce a square (1:1) ratio so listings look consistent.
+                All photos are displayed as squares. You can adjust the crop area when uploading.
+                {images.length >= LIMITS.images && (
+                  <span className="block mt-1 text-gray-600 dark:text-gray-300 font-medium">
+                    Maximum {LIMITS.images} images reached.
+                  </span>
+                )}
               </p>
+              {errors.images && (
+                <p className="text-red-600 dark:text-red-400 text-sm mt-2 text-center">
+                  {errors.images}
+                </p>
+              )}
             </div>
 
             {/* Safety Tips */}
@@ -937,24 +1431,24 @@ function ProductListingPage() {
               </h3>
               <ul className="text-sm text-blue-800 dark:text-blue-100 space-y-3">
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Consider bringing a friend, especially for high value items</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Consider bringing a friend, especially for high value items.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Report suspicious messages or behavior</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Report suspicious messages or behavior.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Trust your gut. Don't proceed if something feels off</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Trust your gut. Don't proceed if something feels off.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Keep receipts or transaction records</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Keep receipts or transaction records.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Use secure payment methods (cash, Venmo, Zelle)</span>
+                  <span className="text-blue-600 dark:text-blue-200 flex-shrink-0">•</span>
+                  <span>Use secure payment methods (cash, Venmo, Zelle).</span>
                 </li>
               </ul>
             </div>
@@ -967,29 +1461,23 @@ function ProductListingPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={publishListing}
-                  disabled={submitting}
+                  disabled={submitting || loadingExisting}
                   className="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
                 >
                   {submitting
                     ? "Submitting..."
+                    : loadingExisting
+                    ? "Loading..."
                     : isEdit
                     ? "Update Listing"
                     : "Publish Listing"}
                 </button>
 
-                {/* Save Draft (disabled for now) */}
                 <button
-                  type="button"
-                  disabled
-                  title="Draft saving is not available yet"
-                  className="flex-1 py-3 border border-gray-300 dark:border-gray-700 text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg font-medium cursor-not-allowed"
-                  aria-disabled="true"
-                >
-                  Save Draft
-                </button>
-
-                <button
-                  onClick={() => navigate("/app/seller-dashboard")}
+                  onClick={() => {
+                    const returnTo = location.state?.returnTo || "/app/seller-dashboard";
+                    navigate(returnTo);
+                  }}
                   className="flex-1 py-3 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
                   type="button"
                 >
@@ -1006,10 +1494,12 @@ function ProductListingPage() {
             </div>
           </div>
         </div>
+        </div>
+        )}
       </main>
 
-      {/* Success Modal */}
-      {showSuccess && (
+      {/* Success Modal - Only show for new listings */}
+      {showSuccess && !isEdit && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           role="dialog"
@@ -1030,12 +1520,6 @@ function ProductListingPage() {
               <p className="mt-1 text-gray-900 dark:text-gray-100 font-semibold">
                 Congrats!
               </p>
-              <p className="mt-3 text-gray-800 dark:text-gray-200">
-                Your product id is:{" "}
-                <span className="font-mono font-bold">
-                  {createdProdId ?? "N/A"}
-                </span>
-              </p>
             </div>
             <div className="px-6 py-4 flex justify-end gap-3">
               <button
@@ -1047,10 +1531,13 @@ function ProductListingPage() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/app/seller-dashboard")}
+                onClick={() => {
+                  window.scrollTo(0, 0);
+                  navigate("/app/seller-dashboard");
+                }}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
               >
-                Go back to Dashboard
+                {location.state?.fromDashboard === true ? "Go back to Dashboard" : "View Dashboard"}
               </button>
             </div>
           </div>
@@ -1060,25 +1547,29 @@ function ProductListingPage() {
       {/* Cropper Modal */}
       {showCropper && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl max-w-3xl w-full p-5">
+          <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl max-w-3xl w-full p-3 md:p-5">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-2">
-              Crop image to 1:1
+              Crop Image
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Drag the square to choose the area you want. The square size is fixed.
             </p>
 
-            <div
-              ref={cropContainerRef}
-              onMouseMove={onCropMouseMove}
-              onMouseUp={onCropMouseUp}
-              onMouseLeave={onCropMouseUp}
-              className="relative mx-auto bg-gray-100 dark:bg-gray-900 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 select-none"
-              style={{
-                width: `${previewBoxSize}px`,
-                height: `${previewBoxSize}px`,
-              }}
-            >
+            <div className="flex justify-center">
+              <div
+                ref={cropContainerRef}
+                onMouseMove={onCropMouseMove}
+                onMouseUp={onCropMouseUp}
+                onMouseLeave={onCropMouseUp}
+                onTouchMove={onCropMouseMove}
+                onTouchEnd={onCropMouseUp}
+                className="relative bg-gray-100 dark:bg-gray-900 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 select-none"
+                style={{
+                  width: `${previewBoxSize}px`,
+                  height: `${previewBoxSize}px`,
+                  touchAction: 'none',
+                }}
+              >
               {cropImageSrc ? (
                 <>
                   <img
@@ -1092,6 +1583,7 @@ function ProductListingPage() {
                   {/* fixed-size draggable selection */}
                   <div
                     onMouseDown={startDrag}
+                    onTouchStart={startDrag}
                     style={{
                       position: "absolute",
                       left: `${selection.x}px`,
@@ -1105,6 +1597,7 @@ function ProductListingPage() {
                       cursor: "move",
                       // ensure this box can be clicked/dragged
                       pointerEvents: "auto",
+                      touchAction: "none",
                     }}
                   />
                 </>
@@ -1113,6 +1606,7 @@ function ProductListingPage() {
                   Loading...
                 </div>
               )}
+              </div>
             </div>
 
             {/* hidden canvas */}

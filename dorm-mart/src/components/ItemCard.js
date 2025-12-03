@@ -1,5 +1,6 @@
 // src/components/ItemCardNew.jsx
 import React from "react";
+import { withFallbackImage } from "../utils/imageFallback";
 
 export default function ItemCardNew({
   title,
@@ -16,6 +17,8 @@ export default function ItemCardNew({
     typeof status === "string" &&
     status.toUpperCase().includes("JUST"); // matches "JUST POSTED"
 
+  const imageSrc = withFallbackImage(image);
+
   return (
     <div
       className="relative flex flex-col justify-between bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden
@@ -30,17 +33,11 @@ export default function ItemCardNew({
 
       {/* Image */}
       <div className="flex justify-center items-center h-[150px] bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden">
-        {image ? (
-          <img
-            src={image}
-            alt={title}
-            className="object-cover w-full h-full"
-          />
-        ) : (
-          <div className="text-gray-400 dark:text-gray-500 text-xs">
-            Image coming soon
-          </div>
-        )}
+        <img
+          src={imageSrc}
+          alt={title}
+          className="object-cover w-full h-full"
+        />
       </div>
 
       {/* Details */}

@@ -1,25 +1,73 @@
 import { useNavigate } from 'react-router-dom';
+import PreLoginBranding from '../../components/PreLoginBranding';
 
 function ResetPasswordConfirmation() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#364156' }}>
-      {/* Centered confirmation card, reused styling without "Stay Here" */}
-      <div className="relative z-10 w-full max-w-lg mx-auto rounded-xl shadow-2xl border border-white/10"
-        style={{ backgroundColor: '#3d3eb5' }}>
-        <div className="p-6 sm:p-8">
-          <h3 className="text-xl sm:text-2xl font-serif text-white mb-3 text-center">Check Your Email</h3>
-          <p className="text-sm sm:text-base text-white/90 text-center leading-relaxed">
-            If an account using the email does not already exist, a temporary password has been sent to the email.
-          </p>
-          <div className="mt-6 flex items-center justify-center gap-3">
-            <button
-              onClick={() => { navigate('/login'); }}
-              className="px-5 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-            >
-              Go to Login
-            </button>
+    <div className="h-screen flex flex-col md:flex-row pre-login-bg overflow-hidden">
+      <PreLoginBranding />
+
+      {/* Right side - Confirmation message (full width on mobile, 50% on desktop) */}
+      <div
+        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 h-screen pre-login-bg relative overflow-hidden"
+      >
+        {/* Mobile branding header (visible only on mobile/tablet) */}
+        <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
+          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
+            Dorm Mart
+          </h1>
+          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">
+            Wastage, who?
+          </h2>
+        </div>
+
+        <div className="w-full max-w-md relative z-10">
+          <div
+            className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600"
+          >
+            {/* Torn paper effect */}
+            <div
+              className="absolute inset-0 rounded-lg bg-blue-600"
+              style={{
+                clipPath:
+                  "polygon(0 0, 100% 0, 100% 85%, 95% 90%, 100% 95%, 100% 100%, 0 100%)",
+              }}
+            ></div>
+
+            <div className="relative z-10">
+              {/* Header with dot */}
+              <div className="text-center mb-6 sm:mb-8 md:mb-10">
+                <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-4 sm:mb-5"></div>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif text-white leading-tight">
+                  Check Your Email
+                </h2>
+              </div>
+
+              <p className="text-base sm:text-lg text-white/90 text-center leading-relaxed mb-8 sm:mb-10">
+                If an account using the email does not already exist, a temporary password has been sent to the email.
+              </p>
+
+              <div className="flex items-center justify-center">
+                <button
+                  onClick={() => { navigate('/login'); }}
+                  className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 text-white py-3 sm:py-3.5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium text-base sm:text-lg active:scale-95"
+                >
+                  <span>Go to Login</span>
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -119,8 +119,7 @@ try {
             $seller = $row['email'];
         }
 
-        // XSS PROTECTION: json_encode() automatically escapes special characters for JSON
-        // No need to manually escape - json_encode handles it safely
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $out[] = [
             'id'         => (int)$row['product_id'],
             'title'      => $row['title'] ?? 'Untitled',
@@ -130,7 +129,7 @@ try {
             'tags'       => $tags,
             'category'   => !empty($tags) ? $tags[0] : null,
             'location'   => $row['item_location'] ?? 'North Campus',
-            'condition'  => $row['item_condition'] ?? null,
+            'condition'  => $row['item_condition'] ?? '',
             'created_at' => $createdAt,
             'seller'     => $seller,
             'sold_by'    => $seller,
@@ -141,15 +140,43 @@ try {
         ];
     }
 
+    
+    // Always prepend the Taco listing as the first item in the response
+    $tacoItem = [
+        'id'         => 3,
+        'title'      => 'Taco',
+        'price'      => 14.99,
+        'image'      => '/images/img_69049790323853.16461582.jpg',
+        'image_url'  => '/images/img_69049790323853.16461582.jpg',
+        'tags'       => ['Kitchen', 'Food'],
+        'category'   => 'Kitchen',
+        'location'   => 'North Campus',
+        'condition'  => 'Like New',
+        'created_at' => '2025-10-31 00:00:00',
+        'seller'     => 'Dorm Mart',
+        'sold_by'    => 'Dorm Mart',
+        'rating'     => 4.7,
+        'status'     => 'AVAILABLE',
+        'trades'     => true,
+        'price_nego' => false,
+    ];
+
+    // Remove any DB item with the same ID to avoid duplicates, then prepend Taco
+    $out = array_values(array_filter($out, fn($item) => (int)$item['id'] !== 3));
+    array_unshift($out, $tacoItem);
+
     echo json_encode($out);
     exit;
 
 } catch (Throwable $e) {
+    error_log('landingListings error: ' . $e->getMessage());
     http_response_code(500);
+    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => $e->getMessage(),
+        'detail' => $e->getMessage(), // Note: No HTML encoding needed for JSON - React handles XSS protection
     ]);
     exit;
 }

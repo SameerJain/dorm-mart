@@ -35,8 +35,8 @@ function UserPreferences() {
         if (!cancelled) setAvailableCategories(data);
       } catch (e) {
         if (!cancelled) {
-          setCategoriesError(e.message);
           console.error('Failed to load categories:', e);
+          setCategoriesError(e.message);
         }
       } finally {
         if (!cancelled) setCategoriesLoading(false);
@@ -324,8 +324,9 @@ function UserPreferences() {
           )}
         </div>
 
-        {/* Seller Options */}
-        <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
+        {/* TODO: Uncomment when reveal_contact_info feature is implemented
+        Seller Options */}
+        {/* <div className="rounded-lg border border-slate-200 dark:border-gray-600 p-6 bg-white dark:bg-gray-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100 mb-4">Seller Options</h2>
           <div className="flex items-center space-x-3">
             <input
@@ -339,7 +340,7 @@ function UserPreferences() {
               I agree to have my email and phone number be revealed to a prospective buyer
             </label>
           </div>
-        </div>
+        </div> */}
 
         {/* Theme */}
         <div className="rounded-lg border border-slate-200 p-6">
@@ -373,40 +374,6 @@ function UserPreferences() {
                 <span className="text-sm font-medium">Dark</span>
               </button>
             </div>
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => updateTheme("light")}
-              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-              aria-label="Switch to light theme"
-            >
-              <svg className="h-4 w-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button 
-              onClick={() => updateTheme("dark")}
-              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-              aria-label="Switch to dark theme"
-            >
-              <svg className="h-4 w-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Save Button with State Display */}
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-600">
-            <p>Interests: {selectedInterests.length} selected</p>
-            <p>Theme: {theme === 'light' ? 'Light Mode' : 'Dark Mode'}</p>
-            <p>Notifications: {promotionalEmails ? 'Enabled' : 'Disabled'}</p>
-          </div>
-          <div className="text-sm text-slate-500">
-            {isSaving ? 'Saving…' : 'All changes saved'}
           </div>
         </div>
       </div>

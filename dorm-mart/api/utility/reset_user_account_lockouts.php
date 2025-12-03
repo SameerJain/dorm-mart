@@ -8,8 +8,11 @@ setSecureCORS();
 /**
  * Reset All Active Lockouts - Development Utility
  * 
- * This script resets all active rate limiting lockouts for local development.
- * Run this script whenever you need to clear lockouts during testing.
+ * This script resets all active rate limiting lockouts for all sessions.
+ * Run this script whenever you need to clear all lockouts during testing.
+ * 
+ * NOTE: Rate limiting is now session-based instead of email-based.
+ * This script resets all sessions, not individual user accounts.
  * 
  * COMMAND LINE USAGE:
  * ===================
@@ -36,10 +39,11 @@ setSecureCORS();
  * 
  * NOTES:
  * ======
- * - This script resets failed_login_attempts to 0 and clears last_failed_attempt
- * - All users can then attempt login without rate limiting restrictions
+ * - This script resets failed_login_attempts to 0 and clears last_failed_attempt and lockout_until for all sessions
+ * - All sessions can then attempt login without rate limiting restrictions
  * - Use this during development/testing to reset rate limits
  * - Works both from command line and web browser
+ * - For resetting a single session, use reset_session_lockout.php instead
  */
 
 // Include database connection
@@ -54,8 +58,8 @@ if (php_sapi_name() !== 'cli') {
 try {
     $conn = db();
 
-    // Reset all failed login attempts and lockouts
-    $stmt = $conn->prepare('UPDATE user_accounts SET failed_login_attempts = 0, last_failed_attempt = NULL');
+    // Reset all failed login attempts and lockouts for all sessions
+    $stmt = $conn->prepare('UPDATE login_rate_limits SET failed_login_attempts = 0, last_failed_attempt = NULL, lockout_until = NULL');
     $stmt->execute();
     $affectedRows = $stmt->affected_rows;
     $stmt->close();
@@ -71,25 +75,26 @@ try {
         'success' => true,
         'message' => "All rate limiting lockouts have been reset!",
         'details' => [
-            'affected_users' => $affectedRows,
+            'affected_sessions' => $affectedRows,
             'reset_time' => $currentTime,
-            'note' => 'All users can now attempt login without rate limiting restrictions.'
+            'note' => 'All sessions can now attempt login without rate limiting restrictions.'
         ]
     ];
 
     if (php_sapi_name() === 'cli') {
         echo "SUCCESS: All rate limiting lockouts have been reset!\n";
-        echo "Affected users: $affectedRows\n";
+        echo "Affected sessions: $affectedRows\n";
         echo "Reset time: $currentTime\n";
-        echo "All users can now attempt login without restrictions.\n";
+        echo "All sessions can now attempt login without restrictions.\n";
     } else {
         echo json_encode($response, JSON_PRETTY_PRINT);
     }
 } catch (Exception $e) {
+    // XSS PROTECTION: Escape exception message to prevent XSS
     $errorResponse = [
         'success' => false,
         'error' => 'Failed to reset lockouts',
-        'message' => $e->getMessage()
+        'message' => escapeHtml($e->getMessage())
     ];
 
     if (php_sapi_name() === 'cli') {

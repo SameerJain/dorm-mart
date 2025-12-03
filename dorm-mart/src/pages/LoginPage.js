@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import backgroundImage from "../assets/images/login-page-left-side-background.jpg";
 import { fetch_me } from "../utils/handle_auth.js";
+import PreLoginBranding from "../components/PreLoginBranding";
 // Client no longer inspects cookies; auth is enforced server-side on protected routes
 
 function LoginPage() {
@@ -23,6 +23,7 @@ function LoginPage() {
         // User is authenticated, redirect to app
         navigate("/app", { replace: true });
       } catch (error) {
+        console.error("Login error:", error);
         // AbortError means component unmounted, don't navigate
         if (error.name === 'AbortError') {
           return;
@@ -61,7 +62,7 @@ function LoginPage() {
     setLoading(true);
 
     // Validate input lengths FIRST (prevent excessively large inputs)
-    if (email.length >= 50 || password.length >= 64) {
+    if (email.length > 255 || password.length > 64) {
       setError("Username or password is too large");
       setLoading(false);
       return;
@@ -97,13 +98,20 @@ function LoginPage() {
     }
 
     if (emailTrimmed === "") {
-      setError("Please input a valid email address");
+      setError("Please enter your UB email address");
+      setLoading(false);
+      return;
+    }
+
+    // Check if email is a UB email address
+    if (!emailTrimmed.toLowerCase().endsWith("@buffalo.edu")) {
+      setError("Only University at Buffalo email addresses are permitted (@buffalo.edu)");
       setLoading(false);
       return;
     }
 
     if (password.trim() === "") {
-      setError("Please input a password");
+      setError("Please enter your password");
       setLoading(false);
       return;
     }
@@ -160,70 +168,55 @@ function LoginPage() {
         // Navigate to the main app
         navigate("/app");
       } else {
-        // Show error from backend
-        setError(data.error || "Login failed");
+        // Show error from backend, with improved messaging
+        const backendError = data.error || "Login failed";
+        let userFriendlyError = backendError;
+        
+        // Map backend errors to more user-friendly messages
+        if (backendError === "Invalid input format") {
+          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
+        } else if (backendError === "Email must be @buffalo.edu") {
+          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
+        } else if (backendError === "Invalid credentials") {
+          userFriendlyError = "Invalid email or password. Please try again.";
+        } else if (backendError.includes("too large")) {
+          userFriendlyError = "Email or password is too long. Please check your input.";
+        }
+        
+        setError(userFriendlyError);
       }
     } catch (error) {
       // Handle network or other errors
       setError("Network error. Please try again.");
-      console.error("Login error:", error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      {/* Left side - Background image with branding (hidden on mobile, 50% on desktop) */}
-      <div className="hidden md:block md:w-1/2 relative min-h-screen">
-        {/* Background image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url(${backgroundImage})`,
-          }}
-        ></div>
-
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-
-        {/* Branding content */}
-        <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 lg:p-8">
-          <div className="text-center w-full px-4">
-            <h1 className="text-6xl lg:text-8xl xl:text-9xl font-serif text-white mb-4 lg:mb-6 flex flex-col lg:flex-row items-center justify-center lg:space-x-6 leading-tight lg:leading-normal">
-              <span>Dorm</span>
-              <span>Mart</span>
-            </h1>
-            <h2 className="text-2xl lg:text-3xl xl:text-4xl font-light text-white opacity-90">
-              Wastage Who?
-            </h2>
-          </div>
-        </div>
-      </div>
+    <div className="h-screen flex flex-col md:flex-row pre-login-bg overflow-hidden">
+      <PreLoginBranding />
 
       {/* Right side - Login form (full width on mobile, 50% on desktop) */}
       <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 min-h-screen"
-        style={{ backgroundColor: "#364156" }}
+        className="w-full md:w-1/2 flex flex-col items-center justify-start md:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:py-8 pb-8 sm:pb-12 md:pb-8 h-screen pre-login-bg relative overflow-y-auto md:overflow-hidden"
       >
-        {/* Mobile branding header (visible only on mobile) */}
-        <div className="md:hidden mb-6 text-center">
-          <h1 className="text-5xl font-serif text-white mb-2">Dorm Mart</h1>
-          <h2 className="text-xl font-light text-white opacity-90">
-            Wastage Who?
+        {/* Mobile branding header (visible only on mobile/tablet) */}
+        <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
+          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">Dorm Mart</h1>
+          <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">
+            Wastage, who?
           </h2>
         </div>
 
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md relative z-10">
           <div
-            className="p-4 sm:p-8 rounded-lg relative"
-            style={{ backgroundColor: "#3d3eb5" }}
+            className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600"
           >
             {/* Torn paper effect */}
             <div
-              className="absolute inset-0 rounded-lg"
+              className="absolute inset-0 rounded-lg bg-blue-600"
               style={{
-                backgroundColor: "#3d3eb5",
                 clipPath:
                   "polygon(0 0, 100% 0, 100% 85%, 95% 90%, 100% 95%, 100% 100%, 0 100%)",
               }}
@@ -231,47 +224,67 @@ function LoginPage() {
 
             <div className="relative z-10">
               {/* Header with dot */}
-              <div className="text-center mb-6 sm:mb-8">
-                <div className="w-3 h-3 bg-black rounded-full mx-auto mb-4"></div>
-                <h2 className="text-3xl sm:text-4xl font-serif text-white">
+              <div className="text-center mb-4 sm:mb-6 md:mb-8">
+                <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-black rounded-full mx-auto mb-3 sm:mb-4"></div>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif text-white leading-tight">
                   Log In
                 </h2>
               </div>
 
               {/* Success message display */}
               {success && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-                  <p className="text-sm">{success}</p>
+                <div className="mb-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                  <p className="text-sm sm:text-base leading-relaxed">{success}</p>
                 </div>
               )}
 
               {/* Error message display */}
               {error && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                  <p className="text-sm">{error}</p>
+                <div className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                  <p className="text-sm sm:text-base leading-relaxed">{error}</p>
                 </div>
               )}
 
-              {/* Login form */}
-              <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
+              {/* Login form - Improved spacing for mobile */}
+              <form onSubmit={handleLogin} noValidate className="space-y-3 sm:space-y-4 md:space-y-5">
                 {/* Email input */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  <label className="block text-sm sm:text-base font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     University Email Address
                   </label>
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    maxLength={50}
-                    className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
-                    placeholder=""
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Ensure we capture the full value up to 255 characters
+                      if (value.length <= 255) {
+                        setEmail(value);
+                      } else {
+                        setEmail(value.slice(0, 255));
+                      }
+                    }}
+                    onPaste={(e) => {
+                      // Always handle paste ourselves to ensure full email is captured
+                      e.preventDefault();
+                      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                      let cleanedText = pastedText.trim();
+                      // Remove '-- ' prefix if present (SQL comment marker)
+                      if (cleanedText.startsWith('-- ')) {
+                        cleanedText = cleanedText.substring(3).trim();
+                      }
+                      // Limit to exactly 255 characters to match database limit
+                      const trimmedText = cleanedText.slice(0, 255);
+                      setEmail(trimmedText);
+                    }}
+                    maxLength={255}
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
                   />
                 </div>
 
                 {/* Password input */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  <label className="block text-sm sm:text-base font-semibold text-gray-300 mb-2 sm:mb-2.5">
                     Password
                   </label>
                   <input
@@ -279,16 +292,15 @@ function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     maxLength={64}
-                    className="w-full px-4 py-3 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg"
-                    placeholder=""
+                    className="w-full min-h-[44px] px-4 sm:px-5 py-3 sm:py-3.5 bg-white rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg text-base sm:text-lg"
                   />
                 </div>
 
-                {/* Login button with arrow */}
+                {/* Login button with arrow - Minimum 44px height for touch targets */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full sm:w-1/2 md:w-1/3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed text-white py-2 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto disabled:hover:scale-100"
+                  className="w-full min-h-[44px] bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed text-white py-3 sm:py-3.5 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium disabled:hover:scale-100 text-base sm:text-lg active:scale-95"
                 >
                   <span>{loading ? "Logging in..." : "Login"}</span>
                   {!loading && (
@@ -307,18 +319,18 @@ function LoginPage() {
                 </button>
               </form>
 
-              {/* Links */}
-              <div className="mt-4 sm:mt-6 text-center">
-                <div className="flex items-center justify-center space-x-2 text-sm sm:text-base text-white">
+              {/* Links - Improved touch targets and spacing */}
+              <div className="mt-6 sm:mt-8 text-center">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm sm:text-base text-white">
                   <a
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
                       navigate("/create-account");
                     }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200"
+                    className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-400 transition-colors duration-200"
                   >
-                    create account
+                    Create Account
                   </a>
                   <span className="w-1 h-1 bg-black rounded-full"></span>
                   <a
@@ -327,14 +339,19 @@ function LoginPage() {
                       e.preventDefault();
                       navigate("/forgot-password");
                     }}
-                    className="hover:underline hover:text-blue-400 transition-colors duration-200"
+                    className="min-h-[44px] flex items-center px-2 py-2 hover:underline hover:text-blue-400 transition-colors duration-200"
                   >
-                    forgot password?
+                    Forgot Password?
                   </a>
                 </div>
               </div>
             </div>
           </div>
+          
+          {/* Tagline - Mobile only, outside login card */}
+          <p className="md:hidden mt-6 sm:mt-8 text-base sm:text-lg text-gray-600 opacity-80 max-w-sm mx-auto leading-relaxed text-center px-4">
+            Your campus marketplace for buying and selling. Connect with fellow students and save money.
+          </p>
         </div>
       </div>
     </div>

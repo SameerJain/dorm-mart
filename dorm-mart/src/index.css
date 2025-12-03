@@ -2,29 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Only reset text-like inputs, not checkboxes/radios */
-/* @layer base {
-  button,
-  input:not([type="checkbox"]):not([type="radio"]),
-  select,
-  textarea {
-    @apply appearance-none bg-transparent border-0 outline-none;
-  }
-}*/
-
 @layer base {
   button {
     @apply appearance-none bg-transparent border-0 outline-none;
   }
 }
 
-
-@tailwind components;
-@tailwind utilities;
-
 @layer components {
   .all-\[unset\] {
     all: unset;
+  }
+  
+  /* Pre-login right side background - subtle blue gradient */
+  .pre-login-bg {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .review-text-rounded {
+    border-radius: 0.5rem !important;
+    -webkit-border-radius: 0.5rem !important;
+    -moz-border-radius: 0.5rem !important;
+    overflow: hidden !important;
+    isolation: isolate !important;
+  }
+  
+  #review-text {
+    border-radius: 0.5rem !important;
+    -webkit-border-radius: 0.5rem !important;
+    -moz-border-radius: 0.5rem !important;
+    border-top-left-radius: 0.5rem !important;
+    border-top-right-radius: 0.5rem !important;
+    border-bottom-left-radius: 0.5rem !important;
+    border-bottom-right-radius: 0.5rem !important;
+    -webkit-border-top-left-radius: 0.5rem !important;
+    -webkit-border-top-right-radius: 0.5rem !important;
+    -webkit-border-bottom-left-radius: 0.5rem !important;
+    -webkit-border-bottom-right-radius: 0.5rem !important;
+    -moz-border-radius-topleft: 0.5rem !important;
+    -moz-border-radius-topright: 0.5rem !important;
+    -moz-border-radius-bottomleft: 0.5rem !important;
+    -moz-border-radius-bottomright: 0.5rem !important;
+  }
+  
+  #review-text::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  #review-text::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+  
+  #review-text::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.5);
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+  
+  #review-text::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.7);
   }
 }
 
@@ -118,4 +155,22 @@ html.dark input, html.dark textarea, html.dark select {
 @keyframes marquee-vertical {
   0% { transform: translateY(0); }
   to { transform: translateY(calc(-100% - var(--gap))); }
+}
+
+/* QnA button: bounce in "z-axis" (scale in/out) on hover */
+@keyframes qna-bounce-z {
+  0% {
+    transform: translateZ(0) scale(1);     /* start at normal size */
+  }
+  40% {
+    transform: translateZ(0) scale(1.12);  /* quickly pop out a bit */
+  }
+  100% {
+    transform: translateZ(0) scale(1);     /* return to normal */
+  }
+}
+
+/* Apply the animation only while the element is hovered */
+.qna-bounce-z:hover {
+  animation: qna-bounce-z 220ms ease-out;  /* short pop animation */
 }

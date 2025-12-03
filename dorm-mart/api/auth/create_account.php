@@ -2,6 +2,7 @@
 
 // Include security utilities
 require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/auth_handle.php';
 setSecurityHeaders();
 setSecureCORS();
 
@@ -33,27 +34,30 @@ use PHPMailer\PHPMailer\Exception;
 
 
 
-function generatePassword(int $length = 12): string
+function generatePassword(int $length = 8): string
 {
-    if ($length < 8) $length = 8;
+    // Fixed length of 8 characters
+    $length = 8;
 
     $uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $lowers = 'abcdefghijklmnopqrstuvwxyz';
     $digits = '0123456789';
     $special = '!@#$%^&*()-_=+[]{};:,.?/';
 
-    // ensure each required class is present
+    // Generate exactly 1 special character
     $password = [
-        $uppers[random_int(0, strlen($uppers) - 1)],
-        $lowers[random_int(0, strlen($lowers) - 1)],
-        $digits[random_int(0, strlen($digits) - 1)],
         $special[random_int(0, strlen($special) - 1)],
     ];
 
-    // fill the rest
-    $all = $uppers . $lowers . $digits . $special;
+    // Ensure at least 1 uppercase, 1 lowercase, and 1 digit (remaining 7 characters)
+    $password[] = $uppers[random_int(0, strlen($uppers) - 1)];
+    $password[] = $lowers[random_int(0, strlen($lowers) - 1)];
+    $password[] = $digits[random_int(0, strlen($digits) - 1)];
+
+    // Fill the remaining 4 characters from uppercase, lowercase, or digits only (no special)
+    $nonSpecial = $uppers . $lowers . $digits;
     for ($i = count($password); $i < $length; $i++) {
-        $password[] = $all[random_int(0, strlen($all) - 1)];
+        $password[] = $nonSpecial[random_int(0, strlen($nonSpecial) - 1)];
     }
 
     // secure shuffle (Fisher–Yates)
@@ -122,7 +126,9 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
 
-        $first   = $user['firstName'] ?: 'Student';
+        // XSS PROTECTION: Encoding (Layer 2) - HTML entity encoding (more foolproof than filtering)
+        $first   = escapeHtml($user['firstName'] ?: 'Student');
+        $tempPasswordEscaped = escapeHtml($tempPassword);
         $subject = 'Welcome to Dorm Mart';
 
         // Use HTML entities for punctuation (— →) to avoid mojibake in some clients
@@ -139,7 +145,7 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
       <p style="color:#eee;">Dear {$first},</p>
       <p style="color:#eee;">Welcome to <strong>Dorm Mart</strong> &mdash; the student marketplace for UB.</p>
       <p style="color:#eee;">Here is your temporary (current) password. <strong>DO NOT</strong> share this with anyone.</p>
-      <p style="font-size:20px;color:#fff;"><strong>{$tempPassword}</strong></p>
+      <p style="font-size:20px;color:#fff;"><strong>{$tempPasswordEscaped}</strong></p>
       <p style="color:#eee;">If you want to change this password, go to <em>Settings &rarr; Change Password</em>.</p>
       <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
       <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
@@ -150,9 +156,10 @@ function sendWelcomeGmail(array $user, string $tempPassword): array
 </html>
 HTML;
 
-        // Plain-text part: stick to ASCII symbols
+        // Plain-text part: stick to ASCII symbols (no HTML escaping needed for plain text)
+        $firstPlain = $user['firstName'] ?: 'Student';
         $text = <<<TEXT
-Dear {$first},
+Dear {$firstPlain},
 
 Welcome to Dorm Mart - the student marketplace for UB.
 
@@ -236,7 +243,7 @@ function sendPromoWelcomeEmail(array $user): array
         $first   = $user['firstName'] ?: 'Student';
         $subject = 'Welcome to Dorm Mart Promotional Updates';
 
-        // HTML email content
+        // HTML email content - Subtle improvements to dark theme
         $html = <<<HTML
 <!doctype html>
 <html>
@@ -246,19 +253,40 @@ function sendPromoWelcomeEmail(array $user): array
     <title>{$subject}</title>
   </head>
   <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111;margin:0;padding:16px;background:#111;">
-    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:8px;padding:20px;">
-      <p style="color:#eee;">Dear {$first},</p>
-      <p style="color:#eee;">Thank you for opting into promotional updates from <strong>Dorm Mart</strong>!</p>
-      <p style="color:#eee;">You'll now receive exciting updates about:</p>
-      <ul style="color:#eee;">
-        <li>Important updates and announcements</li>
-        <li>Emails about new notifcations</li>
-      </ul>
-      <p style="color:#eee;">We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
-      <p style="color:#eee;">Happy trading,<br/>The Dorm Mart Team</p>
-      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
-      <p style="font-size:12px;color:#aaa;">This is an automated message; do not reply. For support:
-      <a href="mailto:dormmartsupport@gmail.com" style="color:#9db7ff;">dormmartsupport@gmail.com</a></p>
+    <div style="max-width:640px;margin:0 auto;background:#1e1e1e;border-radius:12px;padding:24px;border:1px solid #333;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#2563EB;margin:0;font-size:24px;font-weight:bold;">📧 Promotional Updates</h1>
+        <div style="width:60px;height:3px;background:linear-gradient(90deg, #2563EB, #1d4ed8);margin:8px auto;border-radius:2px;"></div>
+      </div>
+      
+      <p style="color:#eee;font-size:16px;margin:0 0 16px 0;">Dear {$first},</p>
+      
+      <p style="color:#eee;margin:0 0 20px 0;">Thank you for opting into promotional updates from <strong style="color:#2563EB;">Dorm Mart</strong>!</p>
+      
+      <div style="background:#2a2a2a;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid #2563EB;">
+        <p style="color:#eee;margin:0 0 12px 0;font-weight:bold;">You'll now receive updates about:</p>
+        <ul style="color:#ddd;margin:0;padding-left:20px;">
+          <li style="margin:6px 0;">Emails about your notifcations tab</li>
+          <li style="margin:6px 0;">New website news and updates</li>
+        </ul>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0;">This is a one-time email for the first time you ever sign up for promotional updates with an account. We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.</p>
+      
+      <div style="text-align:center;margin:24px 0;">
+        <div style="display:inline-block;background:#333;padding:12px 24px;border-radius:6px;border:1px solid #2563EB;">
+          <span style="color:#2563EB;font-weight:bold;">✓ Successfully Subscribed</span>
+        </div>
+      </div>
+      
+      <p style="color:#eee;margin:20px 0 0 0;">
+        Happy trading,<br/>
+        <strong style="color:#2563EB;">The Dorm Mart Team</strong>
+      </p>
+      
+      <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
+      <p style="font-size:12px;color:#aaa;margin:0;">This is an automated message; do not reply. For support:
+      <a href="mailto:dormmartsupport@gmail.com" style="color:#2563EB;">dormmartsupport@gmail.com</a></p>
     </div>
   </body>
 </html>
@@ -266,15 +294,20 @@ HTML;
 
         // Plain-text version
         $text = <<<TEXT
+Promotional Updates - Dorm Mart
+
 Dear {$first},
 
 Thank you for opting into promotional updates from Dorm Mart!
 
-You'll now receive exciting updates about:
+You'll now receive updates about:
 - Important updates and announcements
-- Emails about new notifcations
+- New features and improvements  
+- Campus marketplace tips
 
 We promise to keep our emails relevant and not overwhelm your inbox. You can always update your preferences in your account settings.
+
+✓ Successfully Subscribed
 
 Happy trading,
 The Dorm Mart Team
@@ -419,7 +452,7 @@ try {
     // new user and immediately hash it with password_hash(), which automatically
     // generates a unique SALT and embeds it into the returned hash (bcrypt here).
     // The database only stores this salted, one-way hash (column: hash_pass).
-    $tempPassword = generatePassword(12);
+    $tempPassword = generatePassword(8);
     $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
 
     // 3) Insert user
@@ -468,6 +501,10 @@ try {
     // Send welcome email (ignore result here)
     sendWelcomeGmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email], $tempPassword);
 
+    // Promo email is no longer sent during account creation
+    // Promo emails will only be sent from user preferences settings
+    // The promotional preference is still saved to the database above
+    /*
     // Send promo welcome email if user opted into promotional emails
     if ($promos) {
         $promoEmailResult = sendPromoWelcomeEmail(["firstName" => $firstName, "lastName" => $lastName, "email" => $email]);
@@ -475,6 +512,7 @@ try {
             error_log("Failed to send promo welcome email during account creation: " . $promoEmailResult['error']);
         }
     }
+    */
 
     // Success
     echo json_encode([

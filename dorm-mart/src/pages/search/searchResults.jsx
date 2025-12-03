@@ -20,6 +20,8 @@ export default function SearchResults() {
   const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
 
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+
   // Derive includeDescription preference from URL or localStorage
   const includeDescriptionPref = useMemo(() => {
     const includeDescParam = query.get("desc") || query.get("includeDescription") || null;
@@ -175,23 +177,109 @@ export default function SearchResults() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back</button>
-        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">{titleText}</h1>
-        <div />
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 relative">
+      <div className="w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur px-2 md:px-4 py-3 flex items-center justify-between gap-2">
+        {/* LEFT SIDE */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Desktop: Back on the left */}
+          <button
+            onClick={() => navigate(-1)}
+            className="hidden md:inline text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Back
+          </button>
+
+          {/* Mobile: Filters on the left */}
+          <button
+            type="button"
+            onClick={() => setShowFiltersPanel(true)}
+            className="md:hidden text-xs px-2 py-1 rounded-full border border-blue-500 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:border-blue-400 dark:text-blue-300 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors"
+          >
+            Filters
+          </button>
+        </div>
+
+        {/* TITLE CENTERED */}
+        <h1 className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100 break-words min-w-0 flex-1 text-center">
+          {titleText}
+        </h1>
+
+        {/* RIGHT SIDE */}
+        <div className="flex items-center justify-end flex-shrink-0">
+          {/* Mobile: Back on the right */}
+          <button
+            onClick={() => navigate(-1)}
+            className="md:hidden text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Back
+          </button>
+
+          {/* Desktop: empty spacer to balance layout */}
+          <div className="hidden md:block w-0" />
+        </div>
+      </div>
+
+      <div
+        className={`md:hidden absolute inset-0 z-40 pointer-events-none ${
+          showFiltersPanel ? "pointer-events-auto" : ""
+        }`}
+      >
+      {/* Backdrop */}
+      <div
+        className={`absolute inset-0 bg-black/40 transition-opacity ${
+          showFiltersPanel ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={() => setShowFiltersPanel(false)}
+      />
+
+      {/* Slide-in panel from the left */}
+      <div
+        className={`absolute inset-y-0 left-0 max-w-xs w-72 transform transition-transform duration-300 ${
+          showFiltersPanel ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="h-full bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 flex flex-col">
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Search Filters
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowFiltersPanel(false)}
+              className="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
+            >
+              Close
+            </button>
+          </div>
+          {/* Filters content */}
+          <div className="flex-1 overflow-y-auto p-3">
+            <FiltersSidebar
+              query={query}
+              includeDescriptionPref={includeDescriptionPref}
+              onToggleIncludeDescription={handleToggleIncludeDescription}
+              navigate={navigate}
+              lastSearchRef={lastSearchRef}
+              onApplied={() => setShowFiltersPanel(false)}
+            />
+          </div>
+        </div>
+        </div>
       </div>
 
       <div className="w-full px-2 md:px-4 py-4">
         <div className="grid grid-cols-1 md:grid-cols-[260px,1fr] gap-4 items-start">
           {/* LEFT FILTERS */}
-          <FiltersSidebar
-            query={query}
-            includeDescriptionPref={includeDescriptionPref}
-            onToggleIncludeDescription={handleToggleIncludeDescription}
-            navigate={navigate}
-            lastSearchRef={lastSearchRef}
-          />
+          <div className="hidden md:block">
+              <FiltersSidebar
+                query={query}
+                includeDescriptionPref={includeDescriptionPref}
+                onToggleIncludeDescription={handleToggleIncludeDescription}
+                navigate={navigate}
+                lastSearchRef={lastSearchRef}
+                
+              />
+          </div>
 
           {/* RESULTS */}
           <section>
@@ -221,12 +309,12 @@ export default function SearchResults() {
                         </div>
 
                         {/* Middle details */}
-                        <div className="flex flex-col gap-0.5 md:gap-1 pr-2">
-                          <p className="text-sm md:text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">{it.title}</p>
-                          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-col gap-0.5 md:gap-1 pr-2 min-w-0">
+                          <p className="text-sm md:text-base font-semibold text-gray-900 dark:text-gray-100 truncate" title={it.title}>{it.title}</p>
+                          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 min-w-0 flex items-baseline flex-wrap gap-x-1">
                             {it.itemCondition ? <><span className="font-medium">Condition:</span> {it.itemCondition} · </> : null}
                             {it.itemLocation ? <><span className="font-medium">Location:</span> {it.itemLocation} · </> : null}
-                            <span className="font-medium">Seller:</span> {it.seller}
+                            <span className="font-medium">Seller:</span> <span className="truncate inline-block max-w-full" title={it.seller}>{it.seller}</span>
                           </p>
                           <p className="text-xs text-gray-400 dark:text-gray-500">{it.createdAt ? `Posted ${formatDate(it.createdAt)}` : null}</p>
                         </div>
@@ -260,12 +348,20 @@ export default function SearchResults() {
 }
 
 // Sidebar component with filters and Apply button
-function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescription, navigate, lastSearchRef }) {
+function FiltersSidebar({
+  query,
+  includeDescriptionPref,
+  onToggleIncludeDescription,
+  navigate,
+  lastSearchRef,
+  onApplied, // optional: called after successful Apply
+}) {
   const [categories, setCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [sortOrder, setSortOrder] = useState(""); // '', 'new', 'old'
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(5000);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [priceError, setPriceError] = useState("");
   const [itemLocation, setItemLocation] = useState("");
   const [itemCondition, setItemCondition] = useState("");
   const [priceNegotiable, setPriceNegotiable] = useState(false);
@@ -277,7 +373,7 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_categories.php`);
+        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`);
         if (r.ok) {
           const json = await r.json();
           if (Array.isArray(json)) setCategories(json);
@@ -300,13 +396,46 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     if (catSingle) cats = Array.from(new Set([...cats, catSingle]));
     setSelectedCategories(cats);
 
-    const s = query.get("sort") || "";
-    setSortOrder(s === "old" || s === "oldest" ? "old" : s === "new" || s === "newest" ? "new" : "");
+    const s = (query.get("sort") || "").toLowerCase();
+    setSortOrder(
+      s === "old" || s === "oldest" ? "old" :
+      s === "new" || s === "newest" ? "new" :
+      (s === "best" || s === "best_match" || s === "relevance") ? "best" :
+      ""
+    );
 
-    const mn = parseFloat(query.get("minPrice"));
-    const mx = parseFloat(query.get("maxPrice"));
-    setMinPrice(Number.isFinite(mn) ? Math.max(0, Math.min(5000, mn)) : 0);
-    setMaxPrice(Number.isFinite(mx) ? Math.max(0, Math.min(5000, mx)) : 5000);
+    const mn = query.get("minPrice");
+    const mx = query.get("maxPrice");
+    let parsedMin = null;
+    let parsedMax = null;
+    
+    if (mn !== null && mn !== "") {
+      const p = parseFloat(mn);
+      if (Number.isFinite(p)) {
+        parsedMin = Math.max(0, Math.min(9999.99, p));
+      }
+    }
+    if (mx !== null && mx !== "") {
+      const p = parseFloat(mx);
+      if (Number.isFinite(p)) {
+        parsedMax = Math.max(0, Math.min(9999.99, p));
+      }
+    }
+    
+    // Ensure min <= max when both are set
+    if (parsedMin !== null && parsedMax !== null) {
+      setMinPrice(String(Math.min(parsedMin, parsedMax)));
+      setMaxPrice(String(Math.max(parsedMin, parsedMax)));
+    } else if (parsedMin !== null) {
+      setMinPrice(String(parsedMin));
+      setMaxPrice("");
+    } else if (parsedMax !== null) {
+      setMinPrice("");
+      setMaxPrice(String(parsedMax));
+    } else {
+      setMinPrice("");
+      setMaxPrice("");
+    }
 
     setItemLocation(query.get("location") || "");
     setItemCondition(query.get("condition") || "");
@@ -323,27 +452,110 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
     setSelectedCategories((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   };
 
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return (
+      selectedCategories.length > 0 ||
+      sortOrder !== "" ||
+      (minPrice !== "" && minPrice !== null && minPrice.trim() !== "") ||
+      (maxPrice !== "" && maxPrice !== null && maxPrice.trim() !== "") ||
+      itemLocation !== "" ||
+      itemCondition !== "" ||
+      priceNegotiable ||
+      acceptingTrades
+    );
+  }, [selectedCategories, sortOrder, minPrice, maxPrice, itemLocation, itemCondition, priceNegotiable, acceptingTrades]);
+
   const apply = () => {
+    // Validate price inputs
+    setPriceError("");
+    let hasError = false;
+    
+    let parsedMin = null;
+    let parsedMax = null;
+    
+    // Validate min price
+    if (minPrice !== "" && minPrice !== null) {
+      const trimmedMin = minPrice.trim();
+      if (trimmedMin === "" || trimmedMin === "." || trimmedMin === "-") {
+        setPriceError("Please enter a valid minimum price");
+        hasError = true;
+      } else {
+        parsedMin = parseFloat(trimmedMin);
+        if (!Number.isFinite(parsedMin) || isNaN(parsedMin)) {
+          setPriceError("Minimum price must be a valid number");
+          hasError = true;
+        } else if (parsedMin < 0) {
+          setPriceError("Minimum price cannot be negative");
+          hasError = true;
+        } else if (parsedMin > 9999.99) {
+          setPriceError("Minimum price cannot exceed $9999.99");
+          hasError = true;
+        }
+      }
+    }
+    
+    // Validate max price
+    if (maxPrice !== "" && maxPrice !== null) {
+      const trimmedMax = maxPrice.trim();
+      if (trimmedMax === "" || trimmedMax === "." || trimmedMax === "-") {
+        setPriceError("Please enter a valid maximum price");
+        hasError = true;
+      } else {
+        parsedMax = parseFloat(trimmedMax);
+        if (!Number.isFinite(parsedMax) || isNaN(parsedMax)) {
+          setPriceError("Maximum price must be a valid number");
+          hasError = true;
+        } else if (parsedMax < 0) {
+          setPriceError("Maximum price cannot be negative");
+          hasError = true;
+        } else if (parsedMax > 9999.99) {
+          setPriceError("Maximum price cannot exceed $9999.99");
+          hasError = true;
+        }
+      }
+    }
+    
+    // Validate min <= max if both are provided
+    if (!hasError && parsedMin !== null && parsedMax !== null && parsedMin > parsedMax) {
+      setPriceError("Minimum price cannot be greater than maximum price");
+      hasError = true;
+    }
+    
+    // Don't proceed if there are validation errors
+    if (hasError) {
+      return;
+    }
+    
     const searchTerm = query.get("q") || query.get("search") || "";
     const sp = new URLSearchParams();
     if (searchTerm) sp.set("search", searchTerm);
     if (selectedCategories.length) sp.set("categories", selectedCategories.join(","));
     if (sortOrder === "new") sp.set("sort", "new");
     else if (sortOrder === "old") sp.set("sort", "old");
-    if (Number.isFinite(minPrice)) sp.set("minPrice", String(Math.max(0, Math.min(5000, minPrice))));
-    if (Number.isFinite(maxPrice)) sp.set("maxPrice", String(Math.max(0, Math.min(5000, maxPrice))));
+    else if (sortOrder === "best") sp.set("sort", "best");
+    if (parsedMin !== null) {
+      sp.set("minPrice", String(parsedMin));
+    }
+    if (parsedMax !== null) {
+      sp.set("maxPrice", String(parsedMax));
+    }
     if (itemLocation) sp.set("location", itemLocation);
     if (itemCondition) sp.set("condition", itemCondition);
     if (priceNegotiable) sp.set("priceNego", "1");
     if (acceptingTrades) sp.set("trades", "1");
     if (includeDescriptionPref) sp.set("desc", "1");
     navigate(`/app/listings?${sp.toString()}`);
+
+    if (typeof onApplied === "function") {
+      onApplied();
+    }
   };
 
   return (
     <aside className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 md:sticky md:top-20">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Filters</h2>
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Search Filters</h2>
         <label className="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
           <input type="checkbox" checked={includeDescriptionPref} onChange={onToggleIncludeDescription} />
           <span>Include description</span>
@@ -384,17 +596,54 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
 
       {/* Price */}
       <div className="mb-4">
-        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Price Range ($0 – $5000)</p>
+        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Price Range ($0 – $9999.99)</p>
         <div className="mt-2 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <span>Min</span>
-            <input type="number" min={0} max={5000} value={minPrice} onChange={(e) => setMinPrice(Math.max(0, Math.min(5000, parseInt(e.target.value, 10) || 0)))} className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            <input 
+              type="text" 
+              inputMode="decimal" 
+              maxLength={7}
+              pattern="[0-9.]*"
+              value={minPrice || ""} 
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow numbers and decimal point
+                if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                  setMinPrice(value);
+                  // Clear error when user starts typing
+                  if (priceError) setPriceError("");
+                }
+              }} 
+              placeholder="Min" 
+              className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" 
+            />
           </div>
           <div className="flex items-center gap-2">
             <span>Max</span>
-            <input type="number" min={0} max={5000} value={maxPrice} onChange={(e) => setMaxPrice(Math.max(0, Math.min(5000, parseInt(e.target.value, 10) || 0)))} className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            <input 
+              type="text" 
+              inputMode="decimal" 
+              maxLength={7}
+              pattern="[0-9.]*"
+              value={maxPrice || ""} 
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow numbers and decimal point
+                if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                  setMaxPrice(value);
+                  // Clear error when user starts typing
+                  if (priceError) setPriceError("");
+                }
+              }} 
+              placeholder="Max" 
+              className="w-20 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" 
+            />
           </div>
         </div>
+        {priceError && (
+          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{priceError}</p>
+        )}
       </div>
 
       {/* Location */}
@@ -435,7 +684,17 @@ function FiltersSidebar({ query, includeDescriptionPref, onToggleIncludeDescript
         </label>
       </div>
 
-      <button onClick={apply} className="w-full px-3 py-2 rounded bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600">Apply</button>
+      <button 
+        onClick={apply} 
+        className={`w-full px-3 py-2 rounded text-sm font-medium transition-colors ${
+          hasActiveFilters
+            ? "bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600"
+            : "bg-gray-400 dark:bg-gray-600 text-white cursor-not-allowed"
+        }`}
+        disabled={!hasActiveFilters}
+      >
+        Apply
+      </button>
     </aside>
   );
 }

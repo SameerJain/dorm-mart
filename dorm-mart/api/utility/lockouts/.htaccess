@@ -1,0 +1,12 @@
+# Deny access to lockout data files
+# This prevents web browsers from accessing locked_sessions.json
+
+<Files "*">
+    Require all denied
+</Files>
+
+# Alternative for older Apache versions:
+# Order allow,deny
+# Deny from all
+
+

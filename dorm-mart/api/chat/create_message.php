@@ -36,6 +36,7 @@ if ($token !== null && !validate_csrf_token($token)) {
 
 $receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
 $contentRaw  = isset($body['content'])     ? trim((string)$body['content'])     : '';
+$convIdParam = isset($body['conv_id']) ? (int)$body['conv_id'] : null;
 
 if ($sender === '' || $receiver === '' || $contentRaw === '') {
     http_response_code(400);
@@ -43,8 +44,8 @@ if ($sender === '' || $receiver === '' || $contentRaw === '') {
     exit;
 }
 
-// XSS PROTECTION: Check for XSS patterns in message content
-// Note: SQL injection is already prevented by prepared statements
+// XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+// Note: SQL injection prevented by prepared statements
 if (containsXSSPattern($contentRaw)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid characters in message']);
@@ -118,15 +119,42 @@ try {
     $u2Name = ($u2 === $senderId) ? $senderName  : $receiverName;
     // -------- end name lookup --------
 
-    // Find existing conversation (NEW SCHEMA: user1_id/user2_id)
-    $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE user1_id = ? AND user2_id = ? LIMIT 1');
-    $stmt->bind_param('ii', $u1, $u2);
-    $stmt->execute();
-    $stmt->bind_result($convIdFound);
-    if ($stmt->fetch()) {
-        $convId = (int)$convIdFound;
+    // If conv_id is provided, validate it belongs to this user pair
+    if ($convIdParam !== null && $convIdParam > 0) {
+        $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE conv_id = ? AND user1_id = ? AND user2_id = ? LIMIT 1');
+        $stmt->bind_param('iii', $convIdParam, $u1, $u2);
+        $stmt->execute();
+        $stmt->bind_result($convIdFound);
+        if ($stmt->fetch()) {
+            $convId = (int)$convIdFound;
+        }
+        $stmt->close();
+        
+        if ($convId === null) {
+            // Invalid conv_id - doesn't belong to this user pair
+            // Release lock before exiting
+            $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
+            $stmt->bind_param('s', $lockKey);
+            $stmt->execute();
+            $stmt->close();
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Invalid conversation ID']);
+            exit;
+        }
+    } else {
+        // Find existing conversation (NEW SCHEMA: user1_id/user2_id)
+        // Note: This doesn't consider product_id, so it may pick the wrong conversation
+        // if multiple chats exist with the same seller (different products)
+        // This is kept for backward compatibility when conv_id is not provided
+        $stmt = $conn->prepare('SELECT conv_id FROM conversations WHERE user1_id = ? AND user2_id = ? LIMIT 1');
+        $stmt->bind_param('ii', $u1, $u2);
+        $stmt->execute();
+        $stmt->bind_result($convIdFound);
+        if ($stmt->fetch()) {
+            $convId = (int)$convIdFound;
+        }
+        $stmt->close();
     }
-    $stmt->close();
 
     // If not found, create it (must supply NOT NULL name columns)
     if ($convId === null) {
@@ -141,12 +169,47 @@ try {
         $stmt->close();
     }
 
+    // Check if conversation has item_deleted flag set
+    $stmt = $conn->prepare('SELECT item_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
+    $stmt->bind_param('i', $convId);
+    $stmt->execute();
+    $stmt->bind_result($itemDeleted);
+    $itemDeletedFlag = false;
+    if ($stmt->fetch()) {
+        $itemDeletedFlag = (bool)$itemDeleted;
+    }
+    $stmt->close();
+
+    // If item is deleted, block message creation
+    if ($itemDeletedFlag) {
+        // Release lock before exiting
+        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
+        $stmt->bind_param('s', $lockKey);
+        $stmt->execute();
+        $stmt->close();
+        $conn->rollback();
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Item has been deleted. Cannot send messages.']);
+        exit;
+    }
+
     // Ensure both participants exist
     $stmt = $conn->prepare(
         'INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count)
          VALUES (?, ?, 0, 0), (?, ?, 0, 0)'
     );
     $stmt->bind_param('iiii', $convId, $u1, $convId, $u2);
+    $stmt->execute();
+    $stmt->close();
+
+    // 🔄 Conversation is active again: clear deleted flags for BOTH participants
+    $stmt = $conn->prepare(
+        'UPDATE conversations
+           SET user1_deleted = 0,
+               user2_deleted = 0
+         WHERE conv_id = ?'
+    );
+    $stmt->bind_param('i', $convId);
     $stmt->execute();
     $stmt->close();
 

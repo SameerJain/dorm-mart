@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json');
 
+// Include security utilities for escapeHtml function
+require_once __DIR__ . '/../security/security.php';
+
 // reuse your existing env loader + $conn creation
 require __DIR__ . '/db_connect.php'; // or paste your env+mysqli code here
 
@@ -38,13 +41,17 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {
     $err = $conn->error;
     $conn->rollback();
-    echo json_encode(["success" => false, "message" => "Failed: $name — $err"]);
+    // Note: No HTML encoding needed for JSON - React handles XSS protection
+    echo json_encode(["success" => false, "message" => "Failed: " . $name . " — " . $err]);
     exit;
   }
 
-  // flush multi_query results
-  while ($conn->more_results() && $conn->next_result()) { /* flush */
-  }
+  // flush multi_query results - properly consume all result sets including from PREPARE/EXECUTE
+  do {
+    if ($result = $conn->store_result()) {
+      $result->free();
+    }
+  } while ($conn->more_results() && $conn->next_result());
 
   $stmt = $conn->prepare("INSERT INTO schema_migrations (filename) VALUES (?)");
   $stmt->bind_param("s", $name);
@@ -55,4 +62,6 @@ foreach ($files as $path) {
   $ran[] = $name;
 }
 
-echo json_encode(["success" => true, "applied" => $ran]);
+// XSS PROTECTION: Escape filenames before outputting in JSON (defense-in-depth)
+$escapedRan = array_map('escapeHtml', $ran);
+echo json_encode(["success" => true, "applied" => $escapedRan]);

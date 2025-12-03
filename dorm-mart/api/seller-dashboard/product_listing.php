@@ -66,18 +66,20 @@ try {
 
   $descriptionRaw = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
 
-  // XSS PROTECTION: Check for XSS patterns in user-visible fields
-  // Note: SQL injection is already prevented by prepared statements
+  // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+  // Note: SQL injection prevented by prepared statements
   if ($titleRaw !== '' && containsXSSPattern($titleRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in title']);
     exit;
   }
+  // XSS PROTECTION: Filtering (Layer 1)
   if ($descriptionRaw !== null && $descriptionRaw !== '' && containsXSSPattern($descriptionRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in description']);
     exit;
   }
+  // XSS PROTECTION: Filtering (Layer 1)
   if ($itemLocationRaw !== null && $itemLocationRaw !== '' && containsXSSPattern($itemLocationRaw)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Invalid characters in location']);
@@ -101,6 +103,9 @@ try {
   if ($priceStr === '' || !is_numeric($priceStr) || $price <= 0.0) {
     $errors['price'] = 'Price must be a positive number.';
   }
+  if ($price > 9999.99) {
+    $errors['price'] = 'Price must be $9999.99 or less.';
+  }
   if (empty($catsArr))                                   { $errors['categories'] = 'Select at least one category.'; }
   if ($itemLocation === null || $itemLocation === '' || $itemLocation === '<Select Option>') {
     $errors['itemLocation'] = 'Select an item location.';
@@ -123,7 +128,24 @@ try {
   $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/images', '/');
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
 
-  $imageUrls = [];
+  // Handle existing photos for edit mode
+  $existingPhotos = [];
+  if ($mode === 'update' && $itemId > 0) {
+    // Accept existingPhotos[] from POST (can be array or single value)
+    $existingPhotosRaw = $_POST['existingPhotos'] ?? [];
+    if (is_array($existingPhotosRaw)) {
+      $existingPhotos = array_values(array_filter(array_map('trim', $existingPhotosRaw), fn($v) => $v !== ''));
+    } elseif (is_string($existingPhotosRaw) && $existingPhotosRaw !== '') {
+      $existingPhotos = [trim($existingPhotosRaw)];
+    }
+    // Limit existing photos to max 6 total
+    if (count($existingPhotos) > 6) {
+      $existingPhotos = array_slice($existingPhotos, 0, 6);
+    }
+  }
+
+  // Process new image uploads
+  $newImageUrls = [];
   if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
     $maxFiles   = 6;
     $maxSizeB   = 5 * 1024 * 1024; // 5MB
@@ -144,10 +166,16 @@ try {
 
       $fname = uniqid('img_', true) . '.' . $ext;
       if (move_uploaded_file($tmpPath, $imageDirFs . $fname)) {
-        $imageUrls[] = $imageBaseUrl . '/' . $fname;
+        $newImageUrls[] = $imageBaseUrl . '/' . $fname;
         $cnt++;
       }
     }
+  }
+
+  // Merge existing photos with new uploads (limit total to 6)
+  $imageUrls = array_merge($existingPhotos, $newImageUrls);
+  if (count($imageUrls) > 6) {
+    $imageUrls = array_slice($imageUrls, 0, 6);
   }
 
   // --- JSON columns ---
@@ -155,7 +183,16 @@ try {
   $photosJson     = !empty($imageUrls) ? json_encode($imageUrls, JSON_UNESCAPED_SLASHES) : null;
 
   // --- Create / Update ---
-  if ($mode === 'update' && $itemId > 0) {
+  if ($mode === 'update') {
+    // Validate that a valid product ID was provided for update
+    if ($itemId <= 0) {
+      http_response_code(400);
+      echo json_encode([
+        'ok' => false,
+        'error' => 'Invalid product ID. A valid product ID is required for updates.'
+      ]);
+      exit;
+    }
     // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     // ============================================================================
@@ -190,6 +227,16 @@ try {
       $userId            // safely bound as integer parameter
     );
     $stmt->execute();
+
+    // Check if any rows were actually updated
+    if ($stmt->affected_rows === 0) {
+      http_response_code(404);
+      echo json_encode([
+        'ok' => false,
+        'error' => 'Product not found or you do not have permission to edit this product.'
+      ]);
+      exit;
+    }
 
     echo json_encode([
       'ok'         => true,
@@ -229,6 +276,15 @@ try {
   );
   $stmt->execute();
 
+  // Create wishlist_notification row for this new listing
+  $newProductId = (int)$conn->insert_id;
+  $firstImageUrl = !empty($imageUrls) ? $imageUrls[0] : null;  // first image or null
+  $wnSql = "INSERT INTO wishlist_notification (seller_id, product_id, title, image_url, unread_count)
+            VALUES (?, ?, ?, ?, 0)";
+  $wnStmt = $conn->prepare($wnSql);
+  $wnStmt->bind_param('iiss', $userId, $newProductId, $title, $firstImageUrl);
+  $wnStmt->execute();
+
   echo json_encode([
     'ok'         => true,
     'product_id' => $conn->insert_id,
@@ -238,10 +294,12 @@ try {
 } catch (Throwable $e) {
   error_log('[productListing] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
   http_response_code(500);
+  // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+  // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
   echo json_encode([
     'ok'    => false,
-    'error' => $DEBUG ? $e->getMessage() : 'Internal Server Error',
-    'type'  => $DEBUG ? get_class($e) : null,
-    'trace' => $DEBUG ? $e->getTraceAsString() : null,
+    'error' => $DEBUG ? escapeHtml($e->getMessage()) : 'Internal Server Error',
+    'type'  => $DEBUG ? escapeHtml(get_class($e)) : null,
+    'trace' => $DEBUG ? escapeHtml($e->getTraceAsString()) : null,
   ]);
 }

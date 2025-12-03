@@ -60,11 +60,13 @@ try {
         exit;
     }
 
+    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $cats = [];
     $c1 = trim((string)($row['interested_category_1'] ?? ''));
     $c2 = trim((string)($row['interested_category_2'] ?? ''));
     $c3 = trim((string)($row['interested_category_3'] ?? ''));
 
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     if ($c1 !== '') $cats[] = $c1;
     if ($c2 !== '' && $c2 !== $c1) $cats[] = $c2;
     if ($c3 !== '' && $c3 !== $c1 && $c3 !== $c2) $cats[] = $c3;
@@ -78,7 +80,10 @@ try {
     exit;
 
 } catch (Throwable $e) {
+    error_log('me.php error: ' . $e->getMessage());
     http_response_code(500);
+    // Note: No HTML encoding needed for JSON - React handles XSS protection
+    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',

@@ -52,12 +52,13 @@ $res = $stmt->get_result();                           // fetch mysqli_result
 
 $rows = [];
 while ($row = $res->fetch_assoc()) {
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $rows[] = [
         'item_id' => (int)$row['item_id'],
-        'title' => escapeHtml($row['title']),
-        'sold_by' => escapeHtml($row['sold_by']),
+        'title' => $row['title'],
+        'sold_by' => $row['sold_by'],
         'transacted_at' => $row['transacted_at'],
-        'image_url' => escapeHtml($row['image_url'] ?? '')
+        'image_url' => $row['image_url'] ?? ''
     ];
 }
 

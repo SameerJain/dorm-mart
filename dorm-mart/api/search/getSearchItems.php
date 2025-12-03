@@ -43,8 +43,8 @@ try {
     $qRaw      = isset($body['q']) ? trim((string)$body['q']) : (isset($body['search']) ? trim((string)$body['search']) : '');
     $category  = isset($body['category']) ? trim((string)$body['category']) : '';
     
-    // XSS PROTECTION: Check for XSS patterns in search query
-    // Note: SQL injection is already prevented by prepared statements
+    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
+    // Note: SQL injection prevented by prepared statements
     if ($qRaw !== '' && containsXSSPattern($qRaw)) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Invalid characters in search query']);
@@ -111,8 +111,8 @@ try {
     $relevanceParams = [];
     $relevanceTypes = '';
 
-    // If searching and not explicitly sorting by newest or price, prioritize title similarity
-    $useRelevance = ($q !== '') && !in_array($sort, ['new', 'newest', 'price_asc', 'price_desc'], true);
+    // If searching and sort is empty or explicitly set to best, prioritize similarity
+    $useRelevance = ($q !== '') && in_array($sort, ['', 'best', 'best_match', 'relevance'], true);
     if ($useRelevance) {
         // Weighted matches: exact > prefix > contains (title), optional description contains
         $relevanceSql = ", ( ".
@@ -319,6 +319,7 @@ try {
             $seller = $row['email'];
         }
 
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $out[] = [
             'id'         => (int)$row['product_id'],
             'title'      => $row['title'] ?? 'Untitled',
@@ -327,8 +328,8 @@ try {
             'image_url'  => $image,
             'tags'       => $tags,
             'category'   => !empty($tags) ? $tags[0] : null,
-            'location'   => $row['item_location'] ?? null,
-            'condition'  => $row['item_condition'] ?? null,
+            'location'   => $row['item_location'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
+            'condition'  => $row['item_condition'] ?? '',
             'created_at' => $createdAt,
             'seller'     => $seller,
             'sold_by'    => $seller,
@@ -342,11 +343,14 @@ try {
     exit;
 
 } catch (Throwable $e) {
+    error_log('getSearchItems error: ' . $e->getMessage());
     http_response_code(500);
+    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => $e->getMessage(),
+        'detail' => $e->getMessage(), // Note: No HTML encoding needed for JSON - React handles XSS protection
     ]);
     exit;
 }

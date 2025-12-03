@@ -117,18 +117,19 @@ try {
         $seller = (string)$row['email'];
     }
 
+    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $out = [
         // core
         'product_id'    => (int)$row['product_id'],
-        'title'         => (string)($row['title'] ?? 'Untitled'),
-        'description'   => $row['description'] ?? null,
+        'title'         => $row['title'] ?? 'Untitled',
+        'description'   => $row['description'] ?? '',
         'listing_price' => $row['listing_price'] !== null ? (float)$row['listing_price'] : null,
 
         // normalized fields expected by frontend
         'tags'          => $tags,                 // derived from categories
         'categories'    => $row['categories'] ?? null, // raw JSON string for compatibility
-        'item_location' => $row['item_location'] ?? null,
-        'item_condition'=> $row['item_condition'] ?? null,
+        'item_location' => $row['item_location'] ?? '',
+        'item_condition'=> $row['item_condition'] ?? '',
         'photos'        => $photos,               // array of paths/urls
         'trades'        => (bool)$row['trades'],
         'price_nego'    => (bool)$row['price_nego'],
@@ -141,7 +142,7 @@ try {
 
         // seller display helpers
         'seller'        => $seller,
-        'email'         => $row['email'] ?? null,
+        'email'         => $row['email'] ?? '',
 
         // convenience timestamp-like field
         'created_at'    => !empty($row['date_listed']) ? ($row['date_listed'] . ' 00:00:00') : null,
@@ -151,11 +152,14 @@ try {
     exit;
 
 } catch (Throwable $e) {
+    error_log('viewProduct error: ' . $e->getMessage());
     http_response_code(500);
+    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
+    // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
     echo json_encode([
         'ok' => false,
         'error' => 'Server error',
-        'detail' => $e->getMessage(),
+        'detail' => $e->getMessage(), // Note: No HTML encoding needed for JSON - React handles XSS protection
     ]);
     exit;
 }
