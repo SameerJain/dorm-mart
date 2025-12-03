@@ -183,7 +183,16 @@ try {
   $photosJson     = !empty($imageUrls) ? json_encode($imageUrls, JSON_UNESCAPED_SLASHES) : null;
 
   // --- Create / Update ---
-  if ($mode === 'update' && $itemId > 0) {
+  if ($mode === 'update') {
+    // Validate that a valid product ID was provided for update
+    if ($itemId <= 0) {
+      http_response_code(400);
+      echo json_encode([
+        'ok' => false,
+        'error' => 'Invalid product ID. A valid product ID is required for updates.'
+      ]);
+      exit;
+    }
     // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     // ============================================================================
@@ -218,6 +227,16 @@ try {
       $userId            // safely bound as integer parameter
     );
     $stmt->execute();
+
+    // Check if any rows were actually updated
+    if ($stmt->affected_rows === 0) {
+      http_response_code(404);
+      echo json_encode([
+        'ok' => false,
+        'error' => 'Product not found or you do not have permission to edit this product.'
+      ]);
+      exit;
+    }
 
     echo json_encode([
       'ok'         => true,
