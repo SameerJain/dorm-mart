@@ -12,6 +12,8 @@ WHERE email IN (
   'chatuser3@buffalo.edu'
 );
 
+START TRANSACTION;
+
 -- Recreate three users
 INSERT INTO user_accounts
   (first_name, last_name, grad_month, grad_year, email, promotional, hash_pass, hash_auth, seller, theme)
@@ -79,3 +81,5 @@ VALUES
   (@conv_1_3, @uid1, @uid3, @name1, @name3, 'Anish, pushed the fix.', DATE_SUB(NOW(), INTERVAL 2 DAY)),
   (@conv_1_3, @uid3, @uid1, @name3, @name1, 'Got it. Looks good.',    DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 10 MINUTE),
   (@conv_1_3, @uid1, @uid3, @name1, @name3, 'Merging now.',           DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 20 MINUTE);
+
+COMMIT;
