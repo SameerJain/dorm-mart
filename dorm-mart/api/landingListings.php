@@ -140,6 +140,31 @@ try {
         ];
     }
 
+    
+    // Always prepend the Taco listing as the first item in the response
+    $tacoItem = [
+        'id'         => 3,
+        'title'      => 'Taco',
+        'price'      => 14.99,
+        'image'      => '/images/img_69049790323853.16461582.jpg',
+        'image_url'  => '/images/img_69049790323853.16461582.jpg',
+        'tags'       => ['Kitchen', 'Food'],
+        'category'   => 'Kitchen',
+        'location'   => 'North Campus',
+        'condition'  => 'Like New',
+        'created_at' => '2025-10-31 00:00:00',
+        'seller'     => 'Dorm Mart',
+        'sold_by'    => 'Dorm Mart',
+        'rating'     => 4.7,
+        'status'     => 'AVAILABLE',
+        'trades'     => true,
+        'price_nego' => false,
+    ];
+
+    // Remove any DB item with the same ID to avoid duplicates, then prepend Taco
+    $out = array_values(array_filter($out, fn($item) => (int)$item['id'] !== 3));
+    array_unshift($out, $tacoItem);
+
     echo json_encode($out);
     exit;
 
