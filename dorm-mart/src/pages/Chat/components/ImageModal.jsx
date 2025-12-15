@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useModal } from "../../../hooks/useModal";
 
 export default function ImageModal({
   open,
@@ -8,10 +9,20 @@ export default function ImageModal({
 }) {
   const closeBtnRef   = useRef(null);
   const fileInputRef  = useRef(null);
+  const { isOpen: isModalOpen, open: openModal, close: closeModal } = useModal(open);
 
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  // Sync modal state with open prop
+  useEffect(() => {
+    if (open) {
+      openModal();
+    } else {
+      closeModal();
+    }
+  }, [open, openModal, closeModal]);
 
   // Limits & allow-list
   const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -33,34 +44,6 @@ export default function ImageModal({
     onClose?.();
   }, [resetPicker, onClose]);
 
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (open) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-    } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
-    }
-    return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-    };
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +54,7 @@ export default function ImageModal({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, handleClose]);
 
-  if (!open) return null;
+  if (!isModalOpen) return null;
 
   function openPicker() {
     setErrorMsg(null);

@@ -2,9 +2,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import ItemCardNew from "../../components/ItemCardNew";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { apiGet, apiPost, getApiBase } from "../../utils/api";
+import { useModal } from "../../hooks/useModal";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -16,6 +15,16 @@ export default function WishlistPage() {
   const [confirmRemove, setConfirmRemove] = useState(null); // { id, title } or null
   const [removing, setRemoving] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const { isOpen: isMobileFiltersOpen, open: openMobileFilters, close: closeMobileFilters } = useModal(false);
+
+  // Sync mobile filters modal state
+  useEffect(() => {
+    if (showMobileFilters) {
+      openMobileFilters();
+    } else {
+      closeMobileFilters();
+    }
+  }, [showMobileFilters, openMobileFilters, closeMobileFilters]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -23,12 +32,9 @@ export default function WishlistPage() {
       try {
         setLoading(true);
         setError(null);
-        const r = await fetch(`${API_BASE}/wishlist/get_wishlist.php`, {
+        const json = await apiGet("wishlist/get_wishlist.php", {
           signal: controller.signal,
-          credentials: "include",
         });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const json = await r.json();
         if (json.success && Array.isArray(json.data)) {
           // Normalize items for ItemCardNew component
           const normalized = json.data.map((d) => {
@@ -39,7 +45,7 @@ export default function WishlistPage() {
 
             const rawImg = d.image_url || null;
             const img = rawImg
-              ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImg)}`
+              ? `${getApiBase()}/media/image.php?url=${encodeURIComponent(rawImg)}`
               : null;
 
             const createdAt = d.created_at || d.date_listed ? new Date(d.created_at || d.date_listed) : null;
@@ -120,26 +126,6 @@ export default function WishlistPage() {
     setItems(filteredItems);
   }, [filteredItems]);
 
-  // Prevent body scrolling when mobile filter panel is open
-  useEffect(() => {
-    if (showMobileFilters) {
-      // Save current scroll position
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
-      
-      return () => {
-        // Restore scroll position when closing
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [showMobileFilters]);
 
   // Handle remove from wishlist
   const handleRemoveFromWishlist = (itemId, itemTitle) => {
@@ -151,24 +137,9 @@ export default function WishlistPage() {
 
     setRemoving(true);
     try {
-      const r = await fetch(`${API_BASE}/wishlist/remove_from_wishlist.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          product_id: Number(confirmRemove.id),
-        }),
+      const json = await apiPost("wishlist/remove_from_wishlist.php", {
+        product_id: Number(confirmRemove.id),
       });
-
-      if (!r.ok) {
-        const errorData = await r.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${r.status}`);
-      }
-
-      const json = await r.json();
       if (json.success) {
         // Remove item from local state
         setAllItems((prev) => {

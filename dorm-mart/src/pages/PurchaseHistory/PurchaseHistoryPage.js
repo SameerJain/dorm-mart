@@ -1,24 +1,12 @@
 import PurchasedItem from "../../components/Products/PurchasedItem";
 import { Outlet, useSearchParams } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
+import { apiPost } from "../../utils/api";
 
 async function fetchPurchasedItems(filters, signal) {
-  const BASE = process.env.REACT_APP_API_BASE || "/api";
-  const r = await fetch(
-    `${BASE}/purchase-history/purchase_history.php`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify(filters),
-      signal: signal,
-    }
-  );
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return await r.json();
+  return await apiPost("purchase-history/purchase_history.php", filters, {
+    signal: signal,
+  });
 }
 
 function PurchaseHistoryPage() {

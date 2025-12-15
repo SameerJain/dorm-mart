@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import StarRating from "../Reviews/StarRating";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { apiGet, apiPost } from "../../utils/api";
 
 /**
  * BuyerRatingModal Component
@@ -56,16 +55,9 @@ function BuyerRatingModal({
 
   const fetchExistingRating = async () => {
     try {
-      const response = await fetch(
-        `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
+      const result = await apiGet(`reviews/get_buyer_rating.php?product_id=${productId}`);
+      
+      if (result.success) {
         if (result.success && result.has_rating) {
           setExistingRating(result.rating);
           setRating(result.rating.rating || 0);
@@ -184,24 +176,14 @@ function BuyerRatingModal({
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/reviews/submit_buyer_rating.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          product_id: productId,
-          buyer_user_id: buyerId,
-          rating: rating,
-          review_text: reviewText.trim(),
-        }),
+      const result = await apiPost('reviews/submit_buyer_rating.php', {
+        product_id: productId,
+        buyer_user_id: buyerId,
+        rating: rating,
+        review_text: reviewText.trim(),
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.error || "Failed to submit rating");
       }
 

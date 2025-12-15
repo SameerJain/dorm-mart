@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { getApiBase } from '../../../utils/api';
 
 const FAILURE_REASON_LABELS = {
   buyer_no_show: 'Buyer no showed',
@@ -176,7 +175,7 @@ export default function ConfirmMessageCard({ message, isMine, onRespond }) {
     setIsResponding(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/confirm-purchases/respond.php`, {
+      const res = await fetch(`${getApiBase()}/confirm-purchases/respond.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,57 +1,38 @@
 <?php
 
 declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../security/security.php';
-require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-setSecureCORS();
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+require_once __DIR__ . '/../bootstrap.php';
 
-$conn = db();
-$conn->set_charset('utf8mb4');
-
-session_start();
-$userId = (int)($_SESSION['user_id'] ?? 0);
-if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
-}
+// Bootstrap API with GET/POST methods and authentication
+$result = api_bootstrap(['GET', 'POST'], true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Update typing status
-    $body = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($body)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON']);
-        exit;
-    }
+    $body = get_request_data();
 
     $conversationId = isset($body['conversation_id']) ? (int)$body['conversation_id'] : 0;
     $isTyping = isset($body['is_typing']) ? (bool)$body['is_typing'] : false;
 
     if ($conversationId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'conversation_id is required']);
-        exit;
+        send_json_error(400, 'conversation_id is required');
     }
 
     // Verify user has access to this conversation
     $checkStmt = $conn->prepare('SELECT conv_id FROM conversations WHERE conv_id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1');
+    if (!$checkStmt) {
+        send_json_error(500, 'Database error');
+    }
     $checkStmt->bind_param('iii', $conversationId, $userId, $userId);
-    $checkStmt->execute();
+    if (!$checkStmt->execute()) {
+        $checkStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $checkRes = $checkStmt->get_result();
     if (!$checkRes || $checkRes->num_rows === 0) {
         $checkStmt->close();
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Access denied']);
-        exit;
+        send_json_error(403, 'Access denied');
     }
     $checkStmt->close();
 
@@ -69,39 +50,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->execute()) {
             $conn->commit();
             $stmt->close();
-            echo json_encode(['success' => true]);
+            send_json_success([]);
         } else {
             $conn->rollback();
             $stmt->close();
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Failed to update typing status']);
+            send_json_error(500, 'Failed to update typing status');
         }
     } catch (Exception $e) {
         $conn->rollback();
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Failed to update typing status']);
+        send_json_error(500, 'Failed to update typing status');
     }
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Get typing status for other person in conversation
     $conversationId = isset($_GET['conversation_id']) ? (int)$_GET['conversation_id'] : 0;
     
     if ($conversationId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'conversation_id is required']);
-        exit;
+        send_json_error(400, 'conversation_id is required');
     }
 
     // Verify user has access to this conversation and get other user's ID
     $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
+    if (!$convStmt) {
+        send_json_error(500, 'Database error');
+    }
     $convStmt->bind_param('i', $conversationId);
-    $convStmt->execute();
+    if (!$convStmt->execute()) {
+        $convStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $convRes = $convStmt->get_result();
     if (!$convRes || $convRes->num_rows === 0) {
         $convStmt->close();
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Access denied']);
-        exit;
+        send_json_error(403, 'Access denied');
     }
     $convRow = $convRes->fetch_assoc();
     $convStmt->close();
@@ -110,9 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $otherUserId = ((int)$convRow['user1_id'] === $userId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
     
     if ($otherUserId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid conversation']);
-        exit;
+        send_json_error(400, 'Invalid conversation');
     }
 
     // Get typing status for other user with their name, only if updated within last 8 seconds
@@ -141,22 +119,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $stmt->close();
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     $response = [
-        'success' => true, 
         'is_typing' => $isTyping
     ];
     if ($isTyping && $typingUserFirstName) {
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $response['typing_user_first_name'] = $typingUserFirstName;
-        // Only include last_name if available, but don't require it
         if ($typingUserLastName) {
             $response['typing_user_last_name'] = $typingUserLastName;
         }
     }
-    echo json_encode($response);
-} else {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    send_json_success($response);
 }
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { apiGet, apiPost } from '../utils/api';
 
 export function useTheme() {
   const [theme, setTheme] = useState('light');
@@ -23,18 +22,11 @@ export function useTheme() {
       // Get user ID for user-specific localStorage
       let userId = null;
       try {
-        const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
-          method: 'GET', 
-          credentials: 'include',
-          signal: controller.signal
-        });
-        if (meRes.ok) {
-          const meJson = await meRes.json();
-          userId = meJson.user_id;
-        }
+        const meJson = await apiGet('auth/me.php', { signal: controller.signal });
+        userId = meJson.user_id;
       } catch (e) {
         if (e.name === 'AbortError') return;
-        // User not authenticated
+        // User not authenticated - continue without userId
       }
 
       // Check if user just changed theme - skip backend load if so
@@ -87,13 +79,8 @@ export function useTheme() {
         }
 
         // Then get from backend and override localStorage
-        const res = await fetch(`${API_BASE}/userPreferences.php`, { 
-          method: 'GET', 
-          credentials: 'include',
-          signal: controller.signal
-        });
-        if (res.ok) {
-          const json = await res.json();
+        try {
+          const json = await apiGet('user/preferences.php', { signal: controller.signal });
           if (json?.ok && json?.data?.theme) {
             // Check again if user changed theme during fetch
             if (userInitiatedChangeRef.current) {
@@ -122,6 +109,9 @@ export function useTheme() {
               }
             }
           }
+        } catch (apiError) {
+          if (apiError.name === 'AbortError') return;
+          // API call failed, fall through to localStorage fallback below
         }
       } catch (e) {
         if (e.name === 'AbortError') return;
@@ -172,15 +162,8 @@ export function useTheme() {
     // Get user ID for user-specific localStorage
     let userId = null;
     try {
-      const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
-        method: 'GET', 
-        credentials: 'include',
-        signal: controller.signal
-      });
-      if (meRes.ok) {
-        const meJson = await meRes.json();
-        userId = meJson.user_id;
-      }
+      const meJson = await apiGet('auth/me.php', { signal: controller.signal });
+      userId = meJson.user_id;
     } catch (e) {
       if (e.name === 'AbortError') return;
       // User not authenticated
@@ -195,16 +178,7 @@ export function useTheme() {
     try {
       // POST theme directly - UserPreferences already handles full preferences save
       // This is a minimal save that won't conflict with UserPreferences auto-save
-      const res = await fetch(`${API_BASE}/userPreferences.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ theme: newTheme }),
-        signal: controller.signal,
-      });
-      if (!res.ok && !controller.signal.aborted) {
-        console.warn('Failed to save theme to backend');
-      }
+      await apiPost('user/preferences.php', { theme: newTheme }, { signal: controller.signal });
     } catch (e) {
       if (e.name !== 'AbortError') {
         console.warn('Failed to save theme:', e);

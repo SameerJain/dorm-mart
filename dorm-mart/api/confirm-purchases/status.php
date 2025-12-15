@@ -2,50 +2,30 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $userId = require_login();
-
-    $payload = json_decode(file_get_contents('php://input'), true);
+    $payload = get_request_data();
     if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
+        send_json_error(400, 'Invalid JSON payload');
     }
 
     $conversationId = isset($payload['conversation_id']) ? (int)$payload['conversation_id'] : 0;
     $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
 
     if ($conversationId <= 0 || $productId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'conversation_id and product_id are required']);
-        exit;
+        send_json_error(400, 'conversation_id and product_id are required');
     }
 
-    $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $convStmt = $conn->prepare('
         SELECT c.conv_id, c.product_id, inv.seller_id, inv.title AS item_title
         FROM conversations c
@@ -54,33 +34,29 @@ try {
         LIMIT 1
     ');
     if (!$convStmt) {
-        throw new RuntimeException('Failed to prepare conversation lookup');
+        send_json_error(500, 'Database error');
     }
     $convStmt->bind_param('ii', $conversationId, $productId);
-    $convStmt->execute();
+    if (!$convStmt->execute()) {
+        $convStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $convRes = $convStmt->get_result();
     $convRow = $convRes ? $convRes->fetch_assoc() : null;
     $convStmt->close();
 
     if (!$convRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Conversation not found for this listing']);
-        exit;
+        send_json_error(404, 'Conversation not found for this listing');
     }
 
     if ((int)$convRow['seller_id'] !== $userId) {
-        echo json_encode([
-            'success' => true,
-            'data' => [
-                'can_confirm' => false,
-                'reason_code' => 'not_seller',
-                'message' => 'Only the seller can send a Confirm Purchase form.',
-            ],
+        send_json_success([
+            'can_confirm' => false,
+            'reason_code' => 'not_seller',
+            'message' => 'Only the seller can send a Confirm Purchase form.',
         ]);
-        return;
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
         SELECT *
         FROM scheduled_purchase_requests
@@ -92,24 +68,23 @@ try {
         LIMIT 1
     ');
     if (!$schedStmt) {
-        throw new RuntimeException('Failed to prepare scheduled lookup');
+        send_json_error(500, 'Database error');
     }
     $schedStmt->bind_param('iii', $conversationId, $productId, $userId);
-    $schedStmt->execute();
+    if (!$schedStmt->execute()) {
+        $schedStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $schedRes = $schedStmt->get_result();
     $schedRow = $schedRes ? $schedRes->fetch_assoc() : null;
     $schedStmt->close();
 
     if (!$schedRow) {
-        echo json_encode([
-            'success' => true,
-            'data' => [
-                'can_confirm' => false,
-                'reason_code' => 'missing_schedule',
-                'message' => 'First, send the Schedule Purchase form. Then once the exchange is complete, send the Confirm Purchase form.',
-            ],
+        send_json_success([
+            'can_confirm' => false,
+            'reason_code' => 'missing_schedule',
+            'message' => 'First, send the Schedule Purchase form. Then once the exchange is complete, send the Confirm Purchase form.',
         ]);
-        return;
     }
 
     $meetingIso = null;
@@ -120,15 +95,13 @@ try {
         }
     }
 
-    // XSS PROTECTION: Escape user-generated content
     $scheduledInfo = [
         'request_id' => (int)$schedRow['request_id'],
         'buyer_user_id' => (int)$schedRow['buyer_user_id'],
-        'meet_location' => $schedRow['meet_location'] ?? '', // Note: No HTML encoding needed for JSON - React handles XSS protection
+        'meet_location' => $schedRow['meet_location'] ?? '',
         'meeting_at' => $meetingIso,
     ];
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $confirmStmt = $conn->prepare('
         SELECT *
         FROM confirm_purchase_requests
@@ -136,8 +109,14 @@ try {
         ORDER BY confirm_request_id DESC
         LIMIT 1
     ');
+    if (!$confirmStmt) {
+        send_json_error(500, 'Database error');
+    }
     $confirmStmt->bind_param('i', $schedRow['request_id']);
-    $confirmStmt->execute();
+    if (!$confirmStmt->execute()) {
+        $confirmStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $confirmRes = $confirmStmt->get_result();
     $confirmRow = $confirmRes ? $confirmRes->fetch_assoc() : null;
     $confirmStmt->close();
@@ -177,19 +156,15 @@ try {
         }
     }
 
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'can_confirm' => $canConfirm,
-            'reason_code' => $reasonCode,
-            'message' => $message,
-            'scheduled_request' => $scheduledInfo,
-            'pending_request' => $pendingRequest,
-            'latest_confirm' => $latestConfirm,
-        ],
+    send_json_success([
+        'can_confirm' => $canConfirm,
+        'reason_code' => $reasonCode,
+        'message' => $message,
+        'scheduled_request' => $scheduledInfo,
+        'pending_request' => $pendingRequest,
+        'latest_confirm' => $latestConfirm,
     ]);
 } catch (Throwable $e) {
     error_log('confirm-purchase status error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Internal server error');
 }

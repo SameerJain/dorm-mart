@@ -1,3 +1,5 @@
+import { getApiBase } from './api';
+
 // Load user theme from backend and localStorage
 export const loadUserTheme = async () => {
   // First clear any existing theme to prevent cross-user contamination
@@ -6,8 +8,7 @@ export const loadUserTheme = async () => {
   // Get user ID for user-specific localStorage
   let userId = null;
   try {
-    const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-    const meRes = await fetch(`${API_BASE}/auth/me.php`, { 
+    const meRes = await fetch(`${getApiBase()}/auth/me.php`, { 
       method: 'GET', 
       credentials: 'include' 
     });
@@ -34,8 +35,7 @@ export const loadUserTheme = async () => {
 
   // Then get from backend and override localStorage
   try {
-    const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-    const res = await fetch(`${API_BASE}/userPreferences.php`, { 
+    const res = await fetch(`${getApiBase()}/user/preferences.php`, { 
       method: 'GET', 
       credentials: 'include' 
     });

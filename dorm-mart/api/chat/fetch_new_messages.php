@@ -1,28 +1,14 @@
 <?php
 
-header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../security/security.php';
-require __DIR__ . '/../database/db_connect.php';
-setSecurityHeaders();
-// Ensure CORS headers are present for React dev server and local PHP server
-setSecureCORS();
+declare(strict_types=1);
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+require_once __DIR__ . '/../bootstrap.php';
 
-$conn = db();
+// Bootstrap API with GET method and authentication
+$result = api_bootstrap('GET', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 $conn->query("SET time_zone = '+00:00'");
-
-session_start(); 
-$userId = (int)($_SESSION['user_id'] ?? 0);
-if ($userId <= 0) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-    exit;
-}
 
 $convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
 $tsSec  = isset($_GET['ts']) ? (int)$_GET['ts'] : 0;
@@ -37,10 +23,16 @@ $stmt = $conn->prepare(
       AND created_at > FROM_UNIXTIME(?)
     ORDER BY message_id ASC'
 );
-$stmt->bind_param('ii', $convId, $tsSec); // both ints
-$stmt->execute();
+if (!$stmt) {
+    send_json_error(500, 'Database error');
+}
+$stmt->bind_param('ii', $convId, $tsSec);
+if (!$stmt->execute()) {
+    $stmt->close();
+    send_json_error(500, 'Database error');
+}
 
-$res = $stmt->get_result(); // requires mysqlnd; otherwise switch to bind_result loop
+$res = $stmt->get_result();
 error_log(sprintf('[read_new_messages] num_rows=%d', $res->num_rows));
 $messages = [];
 while ($row = $res->fetch_assoc()) {
@@ -52,19 +44,20 @@ while ($row = $res->fetch_assoc()) {
         $statusStmt = $conn->prepare('SELECT status, buyer_response_at FROM scheduled_purchase_requests WHERE request_id = ? LIMIT 1');
         if ($statusStmt) {
             $statusStmt->bind_param('i', $requestId);
-            $statusStmt->execute();
-            $statusRes = $statusStmt->get_result();
-            if ($statusRes && $statusRes->num_rows > 0) {
-                $statusRow = $statusRes->fetch_assoc();
-                // Add status and buyer_response_at to metadata
-                $metadata['scheduled_purchase_status'] = (string)$statusRow['status'];
-                if (!empty($statusRow['buyer_response_at'])) {
-                    $dt = date_create($statusRow['buyer_response_at'], new DateTimeZone('UTC'));
-                    if ($dt) {
-                        $metadata['buyer_response_at'] = $dt->format(DateTime::ATOM);
+            if ($statusStmt->execute()) {
+                $statusRes = $statusStmt->get_result();
+                if ($statusRes && $statusRes->num_rows > 0) {
+                    $statusRow = $statusRes->fetch_assoc();
+                    // Add status and buyer_response_at to metadata
+                    $metadata['scheduled_purchase_status'] = (string)$statusRow['status'];
+                    if (!empty($statusRow['buyer_response_at'])) {
+                        $dt = date_create($statusRow['buyer_response_at'], new DateTimeZone('UTC'));
+                        if ($dt) {
+                            $metadata['buyer_response_at'] = $dt->format(DateTime::ATOM);
+                        }
                     }
+                    $row['metadata'] = json_encode($metadata, JSON_UNESCAPED_SLASHES);
                 }
-                $row['metadata'] = json_encode($metadata, JSON_UNESCAPED_SLASHES);
             }
             $statusStmt->close();
         }
@@ -76,19 +69,20 @@ while ($row = $res->fetch_assoc()) {
         $confirmStatusStmt = $conn->prepare('SELECT status, buyer_response_at FROM confirm_purchase_requests WHERE confirm_request_id = ? LIMIT 1');
         if ($confirmStatusStmt) {
             $confirmStatusStmt->bind_param('i', $confirmRequestId);
-            $confirmStatusStmt->execute();
-            $confirmStatusRes = $confirmStatusStmt->get_result();
-            if ($confirmStatusRes && $confirmStatusRes->num_rows > 0) {
-                $confirmStatusRow = $confirmStatusRes->fetch_assoc();
-                // Add status and buyer_response_at to metadata
-                $metadata['confirm_purchase_status'] = (string)$confirmStatusRow['status'];
-                if (!empty($confirmStatusRow['buyer_response_at'])) {
-                    $dt = date_create($confirmStatusRow['buyer_response_at'], new DateTimeZone('UTC'));
-                    if ($dt) {
-                        $metadata['buyer_response_at'] = $dt->format(DateTime::ATOM);
+            if ($confirmStatusStmt->execute()) {
+                $confirmStatusRes = $confirmStatusStmt->get_result();
+                if ($confirmStatusRes && $confirmStatusRes->num_rows > 0) {
+                    $confirmStatusRow = $confirmStatusRes->fetch_assoc();
+                    // Add status and buyer_response_at to metadata
+                    $metadata['confirm_purchase_status'] = (string)$confirmStatusRow['status'];
+                    if (!empty($confirmStatusRow['buyer_response_at'])) {
+                        $dt = date_create($confirmStatusRow['buyer_response_at'], new DateTimeZone('UTC'));
+                        if ($dt) {
+                            $metadata['buyer_response_at'] = $dt->format(DateTime::ATOM);
+                        }
                     }
+                    $row['metadata'] = json_encode($metadata, JSON_UNESCAPED_SLASHES);
                 }
-                $row['metadata'] = json_encode($metadata, JSON_UNESCAPED_SLASHES);
             }
             $confirmStatusStmt->close();
         }
@@ -105,9 +99,13 @@ $stmt = $conn->prepare(
             first_unread_msg_id = 0
       WHERE conv_id = ? AND user_id = ?'
 );
-$stmt->bind_param('ii', $convId, $userId);
-$stmt->execute();
-$stmt->close();
+if ($stmt) {
+    $stmt->bind_param('ii', $convId, $userId);
+    if ($stmt->execute()) {
+        // Update successful
+    }
+    $stmt->close();
+}
 
 // Get typing status for other user in conversation
 $typingStatus = [
@@ -152,9 +150,8 @@ if ($convId > 0) {
     $convStmt->close();
 }
 
-echo json_encode([
-    'success'  => true,
+send_json_success([
     'conv_id'  => $convId,
-    'messages' => $messages, // array of only-new messages
-    'typing_status' => $typingStatus, // typing status for other user
-], JSON_UNESCAPED_SLASHES);
+    'messages' => $messages,
+    'typing_status' => $typingStatus,
+], 200);

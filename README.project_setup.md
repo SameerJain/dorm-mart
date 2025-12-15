@@ -4,8 +4,13 @@
 
 1. Clone the repository and navigate to the `dorm-mart` directory
 2. Run `npm install` to install dependencies
-3. Set up your local database (see `README.project_setup.md` for schema migration details)
-4. Start the development server: `npm run start-local-win` (or `-mac`) and run `php -S localhost:8080 -t .` in the `dorm-mart` directory
+3. **Set up environment variables**: Copy `.env.development.example` to `.env.development` and configure:
+   - Database credentials (DB_HOST, DB_NAME, DB_USERNAME, DB_PASSWORD)
+   - Frontend URL (FRONTEND_BASE_URL) - defaults to `http://localhost:3000` for development
+   - Email credentials (GMAIL_USERNAME, GMAIL_PASSWORD) for password reset emails
+   - See `.env.example` for all available options
+4. Set up your local database (see schema migration details below)
+5. Start the development server: `npm run start-local-win` (or `-mac`) and run `php -S localhost:8080 -t .` in the `dorm-mart` directory
 
 # POSIX Demo (ssh into Aptitude to user terminal)
 
@@ -39,8 +44,9 @@ Copy any necessary files to the server:
 1. Create /serve/dorm-mart folder in htdocs directory
 2. Navigate to your project located in htdocs (if you don't have your project in this directory, copy/paste them)
 3. `npm install` to download any new libraries
-4. `npm run build-local` to create build folder for local server (add -win or -mac at the end depending on your machine)
-5. Upload the build/\*, migrations, api, and .env.local, and any necessary files and folders to /serve/dorm-mart
+4. **Set up environment**: Copy `.env.local.example` to `.env.local` and configure FRONTEND_BASE_URL to `http://localhost/serve/dorm-mart`
+5. `npm run build-local` to create build folder for local server (add -win or -mac at the end depending on your machine)
+6. Upload the build/\*, migrations, api, and .env.local, and any necessary files and folders to /serve/dorm-mart
    1. (\*Copy and paste out all of the contents of the build folder, they cant still be inside the build folder)
    2. (You could make a script to automate this)
    3. (These list of files and folders are subject to change as the project grows)
@@ -51,8 +57,11 @@ Copy any necessary files to the server:
 
 # Test Server Build: APTITUDE (How to build and upload prod app to aptitude)
 
-1. `npm run build-prod` (add -win or -mac at the end depending on your machine)
-2. Upload 1) build contents\*, 2) migrations, 3) api, 4) .env.production to the aptitude server
+1. **Set up environment**: Copy `.env.production.example` to `.env.production` and configure:
+   - FRONTEND_BASE_URL: `https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j`
+   - Database credentials for Aptitude server
+2. `npm run build-prod` (add -win or -mac at the end depending on your machine)
+3. Upload 1) build contents\*, 2) migrations, 3) api, 4) .env.production to the aptitude server
    1. (\* Copy and paste out all of the contents of the build folder, they cant still be inside the build folder)
    2. (These list of files and folders are subject to change as the project grows)
 3. Make sure to migrate to apply db schema and app data to the mysql server
@@ -62,8 +71,11 @@ Copy any necessary files to the server:
 
 # Production Build: CATTLE (How to build and upload prod app to cattle)
 
-1. `npm run build-cattle` (add -win or -mac at the end depending on your machine)
-2. Upload 1) build contents*, 2) migrations, 3) api, 4) .env.cattle to the cattle server (these list of files and folders are subject to change as the project grows)
+1. **Set up environment**: Copy `.env.cattle.example` to `.env.cattle` and configure:
+   - FRONTEND_BASE_URL: `https://cattle.cse.buffalo.edu/CSE442/2025-Fall/cse-442j`
+   - Database credentials for Cattle server
+2. `npm run build-cattle` (add -win or -mac at the end depending on your machine)
+3. Upload 1) build contents*, 2) migrations, 3) api, 4) .env.cattle to the cattle server (these list of files and folders are subject to change as the project grows)
    (These list of files and folders are subject to change as the project grows) \
    (* Copy and paste out all of the contents of the build folder, they cant still be inside the build folder) \
    (\* It is highly recommended that you build a script to automate this process to avoid missing out some necessary files and mitigate the tedious process)
@@ -84,6 +96,24 @@ Copy any necessary files to the server:
 3. The React app (client-side router) kicks in after the browser loads the index.html.
    - Since your URL has a hash (#/login), the browser doesn't ask the server for a separate /login resource. Everything after # is handled purely on the client side, meaning all components are loaded entirely within the index.html at once.
    - The React Router reads that hash fragment (#/login) and renders the right component (your Login page). This is how SPA works.
+
+# Environment Configuration
+
+The project uses environment variables for configuration. Key variables:
+
+- **FRONTEND_BASE_URL**: Base URL where the React app is served (required)
+- **API_BASE_URL**: Base URL for PHP API (optional, defaults to FRONTEND_BASE_URL + /api)
+- **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed CORS origins (optional, auto-detected)
+- **ENVIRONMENT**: Environment name - development, local, production, or cattle (optional, auto-detected)
+- **DB_***: Database configuration (required)
+
+See `.env.example` and environment-specific examples (`.env.development.example`, `.env.local.example`, etc.) for details.
+
+**Important**: Only one .env file should exist per environment. The system checks in this order:
+1. `.env.development`
+2. `.env.local`
+3. `.env.production`
+4. `.env.cattle`
 
 # Development Utilities
 

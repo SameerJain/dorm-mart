@@ -15,20 +15,28 @@ $conn->query("
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB");
 
-// Copy test images from data/test-images/ to images/ directory (idempotent)
-$dataDir = dirname(__DIR__,2) . '/data';                        // Path to the data folder
-$testImagesDir = $dataDir . '/test-images';                    // Path to test-images subdirectory
-$imagesDir = dirname(__DIR__,2) . '/images';                   // Path to images directory
+// Copy test images from data/test-images/ to images/ directory with unique naming
+$dataDir = dirname(__DIR__,2) . '/data';
+$testImagesDir = $dataDir . '/test-images';
+$imagesDir = dirname(__DIR__,2) . '/images';
 
-if (is_dir($testImagesDir) && is_dir($imagesDir)) {
-  $testImageFiles = glob($testImagesDir . '/*');                // Get all files in test-images
+if (is_dir($testImagesDir)) {
+  if (!is_dir($imagesDir)) { @mkdir($imagesDir, 0775, true); }
+  
+  $testImageFiles = glob($testImagesDir . '/*');
   foreach ($testImageFiles as $testImagePath) {
     if (is_file($testImagePath)) {
-      $filename = basename($testImagePath);
-      $destPath = $imagesDir . '/' . $filename;
+      $origName = basename($testImagePath);
+      $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+      $allowedExt = ['jpg','jpeg','png','webp','gif'];
+      if (!in_array($ext, $allowedExt, true)) { $ext = 'jpg'; }
+      
+      // Use same unique naming as product listing form
+      $fname = uniqid('img_', true) . '.' . $ext;
+      $destPath = $imagesDir . '/' . $fname;
+      
       if (!copy($testImagePath, $destPath)) {
-        // Log warning but don't fail the migration
-        error_log("Warning: Failed to copy test image: $filename");
+        error_log("Warning: Failed to copy test image: $origName");
       }
     }
   }
@@ -66,14 +74,94 @@ foreach ($files as $path) {
     "INSERT INTO data_migrations (filename) VALUES (?)
      ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP"
   );
+  if (!$stmt) {
+    $err = $conn->error;
+    $conn->rollback();
+    echo json_encode([
+      "success" => false,
+      "message" => "Failed: " . $name . " — prepare failed: " . $err
+    ]);
+    exit;
+  }
   $stmt->bind_param("s", $name);                                // Bind the filename as string
-  $stmt->execute();                                             // Insert or update the timestamp
+  if (!$stmt->execute()) {                                      // Insert or update the timestamp
+    $err = $stmt->error;
+    $stmt->close();
+    $conn->rollback();
+    echo json_encode([
+      "success" => false,
+      "message" => "Failed: " . $name . " — execute failed: " . $err
+    ]);
+    exit;
+  }
   $stmt->close();                                               // Free the statement
 
-  $conn->commit();                                              // Finalize this migration's transaction
-  $ran[] = $name;                                               // Add to the list of executed files
+  $conn->commit();
+  $ran[] = $name;
 }
 
-// XSS PROTECTION: Escape filenames before outputting in JSON (defense-in-depth)
+// Clean up orphaned inventory entries for migrated test accounts only
+$testEmailPatterns = [
+  'testuser@buffalo.edu',
+  'test-buyer@buffalo.edu',
+  'test-seller@buffalo.edu',
+  'test-change-password@buffalo.edu',
+  'testuser102@buffalo.edu',
+  'testuserschedulered@buffalo.edu',
+  'testuserscheduleyellow@buffalo.edu'
+];
+
+// Get user_ids for test accounts
+$testUserIds = [];
+if (!empty($testEmailPatterns)) {
+  $placeholders = implode(',', array_fill(0, count($testEmailPatterns), '?'));
+  $cleanupStmt = $conn->prepare("SELECT user_id FROM user_accounts WHERE email IN ($placeholders)");
+  if (!$cleanupStmt) {
+    error_log("Failed to prepare test user ID fetch: " . $conn->error);
+    $cleanupStmt = null;
+  } else {
+    $types = str_repeat('s', count($testEmailPatterns));
+    $cleanupStmt->bind_param($types, ...$testEmailPatterns);
+    if (!$cleanupStmt->execute()) {
+      error_log("Failed to execute test user ID fetch: " . $cleanupStmt->error);
+      $cleanupStmt->close();
+      $cleanupStmt = null;
+    } else {
+      $result = $cleanupStmt->get_result();
+      while ($row = $result->fetch_assoc()) {
+        $testUserIds[] = (int)$row['user_id'];
+      }
+      $cleanupStmt->close();
+    }
+  }
+}
+
+// Delete inventory entries for test accounts
+if (!empty($testUserIds)) {
+  $placeholders = implode(',', array_fill(0, count($testUserIds), '?'));
+  $deleteStmt = $conn->prepare("DELETE FROM INVENTORY WHERE seller_id IN ($placeholders)");
+  if ($deleteStmt) {
+    $types = str_repeat('i', count($testUserIds));
+    $deleteStmt->bind_param($types, ...$testUserIds);
+    if (!$deleteStmt->execute()) {
+      error_log("Failed to delete test account inventory: " . $deleteStmt->error);
+    }
+    $deleteStmt->close();
+  } else {
+    error_log("Failed to prepare test account inventory delete: " . $conn->error);
+  }
+}
+
+// Delete any truly orphaned inventory entries (seller_id not in user_accounts)
+$orphanStmt = $conn->prepare("DELETE i FROM INVENTORY i LEFT JOIN user_accounts ua ON i.seller_id = ua.user_id WHERE ua.user_id IS NULL");
+if ($orphanStmt) {
+  if (!$orphanStmt->execute()) {
+    error_log("Failed to delete orphaned inventory: " . $orphanStmt->error);
+  }
+  $orphanStmt->close();
+} else {
+  error_log("Failed to prepare orphaned inventory delete: " . $conn->error);
+}
+
 $escapedRan = array_map('escapeHtml', $ran);
-echo json_encode(["success" => true, "applied" => $escapedRan]);        // Return summary of executed files
+echo json_encode(["success" => true, "applied" => $escapedRan]);

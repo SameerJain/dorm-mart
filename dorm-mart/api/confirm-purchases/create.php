@@ -2,35 +2,19 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$sellerId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $sellerId = require_login();
-
-    $payload = json_decode(file_get_contents('php://input'), true);
+    $payload = get_request_data();
     if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
+        send_json_error(400, 'Invalid JSON payload');
     }
 
     $scheduledRequestId = isset($payload['scheduled_request_id']) ? (int)$payload['scheduled_request_id'] : 0;
@@ -39,37 +23,26 @@ try {
 
     $isSuccessfulRaw = $payload['is_successful'] ?? null;
     if ($isSuccessfulRaw === null) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'is_successful is required']);
-        exit;
+        send_json_error(400, 'is_successful is required');
     }
     $isSuccessful = filter_var($isSuccessfulRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     if ($isSuccessful === null) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid is_successful value']);
-        exit;
+        send_json_error(400, 'Invalid is_successful value');
     }
 
     $finalPrice = isset($payload['final_price']) && $payload['final_price'] !== ''
         ? (float)$payload['final_price']
         : null;
     if ($finalPrice !== null && ($finalPrice < 0 || $finalPrice > 9999.99)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Final price must be between 0 and 9,999.99']);
-        exit;
+        send_json_error(400, 'Final price must be between 0 and 9,999.99');
     }
 
     $sellerNotes = isset($payload['seller_notes']) ? trim((string)$payload['seller_notes']) : '';
     if (strlen($sellerNotes) > 2000) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Notes cannot exceed 2000 characters']);
-        exit;
+        send_json_error(400, 'Notes cannot exceed 2000 characters');
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if ($sellerNotes !== '' && containsXSSPattern($sellerNotes)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in seller notes']);
-        exit;
+        send_json_error(400, 'Invalid characters in seller notes');
     }
 
     $failureReason = isset($payload['failure_reason']) ? trim((string)$payload['failure_reason']) : null;
@@ -81,43 +54,28 @@ try {
         $failureReasonNotes = null;
     } else {
         if ($failureReason === null || $failureReason === '') {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failure reason is required for unsuccessful confirmations']);
-            exit;
+            send_json_error(400, 'Failure reason is required for unsuccessful confirmations');
         }
         if (!in_array($failureReason, $validFailureReasons, true)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid failure reason']);
-            exit;
+            send_json_error(400, 'Invalid failure reason');
         }
         if ($failureReason === 'other' && ($failureReasonNotes === null || $failureReasonNotes === '')) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Please provide details for the selected reason']);
-            exit;
+            send_json_error(400, 'Please provide details for the selected reason');
         }
         if ($failureReasonNotes !== null && strlen($failureReasonNotes) > 1000) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Failure notes cannot exceed 1000 characters']);
-            exit;
+            send_json_error(400, 'Failure notes cannot exceed 1000 characters');
         }
-        // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
         if ($failureReasonNotes !== null && $failureReasonNotes !== '' && containsXSSPattern($failureReasonNotes)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Invalid characters in failure reason notes']);
-            exit;
+            send_json_error(400, 'Invalid characters in failure reason notes');
         }
     }
 
     if ($scheduledRequestId <= 0 || $conversationId <= 0 || $productId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Missing reference ids']);
-        exit;
+        send_json_error(400, 'Missing reference ids');
     }
 
-    $conn = db();
     $conn->set_charset('utf8mb4');
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $schedStmt = $conn->prepare('
         SELECT
             spr.request_id,
@@ -149,58 +107,56 @@ try {
         LIMIT 1
     ');
     if (!$schedStmt) {
-        throw new RuntimeException('Failed to prepare scheduled lookup');
+        send_json_error(500, 'Database error');
     }
     $schedStmt->bind_param('iii', $scheduledRequestId, $productId, $conversationId);
-    $schedStmt->execute();
+    if (!$schedStmt->execute()) {
+        $schedStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $schedRes = $schedStmt->get_result();
     $schedRow = $schedRes ? $schedRes->fetch_assoc() : null;
     $schedStmt->close();
 
     if (!$schedRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Scheduled purchase not found or not accepted']);
-        exit;
+        send_json_error(404, 'Scheduled purchase not found or not accepted');
     }
 
     if ((int)$schedRow['seller_user_id'] !== $sellerId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You cannot confirm purchases for this listing']);
-        exit;
+        send_json_error(403, 'You cannot confirm purchases for this listing');
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // Check for any pending confirm purchase requests (block creation if pending)
-    // Note: buyer_declined status allows new confirm purchases to be created
     $pendingStmt = $conn->prepare('SELECT * FROM confirm_purchase_requests WHERE scheduled_request_id = ? AND status = \'pending\' ORDER BY confirm_request_id DESC LIMIT 1');
-    $pendingStmt->bind_param('i', $scheduledRequestId);
-    $pendingStmt->execute();
-    $pendingRes = $pendingStmt->get_result();
-    $pendingRow = $pendingRes ? $pendingRes->fetch_assoc() : null;
-    $pendingStmt->close();
-
-    if ($pendingRow) {
-        $pendingRow = auto_finalize_confirm_request($conn, $pendingRow);
-        if ($pendingRow && ($pendingRow['status'] ?? '') === 'pending') {
-            http_response_code(409);
-            echo json_encode(['success' => false, 'error' => 'There is already a pending confirmation for this scheduled purchase']);
-            exit;
+    if ($pendingStmt) {
+        $pendingStmt->bind_param('i', $scheduledRequestId);
+        if ($pendingStmt->execute()) {
+            $pendingRes = $pendingStmt->get_result();
+            $pendingRow = $pendingRes ? $pendingRes->fetch_assoc() : null;
+            
+            if ($pendingRow) {
+                $pendingRow = auto_finalize_confirm_request($conn, $pendingRow);
+                if ($pendingRow && ($pendingRow['status'] ?? '') === 'pending') {
+                    $pendingStmt->close();
+                    send_json_error(409, 'There is already a pending confirmation for this scheduled purchase');
+                }
+            }
         }
+        $pendingStmt->close();
     }
     
-    // Also check for already accepted/confirmed status (block creation if already confirmed)
-    // This prevents creating new confirm purchases after a successful confirmation
     $latestStmt = $conn->prepare('SELECT status FROM confirm_purchase_requests WHERE scheduled_request_id = ? ORDER BY confirm_request_id DESC LIMIT 1');
-    $latestStmt->bind_param('i', $scheduledRequestId);
-    $latestStmt->execute();
-    $latestRes = $latestStmt->get_result();
-    $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
-    $latestStmt->close();
-    
-    if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted'], true)) {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'This transaction has already been confirmed']);
-        exit;
+    if ($latestStmt) {
+        $latestStmt->bind_param('i', $scheduledRequestId);
+        if ($latestStmt->execute()) {
+            $latestRes = $latestStmt->get_result();
+            $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
+            
+            if ($latestRow && in_array($latestRow['status'], ['buyer_accepted', 'auto_accepted'], true)) {
+                $latestStmt->close();
+                send_json_error(409, 'This transaction has already been confirmed');
+            }
+        }
+        $latestStmt->close();
     }
 
     $buyerId = (int)$schedRow['buyer_user_id'];
@@ -233,7 +189,6 @@ try {
         throw new RuntimeException('Failed to encode snapshot');
     }
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $insertStmt = $conn->prepare('
         INSERT INTO confirm_purchase_requests
             (scheduled_request_id, inventory_product_id, seller_user_id, buyer_user_id, conversation_id, is_successful,
@@ -241,7 +196,7 @@ try {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'pending\', ?, ?)
     ');
     if (!$insertStmt) {
-        throw new RuntimeException('Failed to prepare confirm insert');
+        send_json_error(500, 'Database error');
     }
     $isSuccessfulInt = $isSuccessful ? 1 : 0;
     $insertStmt->bind_param(
@@ -259,7 +214,10 @@ try {
         $expiresAtDb,
         $payloadSnapshotJson
     );
-    $insertStmt->execute();
+    if (!$insertStmt->execute()) {
+        $insertStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $confirmRequestId = (int)$insertStmt->insert_id;
     $insertStmt->close();
 
@@ -295,17 +253,13 @@ try {
     $messageContent = $sellerDisplayName . ' submitted a Confirm Purchase form for ' . $itemTitle . '.';
     insert_confirm_chat_message($conn, $conversationId, $sellerId, $buyerId, $messageContent, $metadata);
 
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'confirm_request_id' => $confirmRequestId,
-            'status' => 'pending',
-            'expires_at' => $expiresAtIso,
-            'metadata' => $metadata,
-        ],
+    send_json_success([
+        'confirm_request_id' => $confirmRequestId,
+        'status' => 'pending',
+        'expires_at' => $expiresAtIso,
+        'metadata' => $metadata,
     ]);
 } catch (Throwable $e) {
     error_log('confirm-purchase create error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Server error');
 }

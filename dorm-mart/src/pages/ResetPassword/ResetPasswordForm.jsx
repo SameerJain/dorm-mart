@@ -1,45 +1,12 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PreLoginBranding from "../../components/PreLoginBranding";
+import FormField from "../../components/Forms/FormField";
+import PasswordPolicyDisplay from "../../components/Forms/PasswordPolicyDisplay";
+import { apiGet, apiPost } from "../../utils/api";
+import { getPasswordPolicy, validatePassword, createPasswordMaxLengthEnforcer } from "../../utils/passwordValidation";
 
 const NAV_BLUE = "#2563EB";
-const MAX_LEN = 64;
-
-const hasLower = (s) => /[a-z]/.test(s);
-const hasUpper = (s) => /[A-Z]/.test(s);
-const hasDigit = (s) => /\d/.test(s);
-const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
-
-function RequirementRow({ ok, text }) {
-  return (
-    <div className="flex items-center gap-3 text-sm sm:text-base">
-      <span className="inline-flex h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
-      <span className={ok ? "text-green-200" : "text-red-200"}>{text}</span>
-    </div>
-  );
-}
-
-function Field({ id, label, type = "password", value, onChange, placeholder, disabled = false }) {
-  return (
-    <div className="mb-6">
-      <label htmlFor={id} className="mb-2 block text-sm sm:text-base font-semibold text-gray-300">
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={onChange}
-        disabled={disabled}
-        className={`min-h-[44px] w-full rounded-lg border-2 px-4 sm:px-5 py-3 sm:py-3.5 text-base sm:text-lg outline-none focus:ring-4 transition-all duration-200 shadow-sm hover:shadow-md focus:shadow-lg ${disabled
-            ? 'border-gray-400 bg-gray-200 text-gray-500 cursor-not-allowed'
-            : 'border-gray-300 bg-white focus:ring-blue-400/30 focus:border-blue-400'
-          }`}
-      />
-    </div>
-  );
-}
 
 function ResetPasswordForm() {
   const navigate = useNavigate();
@@ -60,23 +27,7 @@ function ResetPasswordForm() {
   const [submitError, setSubmitError] = useState("");
   const [passwordMismatchError, setPasswordMismatchError] = useState("");
 
-  const policy = useMemo(
-    () => ({
-      minLen: newPassword.length >= 8,
-      lower: hasLower(newPassword),
-      upper: hasUpper(newPassword),
-      digit: hasDigit(newPassword),
-      special: hasSpecial(newPassword),
-      notTooLong: newPassword.length <= MAX_LEN,
-    }),
-    [newPassword]
-  );
-
-  const enforceMax = (setter) => (e) => {
-    const v = e.target.value;
-    if (v.length > MAX_LEN) alert("Entered password is too long. Maximum length is 64 characters.");
-    setter(v);
-  };
+  const policy = useMemo(() => getPasswordPolicy(newPassword), [newPassword]);
 
   // Check if user already completed password reset for this specific token
   useEffect(() => {
@@ -89,8 +40,7 @@ function ResetPasswordForm() {
     // Validate token with backend
     const validateToken = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/validate-reset-token.php?token=${encodeURIComponent(token)}`);
-        const data = await response.json();
+        const data = await apiGet(`auth/validate-reset-token.php?token=${encodeURIComponent(token)}`);
         
         if (data.success && data.valid) {
           setIsTokenValid(true);
@@ -134,33 +84,10 @@ function ResetPasswordForm() {
       return;
     }
 
-    if (newPassword.length > MAX_LEN || confirmPassword.length > MAX_LEN) {
-      setSubmitError("Password is too long. Maximum length is 64 characters.");
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setSubmitError("Password must have at least 8 characters.");
-      return;
-    }
-
-    if (!hasLower(newPassword)) {
-      setSubmitError("Password must have at least 1 lowercase letter.");
-      return;
-    }
-
-    if (!hasUpper(newPassword)) {
-      setSubmitError("Password must have at least 1 uppercase letter.");
-      return;
-    }
-
-    if (!hasDigit(newPassword)) {
-      setSubmitError("Password must have at least 1 digit.");
-      return;
-    }
-
-    if (!hasSpecial(newPassword)) {
-      setSubmitError("Password must have at least 1 special character.");
+    // Validate password using centralized validation
+    const validation = validatePassword(newPassword);
+    if (!validation.isValid) {
+      setSubmitError(validation.errors[0] || "Password does not meet requirements.");
       return;
     }
 
@@ -169,18 +96,10 @@ function ResetPasswordForm() {
 
     try {
       // Call the reset password API
-      const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/reset-password.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: token,
-          newPassword: newPassword
-        })
+      const data = await apiPost('auth/reset-password.php', {
+        token: token,
+        newPassword: newPassword
       });
-
-      const data = await response.json();
 
       if (data.success) {
         // Password reset successful - redirect to login
@@ -316,21 +235,27 @@ function ResetPasswordForm() {
                     </div>
                   )}
 
-              <Field
+              <FormField
                 id="newPassword"
                 label="New Password"
+                type="password"
                 value={newPassword}
-                onChange={enforceMax(setNewPassword)}
+                onChange={createPasswordMaxLengthEnforcer(setNewPassword)}
                 placeholder="Enter new password"
                 disabled={!isTokenValid || isVerifyingToken}
+                required
+                className="mb-6"
               />
-              <Field
+              <FormField
                 id="confirmPassword"
                 label="Re-enter New Password"
+                type="password"
                 value={confirmPassword}
-                onChange={enforceMax(setConfirmPassword)}
+                onChange={createPasswordMaxLengthEnforcer(setConfirmPassword)}
                 placeholder="Re-enter new password"
                 disabled={!isTokenValid || isVerifyingToken}
+                required
+                className="mb-6"
               />
 
                   <button
@@ -347,14 +272,18 @@ function ResetPasswordForm() {
                   <h2 className="mb-5 sm:mb-6 text-xl sm:text-2xl font-serif font-semibold text-white leading-tight">
                     Password Requirements:
                   </h2>
-                  <div className="flex flex-col gap-3 sm:gap-4">
-                    <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-                    <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
-                    <RequirementRow ok={policy.minLen} text="At least 8 characters" />
-                    <RequirementRow ok={policy.special} text="At least 1 special character" />
-                    <RequirementRow ok={policy.digit} text="At least 1 digit" />
-                    <RequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
-                  </div>
+                  <PasswordPolicyDisplay 
+                    password={newPassword}
+                    customLabels={{
+                      minLen: "At least 8 characters",
+                      lower: "At least 1 lowercase character",
+                      upper: "At least 1 uppercase character",
+                      special: "At least 1 special character",
+                      digit: "At least 1 digit",
+                      notTooLong: "No more than 64 characters"
+                    }}
+                    className="flex flex-col gap-3 sm:gap-4"
+                  />
                 </section>
               </div>
             </div>

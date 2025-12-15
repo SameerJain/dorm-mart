@@ -1,89 +1,57 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/profile_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with GET method (no auth required - public profile)
+$result = api_bootstrap('GET', false);
+$conn = $result['conn'];
 
 try {
-    auth_boot_session();
-
     $usernameParam = trim((string)($_GET['username'] ?? ''));
     if ($usernameParam === '') {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Username is required']);
-        exit;
+        send_json_error(400, 'Username is required');
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (strlen($usernameParam) > 64 || containsXSSPattern($usernameParam)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid username']);
-        exit;
+        send_json_error(400, 'Invalid username');
     }
 
     $normalizedUsername = strtolower($usernameParam);
 
-    $conn = db();
-    $conn->set_charset('utf8mb4');
-
     $userRow = fetch_public_profile_row($conn, $normalizedUsername);
     if (!$userRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Profile not found']);
-        exit;
+        send_json_error(404, 'Profile not found');
     }
 
     $userId = (int)$userRow['user_id'];
     $ratingStats = fetch_rating_stats($conn, $userId);
     $listings = fetch_active_listings($conn, $userId);
-    $reviews  = fetch_reviews($conn, $userId);
+    $reviews = fetch_reviews($conn, $userId);
 
     $fullName = trim(trim((string)$userRow['first_name']) . ' ' . trim((string)$userRow['last_name']));
-    $email    = (string)($userRow['email'] ?? '');
+    $email = (string)($userRow['email'] ?? '');
     $username = derive_username($email);
 
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-    $response = [
-        'success' => true,
+    send_json_success([
         'profile' => [
-            'user_id'     => $userId,
-            'name'        => $fullName !== '' ? $fullName : null,
-            'username'    => $username,
-            'email'       => $email,
-            'image_url'   => format_profile_photo_url($userRow['profile_photo'] ?? null),
-            'bio'         => $userRow['bio'] ?? '',
-            'instagram'   => $userRow['instagram'] ?? '',
-            'avg_rating'  => $ratingStats['avg_rating'],
-            'review_count'=> $ratingStats['review_count'],
+            'user_id' => $userId,
+            'name' => $fullName !== '' ? $fullName : null,
+            'username' => $username,
+            'email' => $email,
+            'image_url' => format_profile_photo_url($userRow['profile_photo'] ?? null),
+            'bio' => $userRow['bio'] ?? '',
+            'instagram' => $userRow['instagram'] ?? '',
+            'avg_rating' => $ratingStats['avg_rating'],
+            'review_count' => $ratingStats['review_count'],
         ],
         'listings' => $listings,
-        'reviews'  => $reviews,
-    ];
-
-    $conn->close();
-
-    echo json_encode($response);
+        'reviews' => $reviews,
+    ]);
 } catch (Throwable $e) {
     error_log('public_profile.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Server error');
 }
 
 function fetch_public_profile_row(mysqli $conn, string $username): ?array
@@ -93,11 +61,10 @@ function fetch_public_profile_row(mysqli $conn, string $username): ?array
             WHERE LOWER(SUBSTRING_INDEX(email, "@", 1)) = ?
             LIMIT 1';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare username lookup');
+    if (!$stmt || !$stmt->execute()) {
+        return null;
     }
     $stmt->bind_param('s', $username);
-    $stmt->execute();
     $result = $stmt->get_result();
     $row = $result ? $result->fetch_assoc() : null;
     $stmt->close();
@@ -110,16 +77,15 @@ function fetch_rating_stats(mysqli $conn, int $userId): array
             FROM product_reviews
             WHERE seller_user_id = ?';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare rating stats lookup');
+    if (!$stmt || !$stmt->execute()) {
+        return ['avg_rating' => 0.0, 'review_count' => 0];
     }
     $stmt->bind_param('i', $userId);
-    $stmt->execute();
     $result = $stmt->get_result();
     $row = $result ? $result->fetch_assoc() : null;
     $stmt->close();
     return [
-        'avg_rating'   => isset($row['avg_rating']) ? round((float)$row['avg_rating'], 2) : 0.0,
+        'avg_rating' => isset($row['avg_rating']) ? round((float)$row['avg_rating'], 2) : 0.0,
         'review_count' => isset($row['review_count']) ? (int)$row['review_count'] : 0,
     ];
 }
@@ -132,24 +98,22 @@ function fetch_active_listings(mysqli $conn, int $userId): array
             ORDER BY date_listed DESC, product_id DESC
             LIMIT 30';
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare listings lookup');
+    if (!$stmt || !$stmt->execute()) {
+        return [];
     }
     $stmt->bind_param('i', $userId);
-    $stmt->execute();
     $result = $stmt->get_result();
 
     $listings = [];
     while ($row = $result->fetch_assoc()) {
         $photoUrl = extract_first_photo($row['photos'] ?? null);
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $listings[] = [
             'product_id' => (int)$row['product_id'],
-            'title'      => $row['title'] ?? 'Untitled',
-            'price'      => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
-            'status'     => $row['item_status'] ?? 'AVAILABLE',
-            'image_url'  => $photoUrl,
-            'date_listed'=> $row['date_listed'] ?? null,
+            'title' => $row['title'] ?? 'Untitled',
+            'price' => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
+            'status' => $row['item_status'] ?? 'AVAILABLE',
+            'image_url' => $photoUrl,
+            'date_listed' => $row['date_listed'] ?? null,
         ];
     }
 
@@ -210,11 +174,10 @@ ORDER BY pr.created_at DESC
 SQL;
 
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Failed to prepare reviews lookup');
+    if (!$stmt || !$stmt->execute()) {
+        return [];
     }
     $stmt->bind_param('i', $userId);
-    $stmt->execute();
     $result = $stmt->get_result();
 
     $reviews = [];
@@ -224,20 +187,19 @@ SQL;
             $buyerName = derive_username((string)($row['buyer_email'] ?? '')) ?: 'Buyer #' . (int)$row['buyer_user_id'];
         }
 
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $reviews[] = [
-            'review_id'         => (int)$row['review_id'],
-            'product_id'        => (int)$row['product_id'],
-            'reviewer_name'     => $buyerName,
-            'reviewer_email'    => $row['buyer_email'] ?? '',
+            'review_id' => (int)$row['review_id'],
+            'product_id' => (int)$row['product_id'],
+            'reviewer_name' => $buyerName,
+            'reviewer_email' => $row['buyer_email'] ?? '',
             'reviewer_username' => derive_username((string)($row['buyer_email'] ?? '')),
-            'product_title'     => $row['product_title'] ?? 'Untitled product',
-            'review'            => $row['review_text'] ?? '',
-            'image_1'           => format_review_image_url($row['image1_url'] ?? null),
-            'image_2'           => format_review_image_url($row['image2_url'] ?? null),
-            'image_3'           => format_review_image_url($row['image3_url'] ?? null),
-            'rating'            => (float)$row['rating'],
-            'created_at'        => $row['created_at'],
+            'product_title' => $row['product_title'] ?? 'Untitled product',
+            'review' => $row['review_text'] ?? '',
+            'image_1' => format_review_image_url($row['image1_url'] ?? null),
+            'image_2' => format_review_image_url($row['image2_url'] ?? null),
+            'image_3' => format_review_image_url($row['image3_url'] ?? null),
+            'rating' => (float)$row['rating'],
+            'created_at' => $row['created_at'],
         ];
     }
 

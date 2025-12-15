@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getApiBase, getPublicBase } from "../../utils/api";
 
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
-const FALLBACK_AVATAR = `${PUBLIC_BASE}/data/test-images/No_image_available.svg.png`;
+const FALLBACK_AVATAR = `${getPublicBase()}/data/test-images/No_image_available.svg.png`;
 
 const useQuery = () => {
   const location = useLocation();
@@ -103,7 +102,7 @@ function PublicProfilePage() {
         setLoading(true);
         setError("");
         const res = await fetch(
-          `${API_BASE}/profile/public_profile.php?username=${encodeURIComponent(usernameParam)}`,
+          `${getApiBase()}/profile/public_profile.php?username=${encodeURIComponent(usernameParam)}`,
           { signal: controller.signal, credentials: "include" }
         );
         const json = await res.json().catch(() => null);

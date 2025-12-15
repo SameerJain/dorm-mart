@@ -2,62 +2,40 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
-require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../bootstrap.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $userId = require_login();
-
-    $conn = db();
     $conn->set_charset('utf8mb4');
-    $rawBody = file_get_contents('php://input');
-    $payload = json_decode($rawBody, true);
+    $payload = get_request_data();
     if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
+        send_json_error(400, 'Invalid JSON payload');
     }
 
     $convId = isset($payload['conv_id']) ? (int)$payload['conv_id'] : 0;
     if ($convId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid conversation ID']);
-        exit;
+        send_json_error(400, 'Invalid conversation ID');
     }
 
-    // Verify user is a participant in this conversation
     $checkStmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
     if (!$checkStmt) {
-        throw new RuntimeException('Failed to prepare conversation check');
+        send_json_error(500, 'Database error');
     }
     $checkStmt->bind_param('i', $convId);
-    $checkStmt->execute();
+    if (!$checkStmt->execute()) {
+        $checkStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $checkRes = $checkStmt->get_result();
     $convRow = $checkRes ? $checkRes->fetch_assoc() : null;
     $checkStmt->close();
 
     if (!$convRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Conversation not found']);
-        exit;
+        send_json_error(404, 'Conversation not found');
     }
 
     $user1Id = (int)$convRow['user1_id'];
@@ -66,31 +44,36 @@ try {
     $isUser2 = $userId === $user2Id;
 
     if (!$isUser1 && !$isUser2) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Not authorized to delete this conversation']);
-        exit;
+        send_json_error(403, 'Not authorized to delete this conversation');
     }
 
-    // Check if already deleted by this user
     if (($isUser1 && (int)$convRow['user1_deleted'] === 1) || ($isUser2 && (int)$convRow['user2_deleted'] === 1)) {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'Conversation already deleted']);
-        exit;
+        send_json_error(409, 'Conversation already deleted');
     }
 
-    // Get count of scheduled purchases to delete
     $countStmt = $conn->prepare('SELECT COUNT(*) as cnt FROM scheduled_purchase_requests WHERE conversation_id = ?');
+    if (!$countStmt) {
+        send_json_error(500, 'Database error');
+    }
     $countStmt->bind_param('i', $convId);
-    $countStmt->execute();
+    if (!$countStmt->execute()) {
+        $countStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $countRes = $countStmt->get_result();
     $countRow = $countRes ? $countRes->fetch_assoc() : null;
     $countStmt->close();
     $scheduledPurchaseCount = $countRow ? (int)$countRow['cnt'] : 0;
 
-    // Get scheduled purchases to update item status BEFORE deleting
     $scheduledStmt = $conn->prepare('SELECT request_id, inventory_product_id, status FROM scheduled_purchase_requests WHERE conversation_id = ?');
+    if (!$scheduledStmt) {
+        send_json_error(500, 'Database error');
+    }
     $scheduledStmt->bind_param('i', $convId);
-    $scheduledStmt->execute();
+    if (!$scheduledStmt->execute()) {
+        $scheduledStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $scheduledRes = $scheduledStmt->get_result();
     $scheduledPurchases = [];
     $requestIds = [];
@@ -118,14 +101,16 @@ try {
             $params = array_merge([$productId, $acceptedStatus], $requestIds);
             $types = 'is' . str_repeat('i', count($requestIds));
             $checkOtherStmt->bind_param($types, ...$params);
-            $checkOtherStmt->execute();
+            if (!$checkOtherStmt->execute()) {
+                $checkOtherStmt->close();
+                continue;
+            }
             $checkOtherRes = $checkOtherStmt->get_result();
             $checkOtherRow = $checkOtherRes ? $checkOtherRes->fetch_assoc() : null;
             $checkOtherStmt->close();
 
             $hasOtherAccepted = $checkOtherRow && (int)$checkOtherRow['cnt'] > 0;
 
-            // Only set back to Active if no other accepted scheduled purchases exist
             if (!$hasOtherAccepted) {
                 $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
                 if ($itemStatusStmt) {
@@ -139,11 +124,12 @@ try {
         }
     }
 
-    // Delete scheduled purchases AFTER updating item status
     $deleteScheduledStmt = $conn->prepare('DELETE FROM scheduled_purchase_requests WHERE conversation_id = ?');
-    $deleteScheduledStmt->bind_param('i', $convId);
-    $deleteScheduledStmt->execute();
-    $deleteScheduledStmt->close();
+    if ($deleteScheduledStmt) {
+        $deleteScheduledStmt->bind_param('i', $convId);
+        $deleteScheduledStmt->execute();
+        $deleteScheduledStmt->close();
+    }
 
     $cpStmt = $conn->prepare('DELETE FROM conversation_participants WHERE conv_id = ? AND user_id = ?');
     if ($cpStmt) {
@@ -152,54 +138,47 @@ try {
         $cpStmt->close();
     }
 
-
-    // Mark conversation as deleted for this user
     if ($isUser1) {
         $updateStmt = $conn->prepare('UPDATE conversations SET user1_deleted = 1 WHERE conv_id = ?');
     } else {
         $updateStmt = $conn->prepare('UPDATE conversations SET user2_deleted = 1 WHERE conv_id = ?');
     }
     if (!$updateStmt) {
-        throw new RuntimeException('Failed to prepare update');
+        send_json_error(500, 'Database error');
     }
     $updateStmt->bind_param('i', $convId);
-    $updateStmt->execute();
+    if (!$updateStmt->execute()) {
+        $updateStmt->close();
+        send_json_error(500, 'Database error');
+    }
     $updateStmt->close();
 
     $flagStmt = $conn->prepare('SELECT user1_deleted, user2_deleted FROM conversations WHERE conv_id = ? LIMIT 1');
     if ($flagStmt) {
         $flagStmt->bind_param('i', $convId);
-        $flagStmt->execute();
-        $flagRes = $flagStmt->get_result();
-        $flagRow = $flagRes ? $flagRes->fetch_assoc() : null;
-        $flagStmt->close();
+        if ($flagStmt->execute()) {
+            $flagRes = $flagStmt->get_result();
+            $flagRow = $flagRes ? $flagRes->fetch_assoc() : null;
 
-        // If both users have deleted this conversation, hard-delete it.
-        if ($flagRow && (int)$flagRow['user1_deleted'] === 1 && (int)$flagRow['user2_deleted'] === 1) {
-            // Thanks to ON DELETE CASCADE on fk_msg_conv and fk_cp_conv,
-            // this will also delete all messages and conversation_participants rows.
-            $delConvStmt = $conn->prepare('DELETE FROM conversations WHERE conv_id = ?');
-            if ($delConvStmt) {
-                $delConvStmt->bind_param('i', $convId);
-                $delConvStmt->execute();
-                $delConvStmt->close();
+            if ($flagRow && (int)$flagRow['user1_deleted'] === 1 && (int)$flagRow['user2_deleted'] === 1) {
+                $delConvStmt = $conn->prepare('DELETE FROM conversations WHERE conv_id = ?');
+                if ($delConvStmt) {
+                    $delConvStmt->bind_param('i', $convId);
+                    $delConvStmt->execute();
+                    $delConvStmt->close();
+                }
             }
         }
+        $flagStmt->close();
     }
     
-    echo json_encode([
-        'success' => true,
-        'message' => 'Conversation deleted successfully',
+    send_json_success([
+        'conv_id' => $convId,
+        'status' => 'deleted',
         'deleted_scheduled_purchases' => $scheduledPurchaseCount,
     ]);
-    
-    $conn->close();
 } catch (Throwable $e) {
     error_log('delete_conversation error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
-    if (isset($conn)) {
-        $conn->close();
-    }
+    send_json_error(500, 'Internal server error');
 }
 

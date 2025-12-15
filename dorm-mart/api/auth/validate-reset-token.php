@@ -1,38 +1,20 @@
 <?php
 declare(strict_types=1);
 
-// Include security headers for XSS protection
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Only allow GET requests
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
-
-require_once __DIR__ . '/../database/db_connect.php';
+// Bootstrap API with GET method (no auth required - this validates reset tokens)
+api_bootstrap('GET', false);
 
 $token = $_GET['token'] ?? '';
 
 if (empty($token)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Token required']);
-    exit;
+    send_json_error(400, 'Token required');
 }
 
 try {
-    $conn = db();
+    $conn = get_db();
     
     // Check if token is valid and not expired
     $stmt = $conn->prepare('
@@ -59,23 +41,21 @@ try {
     $conn->close();
 
     if ($isValidToken) {
-        echo json_encode([
-            'success' => true,
+        send_json_success([
             'valid' => true,
             'user_id' => $userId,
             'message' => 'Token is valid'
         ]);
     } else {
-        echo json_encode([
-            'success' => true,
+        send_json_success([
             'valid' => false,
             'message' => 'Token is invalid or expired'
         ]);
     }
     
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Server error']);
+    error_log('validate-reset-token error: ' . $e->getMessage());
+    send_json_error(500, 'Server error');
 }
 ?>
 

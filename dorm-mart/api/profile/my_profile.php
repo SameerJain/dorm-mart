@@ -6,50 +6,49 @@ declare(strict_types=1);
  * Returns the authenticated user's profile details along with seller review metadata.
  */
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
-require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
 require_once __DIR__ . '/profile_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with GET method and authentication
+$result = api_bootstrap('GET', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $userId = require_login();
-    $conn = db();
-    $conn->set_charset('utf8mb4');
-
     $profileRow = fetch_profile_row($conn, $userId);
     if (!$profileRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Profile not found']);
-        exit;
+        send_json_error(404, 'Profile not found');
     }
 
     $ratingStats = fetch_rating_stats($conn, $userId);
     $reviews     = fetch_reviews($conn, $userId);
 
+    $response = format_profile_response($profileRow, $ratingStats, $reviews);
+    $conn->close();
+    
+    send_json_success($response);
+} catch (Throwable $e) {
+    error_log('my_profile.php error: ' . $e->getMessage());
+    send_json_error(500, 'Internal server error');
+}
+
+/**
+ * Format profile response data
+ * 
+ * @param array $profileRow Profile row from database
+ * @param array $ratingStats Rating statistics
+ * @param array $reviews Reviews array
+ * @return array Formatted response data
+ */
+function format_profile_response(array $profileRow, array $ratingStats, array $reviews): array
+{
     $fullName = trim(trim((string)$profileRow['first_name']) . ' ' . trim((string)$profileRow['last_name']));
     $email    = (string)($profileRow['email'] ?? '');
     $username = derive_username($email);
 
-    // XSS PROTECTION: Escape user-generated content before returning in JSON
     // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-    $response = [
-        'success'     => true,
+    return [
         'profile'     => [
             'name'        => $fullName !== '' ? $fullName : null,
             'username'    => $username,
@@ -62,13 +61,6 @@ try {
         ],
         'reviews'     => $reviews,
     ];
-
-    $conn->close();
-    echo json_encode($response);
-} catch (Throwable $e) {
-    error_log('my_profile.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
 
 /**
@@ -153,8 +145,14 @@ SQL;
 
     $reviews = [];
     while ($row = $result->fetch_assoc()) {
-        $buyerName = trim(trim((string)$row['buyer_first']) . ' ' . trim((string)$row['buyer_last']));
-        if ($buyerName === '') {
+        // Adapt row structure for build_seller_name helper
+        $buyerRow = [
+            'first_name' => $row['buyer_first'] ?? '',
+            'last_name' => $row['buyer_last'] ?? '',
+            'email' => $row['buyer_email'] ?? ''
+        ];
+        $buyerName = build_seller_name($buyerRow);
+        if ($buyerName === 'Unknown Seller') {
             $buyerName = derive_username((string)($row['buyer_email'] ?? '')) ?: 'Buyer #' . (int)$row['buyer_user_id'];
         }
 

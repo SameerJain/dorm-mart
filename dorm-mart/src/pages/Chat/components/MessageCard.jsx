@@ -1,8 +1,6 @@
 import React, { memo, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { getApiBase, getPublicBase } from "../../../utils/api";
 
 const MessageCard = memo(function MessageCard({ message, isMine }) {
   const navigate = useNavigate();
@@ -15,8 +13,8 @@ const MessageCard = memo(function MessageCard({ message, isMine }) {
   // Route image URL through proxy if it's a relative path or /images/ path - memoized
   const imageUrl = useMemo(() => {
     if (!rawImageUrl) return null;
-    return (rawImageUrl.startsWith('http') || rawImageUrl.startsWith('/data/images/') || rawImageUrl.startsWith('/images/'))
-      ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImageUrl)}`
+    return (rawImageUrl.startsWith('http') || rawImageUrl.startsWith('/images/'))
+      ? `${getApiBase()}/media/image.php?url=${encodeURIComponent(rawImageUrl)}`
       : rawImageUrl;
   }, [rawImageUrl]);
 

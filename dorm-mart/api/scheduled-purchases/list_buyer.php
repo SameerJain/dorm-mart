@@ -2,31 +2,15 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
-require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with GET method and authentication
+$result = api_bootstrap('GET', true);
+$buyerId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $buyerId = require_login();
-
-    $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $sql = <<<SQL
         SELECT
@@ -72,13 +56,15 @@ try {
         ORDER BY spr.created_at DESC
     SQL;
 
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
-        throw new RuntimeException('Failed to prepare query');
+        send_json_error(500, 'Database error');
     }
     $stmt->bind_param('i', $buyerId);
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        $stmt->close();
+        send_json_error(500, 'Database error');
+    }
     $res = $stmt->get_result();
 
     $records = [];
@@ -126,8 +112,6 @@ try {
             $canceledByUserId = (int)$row['canceled_by_user_id'];
             $canceledByFirstName = isset($row['canceled_by_first_name']) ? (string)$row['canceled_by_first_name'] : '';
             $canceledByLastName = isset($row['canceled_by_last_name']) ? (string)$row['canceled_by_last_name'] : '';
-            // XSS PROTECTION: Escape user-generated content
-            // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
             $canceledBy = [
                 'user_id' => $canceledByUserId,
                 'first_name' => $canceledByFirstName,
@@ -137,7 +121,6 @@ try {
 
         $hasCompletedConfirm = isset($row['has_completed_confirm']) && ($row['has_completed_confirm'] === 1 || $row['has_completed_confirm'] === '1');
 
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $records[] = [
             'request_id' => (int)$row['request_id'],
             'inventory_product_id' => (int)$row['inventory_product_id'],
@@ -171,11 +154,10 @@ try {
 
     $stmt->close();
 
-    echo json_encode(['success' => true, 'data' => $records]);
+    send_json_success(['data' => $records]);
 } catch (Throwable $e) {
     error_log('scheduled-purchase list_buyer error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Server error');
 }
 
 

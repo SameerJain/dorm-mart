@@ -2,49 +2,22 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
-require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $userId = require_login();
-
-    $rawBody = file_get_contents('php://input');
-    $payload = json_decode($rawBody, true);
+    $payload = get_request_data();
     if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
+        send_json_error(400, 'Invalid JSON payload');
     }
 
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
+    $productId = validate_product_id($payload);
 
-    if ($productId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid product_id']);
-        exit;
-    }
-
-    $conn = db();
-    $conn->set_charset('utf8mb4');
-
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     $checkStmt = $conn->prepare('
         SELECT COUNT(*) as cnt 
         FROM scheduled_purchase_requests 
@@ -62,13 +35,9 @@ try {
 
     $hasActive = $checkRow && (int)$checkRow['cnt'] > 0;
 
-    echo json_encode([
-        'success' => true,
-        'has_active' => $hasActive
-    ]);
+    send_json_success(['has_active' => $hasActive]);
 } catch (Throwable $e) {
     error_log('scheduled-purchase check_active error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Internal server error');
 }
 

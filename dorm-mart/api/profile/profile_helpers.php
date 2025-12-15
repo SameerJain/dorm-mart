@@ -45,7 +45,7 @@ if (!function_exists('format_profile_media_url')) {
             return $trimmed;
         }
 
-        if (strpos($trimmed, '/api/image.php') === 0) {
+        if (strpos($trimmed, '/api/media/image.php') === 0 || strpos($trimmed, '/api/image.php') === 0) {
             return $trimmed;
         }
 
@@ -64,7 +64,7 @@ if (!function_exists('build_profile_image_proxy_url')) {
         if ($apiBase === '') {
             $apiBase = '/api';
         }
-        return $apiBase . '/image.php?url=' . rawurlencode($source);
+        return $apiBase . '/media/image.php?url=' . rawurlencode($source);
     }
 }
 
@@ -82,4 +82,26 @@ if (!function_exists('get_profile_api_base_path')) {
         }
         return $apiBase;
     }
+}
+
+/**
+ * Build seller name from database row
+ * Uses first_name + last_name, falls back to email if names not available
+ * 
+ * @param array $row Database row with first_name, last_name, and/or email
+ * @return string Seller name
+ */
+function build_seller_name(array $row): string {
+    $firstName = trim((string)($row['first_name'] ?? ''));
+    $lastName = trim((string)($row['last_name'] ?? ''));
+    
+    if ($firstName !== '' || $lastName !== '') {
+        return trim($firstName . ' ' . $lastName);
+    }
+    
+    if (!empty($row['email'])) {
+        return (string)$row['email'];
+    }
+    
+    return 'Unknown Seller';
 }

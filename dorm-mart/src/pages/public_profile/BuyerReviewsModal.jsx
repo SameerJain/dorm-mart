@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import StarRating from "../Reviews/StarRating";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { apiGet } from "../../utils/api";
 
 /**
  * BuyerReviewsModal Component
@@ -36,19 +35,7 @@ function BuyerReviewsModal({
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(
-        `${API_BASE}/reviews/get_buyer_reviews.php?buyer_user_id=${buyerUserId}`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch buyer reviews");
-      }
-
-      const result = await response.json();
+      const result = await apiGet(`reviews/get_buyer_reviews.php?buyer_user_id=${buyerUserId}`);
       if (result.success) {
         setReviews(result.reviews || []);
       } else {

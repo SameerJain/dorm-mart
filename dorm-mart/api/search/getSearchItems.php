@@ -3,52 +3,27 @@ declare(strict_types=1);
 
 // dorm-mart/api/search/getSearchItems.php
 
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
+require_once __DIR__ . '/../helpers/data_parsers.php';
+require_once __DIR__ . '/../profile/profile_helpers.php';
 require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
 
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$mysqli = $result['conn'];
 
 try {
-    require __DIR__ . '/../auth/auth_handle.php';
-    require __DIR__ . '/../database/db_connect.php';
-
-    auth_boot_session();
-    $userId = require_login();
-
-    // Parse JSON body or form data
-    $raw = file_get_contents('php://input');
-    $body = [];
-    if ($raw !== false && strlen(trim((string)$raw)) > 0) {
-        $tmp = json_decode($raw, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
-            $body = $tmp;
-        }
-    }
-    if (empty($body)) {
-        // Fallback to form-encoded
-        $body = $_POST ?? [];
-    }
+    // Parse request data (handles both JSON and form data)
+    $body = get_request_data();
 
     $qRaw      = isset($body['q']) ? trim((string)$body['q']) : (isset($body['search']) ? trim((string)$body['search']) : '');
     $category  = isset($body['category']) ? trim((string)$body['category']) : '';
     
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-    // Note: SQL injection prevented by prepared statements
     if ($qRaw !== '' && containsXSSPattern($qRaw)) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => 'Invalid characters in search query']);
-        exit;
+        send_json_error(400, 'Invalid characters in search query');
     }
     
     $q = $qRaw;
@@ -84,8 +59,6 @@ try {
     }
     $limit     = isset($body['limit']) ? max(1, min(100, (int)$body['limit'])) : 50;
 
-    mysqli_report(MYSQLI_REPORT_OFF);
-    $mysqli = db();
 
     // Base select (we may append a dynamic relevance column when searching)
     $selectCols = "
@@ -238,21 +211,12 @@ try {
     }
     $sql .= $order . "\n" . ' LIMIT ? ';
 
-    // ============================================================================
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // All search parameters (query, category, condition, location, prices, etc.) 
-    // are bound as parameters using bind_param() with type specifiers ('s'=string, 'd'=double, 'i'=integer).
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious SQL code is in any search field.
-    // ============================================================================
     $stmt = $mysqli->prepare($sql);
     if ($stmt === false) {
         throw new Exception('Prepare failed: ' . $mysqli->error);
     }
 
     // Bind params: where params, then relevance params (if any), then limit
-    // All parameters are safely bound, preventing SQL injection
     $typesWithLimit = $relevanceTypes . $types . 'i';
     $paramsWithLimit = array_merge($relevanceParams, $params);
     $paramsWithLimit[] = $limit;
@@ -269,20 +233,14 @@ try {
     $out = [];
     $now = time();
     while ($row = $res->fetch_assoc()) {
-        // categories JSON -> array
-        $tags = [];
-        if (!empty($row['categories'])) {
-            $decoded = json_decode($row['categories'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $tags = array_values(array_filter($decoded, fn($v) => is_string($v) && $v !== ''));
-            }
-        }
-
-        // photos JSON -> first photo path
+        // Use helpers for parsing
+        $tags = parse_categories_json($row['categories'] ?? null);
+        
+        // photos JSON -> first photo path (special handling for array format with 'url' key)
         $image = null;
         if (!empty($row['photos'])) {
-            $photos = json_decode($row['photos'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($photos) && count($photos)) {
+            $photos = parse_photos_json($row['photos']);
+            if (!empty($photos) && is_array($photos)) {
                 $first = $photos[0];
                 if (is_string($first)) {
                     $image = $first;
@@ -309,15 +267,8 @@ try {
             $statusOut = 'SOLD';
         }
 
-        // seller name
-        $seller = 'Unknown Seller';
-        $first = trim((string)($row['first_name'] ?? ''));
-        $last  = trim((string)($row['last_name'] ?? ''));
-        if ($first !== '' || $last !== '') {
-            $seller = trim($first . ' ' . $last);
-        } elseif (!empty($row['email'])) {
-            $seller = $row['email'];
-        }
+        // seller name using helper
+        $seller = build_seller_name($row);
 
         // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $out[] = [
@@ -339,18 +290,10 @@ try {
         ];
     }
 
-    echo json_encode($out);
-    exit;
+    send_json_success($out);
 
 } catch (Throwable $e) {
     error_log('getSearchItems error: ' . $e->getMessage());
-    http_response_code(500);
-    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
     // SECURITY: In production, consider removing 'detail' field to prevent information disclosure
-    echo json_encode([
-        'ok' => false,
-        'error' => 'Server error',
-        'detail' => $e->getMessage(), // Note: No HTML encoding needed for JSON - React handles XSS protection
-    ]);
-    exit;
+    send_json_error(500, 'Server error', ['detail' => $e->getMessage()]);
 }

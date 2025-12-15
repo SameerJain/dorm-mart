@@ -2,80 +2,57 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../database/db_connect.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$buyerId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $buyerId = require_login();
-
-    $payload = json_decode(file_get_contents('php://input'), true);
+    $conn->set_charset('utf8mb4');
+    $payload = get_request_data();
     if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
+        send_json_error(400, 'Invalid JSON payload');
     }
 
     $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
     $sellerId = isset($payload['seller_user_id']) ? (int)$payload['seller_user_id'] : 0;
 
     if ($productId <= 0 && $sellerId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Missing product_id or seller_user_id']);
-        exit;
+        send_json_error(400, 'Missing product_id or seller_user_id');
     }
-
-    $conn = db();
-    $conn->set_charset('utf8mb4');
 
     $productRow = null;
 
     if ($productId > 0) {
         $stmt = $conn->prepare('SELECT product_id, seller_id, title, photos FROM INVENTORY WHERE product_id = ? LIMIT 1');
         if (!$stmt) {
-            throw new RuntimeException('Failed to prepare product lookup');
+            send_json_error(500, 'Database error');
         }
         $stmt->bind_param('i', $productId);
-        $stmt->execute();
+        if (!$stmt->execute()) {
+            $stmt->close();
+            send_json_error(500, 'Database error');
+        }
         $res = $stmt->get_result();
         $productRow = $res ? $res->fetch_assoc() : null;
         $stmt->close();
 
         if (!$productRow || empty($productRow['seller_id'])) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'error' => 'Product not found']);
-            exit;
+            send_json_error(404, 'Product not found');
         }
 
         $sellerId = (int)$productRow['seller_id'];
     }
 
     if ($sellerId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Seller not found']);
-        exit;
+        send_json_error(400, 'Seller not found');
     }
 
     if ($sellerId === $buyerId) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Cannot message your own listing']);
-        exit;
+        send_json_error(400, 'Cannot message your own listing');
     }
 
     $orderedA = min($buyerId, $sellerId);
@@ -87,8 +64,14 @@ try {
         $conn->begin_transaction();
 
         $stmt = $conn->prepare('SELECT GET_LOCK(?, 5) AS locked');
+        if (!$stmt) {
+            throw new RuntimeException('Failed to prepare lock query');
+        }
         $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
+        if (!$stmt->execute()) {
+            $stmt->close();
+            throw new RuntimeException('Failed to acquire lock');
+        }
         $lockRes = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
@@ -96,34 +79,47 @@ try {
             throw new RuntimeException('Could not obtain lock');
         }
 
-        // Fetch existing conversation if present
-        // Check for conversation with matching product_id (or NULL if no product)
         if ($productId > 0) {
             $stmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname, product_id FROM conversations WHERE user1_id = ? AND user2_id = ? AND product_id = ? LIMIT 1');
+            if (!$stmt) {
+                throw new RuntimeException('Failed to prepare conversation lookup');
+            }
             $stmt->bind_param('iii', $orderedA, $orderedB, $productId);
         } else {
             $stmt = $conn->prepare('SELECT conv_id, user1_id, user2_id, user1_fname, user2_fname, product_id FROM conversations WHERE user1_id = ? AND user2_id = ? AND product_id IS NULL LIMIT 1');
+            if (!$stmt) {
+                throw new RuntimeException('Failed to prepare conversation lookup');
+            }
             $stmt->bind_param('ii', $orderedA, $orderedB);
         }
-        $stmt->execute();
+        if (!$stmt->execute()) {
+            $stmt->close();
+            throw new RuntimeException('Failed to execute conversation lookup');
+        }
         $result = $stmt->get_result();
         $conversationRow = $result ? $result->fetch_assoc() : null;
         $stmt->close();
 
         if ($conversationRow) {
-            // Ensure conversation participants exist even for existing conversations
             $convId = (int)$conversationRow['conv_id'];
             $stmt = $conn->prepare('INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count) VALUES (?, ?, 0, 0), (?, ?, 0, 0)');
-            $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
-            $stmt->execute();
-            $stmt->close();
+            if ($stmt) {
+                $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
+                $stmt->execute();
+                $stmt->close();
+            }
         }
 
         if (!$conversationRow) {
-            // Need names for both participants
             $stmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
+            if (!$stmt) {
+                throw new RuntimeException('Failed to prepare name lookup');
+            }
             $stmt->bind_param('ii', $orderedA, $orderedB);
-            $stmt->execute();
+            if (!$stmt->execute()) {
+                $stmt->close();
+                throw new RuntimeException('Failed to execute name lookup');
+            }
             $namesRes = $stmt->get_result();
             $stmt->close();
 
@@ -143,15 +139,23 @@ try {
             $user1Name = $names[$orderedA] ?? ('User ' . $orderedA);
             $user2Name = $names[$orderedB] ?? ('User ' . $orderedB);
 
-            // Insert conversation with product_id if provided
             if ($productId > 0) {
                 $stmt = $conn->prepare('INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, product_id) VALUES (?, ?, ?, ?, ?)');
+                if (!$stmt) {
+                    throw new RuntimeException('Failed to prepare conversation insert');
+                }
                 $stmt->bind_param('iissi', $orderedA, $orderedB, $user1Name, $user2Name, $productId);
             } else {
                 $stmt = $conn->prepare('INSERT INTO conversations (user1_id, user2_id, user1_fname, user2_fname, product_id) VALUES (?, ?, ?, ?, NULL)');
+                if (!$stmt) {
+                    throw new RuntimeException('Failed to prepare conversation insert');
+                }
                 $stmt->bind_param('iiss', $orderedA, $orderedB, $user1Name, $user2Name);
             }
-            $stmt->execute();
+            if (!$stmt->execute()) {
+                $stmt->close();
+                throw new RuntimeException('Failed to insert conversation');
+            }
             $stmt->close();
 
             $convId = $conn->insert_id;
@@ -164,18 +168,20 @@ try {
                 'product_id' => $productId > 0 ? $productId : null,
             ];
 
-            // Ensure conversation participants rows exist for both users
             $stmt = $conn->prepare('INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count) VALUES (?, ?, 0, 0), (?, ?, 0, 0)');
-            $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
+            if ($stmt) {
+                $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+
+        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
+        if ($stmt) {
+            $stmt->bind_param('s', $lockKey);
             $stmt->execute();
             $stmt->close();
         }
-
-        // Release lock
-        $stmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
-        $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
-        $stmt->close();
 
         $conn->commit();
     } catch (Throwable $inner) {
@@ -233,7 +239,8 @@ try {
         }
 
         if ($firstImage) {
-            $publicBase = (getenv('PUBLIC_URL') ?: '');
+            require_once __DIR__ . '/../utility/env_config.php';
+            $publicBase = (get_env_var('PUBLIC_URL') ?: '');
             $publicBase = rtrim($publicBase, '/');
             if ($firstImage && is_string($firstImage) && strpos($firstImage, 'http') !== 0) {
                 if ($firstImage !== '' && $firstImage[0] !== '/') {
@@ -254,22 +261,23 @@ try {
     $namesStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?) LIMIT 2');
     if ($namesStmt) {
         $namesStmt->bind_param('ii', $buyerId, $sellerId);
-        $namesStmt->execute();
-        $namesRes = $namesStmt->get_result();
-        while ($row = $namesRes->fetch_assoc()) {
-            $id = (int)$row['user_id'];
-            $first = trim((string)($row['first_name'] ?? ''));
-            $last = trim((string)($row['last_name'] ?? ''));
-            $full = trim($first . ' ' . $last);
-            if ($id === $buyerId) {
-                $buyerFirst = $first;
-                $buyerLast = $last;
-                $buyerName = $full !== '' ? $full : null;
-            }
-            if ($id === $sellerId) {
-                $sellerFirst = $first;
-                $sellerLast = $last;
-                $sellerName = $full !== '' ? $full : null;
+        if ($namesStmt->execute()) {
+            $namesRes = $namesStmt->get_result();
+            while ($row = $namesRes->fetch_assoc()) {
+                $id = (int)$row['user_id'];
+                $first = trim((string)($row['first_name'] ?? ''));
+                $last = trim((string)($row['last_name'] ?? ''));
+                $full = trim($first . ' ' . $last);
+                if ($id === $buyerId) {
+                    $buyerFirst = $first;
+                    $buyerLast = $last;
+                    $buyerName = $full !== '' ? $full : null;
+                }
+                if ($id === $sellerId) {
+                    $sellerFirst = $first;
+                    $sellerLast = $last;
+                    $sellerName = $full !== '' ? $full : null;
+                }
             }
         }
         $namesStmt->close();
@@ -280,13 +288,14 @@ try {
     $countStmt = $conn->prepare('SELECT COUNT(*) AS cnt FROM messages WHERE conv_id = ? LIMIT 1');
     if ($countStmt) {
         $countStmt->bind_param('i', $convId);
-        $countStmt->execute();
-        $cntRes = $countStmt->get_result();
-        $cntRow = $cntRes ? $cntRes->fetch_assoc() : null;
-        $countStmt->close();
-        if ($cntRow) {
-            $existingMessageCount = (int)$cntRow['cnt'];
+        if ($countStmt->execute()) {
+            $cntRes = $countStmt->get_result();
+            $cntRow = $cntRes ? $cntRes->fetch_assoc() : null;
+            if ($cntRow) {
+                $existingMessageCount = (int)$cntRow['cnt'];
+            }
         }
+        $countStmt->close();
     }
 
     $autoMessage = null;
@@ -324,8 +333,12 @@ try {
                 $previewContent,
                 $metadata
             );
-            $autoMsgStmt->execute();
-            $autoMsgId = $autoMsgStmt->insert_id;
+            if ($autoMsgStmt->execute()) {
+                $autoMsgId = $autoMsgStmt->insert_id;
+            } else {
+                $autoMsgStmt->close();
+                throw new RuntimeException('Failed to insert auto message');
+            }
             $autoMsgStmt->close();
 
             $createdIso = gmdate('Y-m-d\TH:i:s\Z');
@@ -357,13 +370,13 @@ try {
         }
     }
 
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-    echo json_encode([
-        'success' => true,
-        'conversation' => $conversationRow,
-        'buyer_user_id' => $buyerId,
-        'seller_user_id' => $sellerId,
+    send_json_success([
         'conv_id' => $convId,
+        'product_id' => $productId,
+        'seller_id' => $sellerId,
+        'buyer_id' => $buyerId,
+        'is_new_conversation' => !isset($conversationRow) || empty($conversationRow),
+        'conversation' => $conversationRow,
         'product' => $productDetails,
         'buyer_name' => $buyerName ?? '',
         'seller_name' => $sellerName ?? '',
@@ -375,8 +388,7 @@ try {
     ]);
 } catch (Throwable $e) {
     error_log('ensure_conversation error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Internal server error');
 }
 
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { getApiBase } from "../../utils/api";
 
 // Price limits - max matches ProductListingPage and SchedulePurchasePage exactly
 const PRICE_LIMITS = {
@@ -69,7 +69,7 @@ export default function ConfirmPurchasePage() {
       setLoading(true);
       setError('');
       try {
-        const res = await fetch(`${API_BASE}/confirm-purchases/prefill.php`, {
+        const res = await fetch(`${getApiBase()}/confirm-purchases/prefill.php`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -183,7 +183,7 @@ export default function ConfirmPurchasePage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/confirm-purchases/create.php`, {
+      const res = await fetch(`${getApiBase()}/confirm-purchases/create.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

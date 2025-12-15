@@ -1,39 +1,98 @@
 <?php
 
+/**
+ * Load environment variables from .env file
+ * 
+ * Single source of truth for environment loading.
+ * Prevents multiple loads and provides helpful error messages.
+ * 
+ * Priority order:
+ * 1. .env.development
+ * 2. .env.local
+ * 3. .env.production
+ * 4. .env.cattle
+ * 
+ * IMPORTANT: Only one .env file should exist per environment.
+ */
 function load_env(): void {
-    // dorm-mart/
-    $root = dirname(__DIR__, 2);
-    // load whichever exists
-    $devEnvFile = "{$root}/.env.development";
-    $localEnvFile = "{$root}/.env.local";
-    $prodEnvFile = "{$root}/.env.production";
-    $cattleEnvFile = "{$root}/.env.cattle";
-
-    // load whichever exists
-    //! the order matters here
-    //! make sure only one env file exists on any server you upload the project
-    if (file_exists($devEnvFile)) {
-        $envFile = $devEnvFile;
-    } elseif (file_exists($localEnvFile)) {
-        $envFile = $localEnvFile;
-    } elseif (file_exists($prodEnvFile)) {
-        $envFile = $prodEnvFile;
-    } elseif (file_exists($cattleEnvFile)) {
-        $envFile = $cattleEnvFile;
-    } else {
-        echo json_encode(["success" => false, "message" => "load_env fails: No .env file found"]);
-        exit;
-    }
-
-    // parse and set env file
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        // skipping comments or empty lines
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        // parse kvs
-        [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
-        putenv(trim($key) . '=' . trim($value));
+    static $loaded = false;
+    
+    // Prevent multiple loads
+    if ($loaded) {
+        return;
     }
     
+    // dorm-mart/
+    $root = dirname(__DIR__, 2);
+    
+    // Check for env files in priority order
+    $envFiles = [
+        "{$root}/.env.development",
+        "{$root}/.env.local",
+        "{$root}/.env.production",
+        "{$root}/.env.cattle"
+    ];
+    
+    $envFile = null;
+    foreach ($envFiles as $file) {
+        if (file_exists($file) && is_readable($file)) {
+            $envFile = $file;
+            break;
+        }
+    }
+    
+    if (!$envFile) {
+        // Only exit if we're in a web context (not CLI)
+        if (php_sapi_name() !== 'cli') {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "success" => false,
+                "message" => "Environment configuration error: No .env file found. Please create one of: .env.development, .env.local, .env.production, or .env.cattle"
+            ]);
+            exit;
+        } else {
+            // In CLI, just warn
+            error_log("Warning: No .env file found. Searched for: " . implode(', ', $envFiles));
+            return;
+        }
+    }
+    
+    // Parse and set env file
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines === false) {
+        if (php_sapi_name() !== 'cli') {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "success" => false,
+                "message" => "Environment configuration error: Failed to read .env file"
+            ]);
+            exit;
+        }
+        return;
+    }
+    
+    foreach ($lines as $line) {
+        $line = trim($line);
+        // Skip comments or empty lines
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        
+        // Parse key=value
+        [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
+        $key = trim($key);
+        $value = trim($value);
+        
+        // Remove quotes if present
+        if ((str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+            (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
+            $value = substr($value, 1, -1);
+        }
+        
+        if ($key !== '') {
+            putenv("$key=$value");
+        }
+    }
+    
+    $loaded = true;
 }

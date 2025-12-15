@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import StarRating from "../Reviews/StarRating";
+import { apiGet } from "../../utils/api";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 const NAV_BLUE = "#2563EB";
 
 /**
@@ -28,19 +28,7 @@ function BuyerReviewsPage() {
       setLoading(true);
       setError(null);
       // Don't pass buyer_user_id - API will use logged-in user
-      const response = await fetch(
-        `${API_BASE}/reviews/get_buyer_reviews.php`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch buyer reviews");
-      }
-
-      const result = await response.json();
+      const result = await apiGet('reviews/get_buyer_reviews.php');
       if (result.success) {
         setReviews(result.reviews || []);
       } else {

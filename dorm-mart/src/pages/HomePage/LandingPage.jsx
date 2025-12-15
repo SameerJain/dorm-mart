@@ -5,10 +5,9 @@ import ItemCardNew from "../../components/ItemCardNew";
 import keyboard from "../../assets/product-images/keyboard.jpg";
 import mouse from "../../assets/product-images/wireless-mouse.jpg";
 import { withFallbackImage } from "../../utils/imageFallback";
+import { apiGet, getApiBase, getPublicBase } from "../../utils/api";
 
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
-const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
+const carpetUrl = `${getPublicBase()}/assets/product-images/smallcarpet.png`;
 
 const FALLBACK_ITEMS = [
   {
@@ -98,9 +97,9 @@ export default function LandingPage() {
       ];
   const [bannerIdx, setBannerIdx] = useState(0);
 
-  // correct URLs
-  const LIST_ITEM_URL = "/dorm-mart/#/app/product-listing/new";
-  const MANAGE_INTERESTS_URL = "/dorm-mart/#/app/setting/user-preferences";
+  // Use relative paths for routing
+  const LIST_ITEM_URL = "#/app/product-listing/new";
+  const MANAGE_INTERESTS_URL = "#/app/setting/user-preferences";
 
   const openExternalRoute = (url) => {
     window.location.href = url;
@@ -128,12 +127,9 @@ export default function LandingPage() {
     (async () => {
       try {
         setLoadingUser(true);
-        const r = await fetch(`${API_BASE}/me.php`, {
+        const data = await apiGet("user/interests.php", {
           signal: controller.signal,
-          credentials: "include",
         });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data = await r.json();
 
         let cats = [];
         if (Array.isArray(data?.interested_categories)) {
@@ -150,7 +146,7 @@ export default function LandingPage() {
         setErrorUser(false);
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("me.php failed:", e);
+          console.error("user/interests.php failed:", e);
           setUser(null);
           setInterests([]);
           setErrorUser(true);
@@ -175,12 +171,12 @@ export default function LandingPage() {
     (async () => {
       try {
         setLoadingItems(true);
-        const r = await fetch(`${API_BASE}/landingListings.php`, {
+        const response = await apiGet("items/listings.php", {
           signal: controller.signal,
-          credentials: "include",
         });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data = await r.json();
+
+        // Handle API response format: {success: true, data: [...]} or direct array
+        const data = Array.isArray(response) ? response : (response?.data || []);
 
         const normalized = (Array.isArray(data) ? data : []).map((d, i) => {
           const priceNum =
@@ -190,7 +186,7 @@ export default function LandingPage() {
 
           const rawImg = d.image || d.image_url || null;
           const img = rawImg
-            ? `${API_BASE}/image.php?url=${encodeURIComponent(rawImg)}`
+            ? `${getApiBase()}/media/image.php?url=${encodeURIComponent(rawImg)}`
             : null;
 
           const createdAt = d.created_at ? new Date(d.created_at) : null;
@@ -235,7 +231,7 @@ export default function LandingPage() {
         setErrorItems(false);
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("landingListings.php failed:", e);
+          console.error("items/listings.php failed:", e);
           setErrorItems(true);
           setAllItems(FALLBACK_ITEMS);
         }
@@ -251,9 +247,8 @@ export default function LandingPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`, { signal: controller.signal });
-        if (!r.ok) return;
-        const data = await r.json();
+        const data = await apiGet("utility/get_active_categories.php", { signal: controller.signal }).catch(() => null);
+        if (!data) return;
         if (Array.isArray(data)) setAllCategories(data);
       } catch (e) {
         // ignore
@@ -267,12 +262,10 @@ export default function LandingPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/wishlist/get_wishlist.php`, {
+        const json = await apiGet("wishlist/get_wishlist.php", {
           signal: controller.signal,
-          credentials: "include",
-        });
-        if (!r.ok) return;
-        const json = await r.json();
+        }).catch(() => null);
+        if (!json) return;
         if (json.success && Array.isArray(json.data)) {
           const ids = new Set(json.data.map((item) => item.product_id));
           setWishlistedIds(ids);
@@ -448,7 +441,7 @@ export default function LandingPage() {
                 key={cat}
                 onClick={() =>
                   openExternalRoute(
-                    `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`
+                    `${getPublicBase()}/#/app/listings?category=${encodeURIComponent(cat)}`
                   )
                 }
                 className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-4 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
@@ -480,7 +473,7 @@ export default function LandingPage() {
                 <button
                   key={cat}
                   onClick={() =>
-                    openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`)
+                    openExternalRoute(`${getPublicBase()}/#/app/listings?category=${encodeURIComponent(cat)}`)
                   }
                   className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition"
                 >

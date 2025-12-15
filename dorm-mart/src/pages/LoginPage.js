@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetch_me } from "../utils/handle_auth.js";
+import { apiPost, apiGet } from "../utils/api";
 import PreLoginBranding from "../components/PreLoginBranding";
 // Client no longer inspects cookies; auth is enforced server-side on protected routes
 
@@ -13,28 +14,30 @@ function LoginPage() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Check if user is already authenticated on mount
+  // Redirect authenticated users - they must sign in again
   useEffect(() => {
     const controller = new AbortController();
     
     const checkAuth = async () => {
       try {
         await fetch_me(controller.signal);
-        // User is authenticated, redirect to app
-        navigate("/app", { replace: true });
+        // User is authenticated - call logout API then redirect to login
+        try {
+          await apiPost('auth/logout.php', {});
+        } catch (e) {
+          // Ignore logout errors, just redirect
+        }
+        navigate("/login", { replace: true });
       } catch (error) {
-        console.error("Login error:", error);
-        // AbortError means component unmounted, don't navigate
+        // Not authenticated - stay on login page
         if (error.name === 'AbortError') {
           return;
         }
-        // User is not authenticated, stay on login page
       }
     };
 
     checkAuth();
     
-    // Cleanup: abort fetch if component unmounts
     return () => {
       controller.abort();
     };
@@ -42,17 +45,21 @@ function LoginPage() {
 
   // Handle URL parameters
   useEffect(() => {
-    const urlError = searchParams.get('error');
-    const urlMessage = searchParams.get('message');
-    
-    if (urlError === 'reset_link_expired') {
+    const urlError = searchParams.get("error");
+    const urlMessage = searchParams.get("message");
+
+    if (urlError === "reset_link_expired") {
       setError("Password reset link has expired. Please request a new one.");
-    } else if (urlError === 'invalid_reset_link') {
-      setError("Invalid password reset link. Please use the link from your email.");
+    } else if (urlError === "invalid_reset_link") {
+      setError(
+        "Invalid password reset link. Please use the link from your email."
+      );
     }
-    
-    if (urlMessage === 'password_reset_success') {
-      setSuccess("Password has been reset successfully. You can now log in with your new password.");
+
+    if (urlMessage === "password_reset_success") {
+      setSuccess(
+        "Password has been reset successfully. You can now log in with your new password."
+      );
     }
   }, [searchParams]);
 
@@ -80,11 +87,11 @@ function LoginPage() {
       /<embed/i,
       /<img[^>]*on/i,
       /<svg[^>]*on/i,
-      /vbscript:/i
+      /vbscript:/i,
     ];
-    
+
     const emailTrimmed = email.trim();
-    if (xssPatterns.some(pattern => pattern.test(emailTrimmed))) {
+    if (xssPatterns.some((pattern) => pattern.test(emailTrimmed))) {
       setError("Invalid email format");
       setLoading(false);
       return;
@@ -105,7 +112,9 @@ function LoginPage() {
 
     // Check if email is a UB email address
     if (!emailTrimmed.toLowerCase().endsWith("@buffalo.edu")) {
-      setError("Only University at Buffalo email addresses are permitted (@buffalo.edu)");
+      setError(
+        "Only University at Buffalo email addresses are permitted (@buffalo.edu)"
+      );
       setLoading(false);
       return;
     }
@@ -118,76 +127,76 @@ function LoginPage() {
 
     try {
       // Call backend login API
-      const response = await fetch(
-        `${process.env.REACT_APP_API_BASE}/auth/login.php`,
-        {
-          method: "POST",
-          credentials: "include", // Important: allows cookies to be set
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password: password,
-          }),
-        }
-      );
+      const data = await apiPost('auth/login.php', {
+        email: email.trim(),
+        password: password,
+      });
 
-      const data = await response.json();
+      console.log('Login API response:', data); // Debug logging
 
-      if (data.ok) {
+      if (data.success) {
         // Auth token is now set server-side as httpOnly cookie
-        
+
         // Apply theme immediately after successful login
         if (data.theme) {
-          if (data.theme === 'dark') {
-            document.documentElement.classList.add('dark');
+          if (data.theme === "dark") {
+            document.documentElement.classList.add("dark");
           } else {
-            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove("dark");
           }
-          
+
           // Also save to localStorage for immediate access
           try {
-            const meRes = await fetch(`${process.env.REACT_APP_API_BASE}/auth/me.php`, { 
-              method: 'GET', 
-              credentials: 'include' 
-            });
-            if (meRes.ok) {
-              const meJson = await meRes.json();
-              const userId = meJson.user_id;
-              if (userId) {
-                const userThemeKey = `userTheme_${userId}`;
-                localStorage.setItem(userThemeKey, data.theme);
-              }
+            const meJson = await apiGet('auth/me.php');
+            const userId = meJson.user_id;
+            if (userId) {
+              const userThemeKey = `userTheme_${userId}`;
+              localStorage.setItem(userThemeKey, data.theme);
             }
           } catch (e) {
             // User not authenticated or error - continue anyway
           }
         }
-        
+
         // Navigate to the main app
         navigate("/app");
       } else {
         // Show error from backend, with improved messaging
+        console.error('Login failed - backend response:', data);
         const backendError = data.error || "Login failed";
         let userFriendlyError = backendError;
-        
+
         // Map backend errors to more user-friendly messages
         if (backendError === "Invalid input format") {
-          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
+          userFriendlyError =
+            "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
         } else if (backendError === "Email must be @buffalo.edu") {
-          userFriendlyError = "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
+          userFriendlyError =
+            "Only University at Buffalo email addresses are permitted (@buffalo.edu)";
         } else if (backendError === "Invalid credentials") {
           userFriendlyError = "Invalid email or password. Please try again.";
         } else if (backendError.includes("too large")) {
-          userFriendlyError = "Email or password is too long. Please check your input.";
+          userFriendlyError =
+            "Email or password is too long. Please check your input.";
         }
-        
+
         setError(userFriendlyError);
       }
     } catch (error) {
       // Handle network or other errors
-      setError("Network error. Please try again.");
+      console.error('Login error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      
+      // Check if it's a network error or API error
+      if (error.message) {
+        setError(error.message);
+      } else {
+        setError("Network error. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -198,21 +207,19 @@ function LoginPage() {
       <PreLoginBranding />
 
       {/* Right side - Login form (full width on mobile, 50% on desktop) */}
-      <div
-        className="w-full md:w-1/2 flex flex-col items-center justify-start md:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:py-8 pb-8 sm:pb-12 md:pb-8 h-screen pre-login-bg relative overflow-y-auto md:overflow-hidden"
-      >
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-start md:justify-center p-4 sm:p-6 md:p-8 pt-20 sm:pt-24 md:py-8 pb-8 sm:pb-12 md:pb-8 h-screen pre-login-bg relative overflow-y-auto md:overflow-hidden">
         {/* Mobile branding header (visible only on mobile/tablet) */}
         <div className="md:hidden mb-6 sm:mb-8 text-center relative z-10">
-          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">Dorm Mart</h1>
+          <h1 className="text-5xl sm:text-6xl font-serif text-gray-800 mb-3 leading-tight">
+            Dorm Mart
+          </h1>
           <h2 className="text-xl sm:text-2xl font-light text-gray-600 opacity-90 leading-relaxed">
             Wastage, who?
           </h2>
         </div>
 
         <div className="w-full max-w-md relative z-10">
-          <div
-            className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600"
-          >
+          <div className="p-4 sm:p-6 md:p-8 rounded-lg relative bg-blue-600">
             {/* Torn paper effect */}
             <div
               className="absolute inset-0 rounded-lg bg-blue-600"
@@ -234,19 +241,27 @@ function LoginPage() {
               {/* Success message display */}
               {success && (
                 <div className="mb-4 p-3 sm:p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-                  <p className="text-sm sm:text-base leading-relaxed">{success}</p>
+                  <p className="text-sm sm:text-base leading-relaxed">
+                    {success}
+                  </p>
                 </div>
               )}
 
               {/* Error message display */}
               {error && (
                 <div className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                  <p className="text-sm sm:text-base leading-relaxed">{error}</p>
+                  <p className="text-sm sm:text-base leading-relaxed">
+                    {error}
+                  </p>
                 </div>
               )}
 
               {/* Login form - Improved spacing for mobile */}
-              <form onSubmit={handleLogin} noValidate className="space-y-3 sm:space-y-4 md:space-y-5">
+              <form
+                onSubmit={handleLogin}
+                noValidate
+                className="space-y-3 sm:space-y-4 md:space-y-5"
+              >
                 {/* Email input */}
                 <div>
                   <label className="block text-sm sm:text-base font-semibold text-gray-300 mb-2 sm:mb-2.5">
@@ -267,10 +282,12 @@ function LoginPage() {
                     onPaste={(e) => {
                       // Always handle paste ourselves to ensure full email is captured
                       e.preventDefault();
-                      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                      const pastedText = (
+                        e.clipboardData || window.clipboardData
+                      ).getData("text");
                       let cleanedText = pastedText.trim();
                       // Remove '-- ' prefix if present (SQL comment marker)
-                      if (cleanedText.startsWith('-- ')) {
+                      if (cleanedText.startsWith("-- ")) {
                         cleanedText = cleanedText.substring(3).trim();
                       }
                       // Limit to exactly 255 characters to match database limit
@@ -347,10 +364,11 @@ function LoginPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Tagline - Mobile only, outside login card */}
           <p className="md:hidden mt-6 sm:mt-8 text-base sm:text-lg text-gray-600 opacity-80 max-w-sm mx-auto leading-relaxed text-center px-4">
-            Your campus marketplace for buying and selling. Connect with fellow students and save money.
+            Your campus marketplace for buying and selling. Connect with fellow
+            students and save money.
           </p>
         </div>
       </div>

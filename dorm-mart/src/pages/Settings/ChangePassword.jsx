@@ -1,51 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SettingsLayout from "./SettingsLayout";
+import FormField from "../../components/Forms/FormField";
+import PasswordPolicyDisplay from "../../components/Forms/PasswordPolicyDisplay";
+import { useModal } from "../../hooks/useModal";
+import { getPasswordPolicy, validatePassword, createPasswordMaxLengthEnforcer } from "../../utils/passwordValidation";
+import { apiPost } from "../../utils/api";
 
 const NAV_BLUE = "#2563EB";
-const MAX_LEN = 64;
-
-const hasLower = (s) => /[a-z]/.test(s);
-const hasUpper = (s) => /[A-Z]/.test(s);
-const hasDigit = (s) => /\d/.test(s);
-const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
-
-function RequirementRow({ ok, text }) {
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
-      <span className={ok ? "text-green-700" : "text-red-700"}>{text}</span>
-    </div>
-  );
-}
-
-function Field({ id, label, type = "password", value, onChange, placeholder }) {
-  return (
-    <div className="mb-6">
-      <label htmlFor={id} className="mb-2 block text-base font-medium text-slate-700">
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={onChange}
-        className="h-11 w-full rounded-xl border border-slate-300 bg-slate-100 px-4 text-slate-900 outline-none focus:bg-white focus:ring-2"
-        style={{ focusRingColor: NAV_BLUE }}
-      />
-    </div>
-  );
-}
-
-async function safeError(res) {
-  try {
-    const data = await res.json();
-    return data?.error || data?.message;
-  } catch {
-    return null;
-  }
-}
 
 function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -56,53 +18,18 @@ function ChangePasswordPage() {
   const [showNotice, setShowNotice] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const timerRef = useRef(null);
+  const { isOpen: isModalOpen, open, close } = useModal(false);
 
-  // Prevent body scroll when success modal is open
+  // Use modal hook for success notice
   useEffect(() => {
     if (showNotice) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      open();
     } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
+      close();
     }
-    return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-    };
-  }, [showNotice]);
+  }, [showNotice, open, close]);
 
-  const policy = useMemo(
-    () => ({
-      minLen: nextPw.length >= 8,
-      lower: hasLower(nextPw),
-      upper: hasUpper(nextPw),
-      digit: hasDigit(nextPw),
-      special: hasSpecial(nextPw),
-      notTooLong: nextPw.length <= MAX_LEN,
-    }),
-    [nextPw]
-  );
-
-  const enforceMax = (setter) => (e) => {
-    const v = e.target.value;
-    if (v.length > MAX_LEN) alert("Entered password is too long. Maximum length is 64 characters.");
-    setter(v);
-  };
+  const policy = useMemo(() => getPasswordPolicy(nextPw), [nextPw]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -151,47 +78,27 @@ function ChangePasswordPage() {
       alert("The new password that was entered is different from the re-entry of the password.");
       return;
     }
-    if (current.length > MAX_LEN || nextPw.length > MAX_LEN || confirmPw.length > MAX_LEN) {
-      alert("Entered password is too long. Maximum length is 64 characters.");
-      return;
-    }
-    if (nextPw.length < 8) {
-      alert("The new password must have at least 8 characters.");
-      return;
-    }
-    if (!hasLower(nextPw)) {
-      alert("The new password must have at least 1 lowercase letter.");
-      return;
-    }
-    if (!hasUpper(nextPw)) {
-      alert("The new password must have at least 1 uppercase letter.");
-      return;
-    }
-    if (!hasDigit(nextPw)) {
-      alert("The new password must have at least 1 digit.");
-      return;
-    }
-    if (!hasSpecial(nextPw)) {
-      alert("The new password must have at least 1 special character.");
+
+    // Validate password using centralized validation
+    const validation = validatePassword(nextPw);
+    if (!validation.isValid) {
+      alert(validation.errors[0] || "Password does not meet requirements.");
       return;
     }
 
     try {
-      const res = await fetch("api/auth/change_password.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ currentPassword: current, newPassword: nextPw }),
+      const data = await apiPost('auth/change_password.php', {
+        currentPassword: current,
+        newPassword: nextPw
       });
 
-      if (res.ok) {
+      if (data.success) {
         setShowNotice(true);
       } else {
-        const msg = await safeError(res);
-        alert(msg || "Unable to change password at this time.");
+        alert(data.error || "Unable to change password at this time.");
       }
-    } catch {
-      alert("Network error while changing password. Please try again.");
+    } catch (error) {
+      alert(error.message || "Network error while changing password. Please try again.");
     }
   };
 
@@ -214,26 +121,32 @@ function ChangePasswordPage() {
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <section>
-          <Field
+          <FormField
             id="currentPassword"
             label="Current Password"
+            type="password"
             value={current}
-            onChange={enforceMax(setCurrent)}
+            onChange={createPasswordMaxLengthEnforcer(setCurrent)}
             placeholder="Enter current password"
+            required
           />
-          <Field
+          <FormField
             id="newPassword"
             label="New Password"
+            type="password"
             value={nextPw}
-            onChange={enforceMax(setNextPw)}
+            onChange={createPasswordMaxLengthEnforcer(setNextPw)}
             placeholder="Enter new password"
+            required
           />
-          <Field
+          <FormField
             id="confirmPassword"
             label="Re-enter New Password"
+            type="password"
             value={confirmPw}
-            onChange={enforceMax(setConfirmPw)}
+            onChange={createPasswordMaxLengthEnforcer(setConfirmPw)}
             placeholder="Re-enter new password"
+            required
           />
 
           <button
@@ -246,23 +159,16 @@ function ChangePasswordPage() {
           </button>
         </section>
 
-        <section className="rounded-lg border border-slate-200 p-4">
+        <section className="rounded-lg border border-slate-200 dark:border-gray-700 p-4">
           <h2 className="mb-3 text-lg font-serif font-semibold" style={{ color: NAV_BLUE }}>
             Password must contain:
           </h2>
-          <div className="flex flex-col gap-2">
-            <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-            <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
-            <RequirementRow ok={policy.minLen} text="At least 8 characters" />
-            <RequirementRow ok={policy.special} text="At least 1 special character" />
-            <RequirementRow ok={policy.digit} text="At least 1 digit" />
-            <RequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
-          </div>
+          <PasswordPolicyDisplay password={nextPw} />
         </section>
       </div>
 
       {/* Success Notice Modal */}
-      {showNotice && (
+      {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* backdrop */}
           <div className="absolute inset-0 bg-black bg-opacity-50" />

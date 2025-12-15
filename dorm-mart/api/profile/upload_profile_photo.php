@@ -1,53 +1,32 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../utility/env_config.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+// Note: This endpoint uses multipart/form-data for file uploads
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
 
 try {
-    $userId = require_login();
-
     $file = extract_upload();
     if ($file === null) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Image file is required']);
-        exit;
+        send_json_error(400, 'Image file is required');
     }
 
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Failed to upload profile photo']);
-        exit;
+        send_json_error(400, 'Failed to upload profile photo');
     }
 
     if (!is_uploaded_file($file['tmp_name'])) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid upload source']);
-        exit;
+        send_json_error(400, 'Invalid upload source');
     }
 
     $sizeBytes = filesize($file['tmp_name']);
-    $maxBytes  = 4 * 1024 * 1024; // 4 MB
+    $maxBytes = 4 * 1024 * 1024;
     if ($sizeBytes !== false && $sizeBytes > $maxBytes) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo must be 4 MB or smaller']);
-        exit;
+        send_json_error(400, 'Profile photo must be 4 MB or smaller');
     }
 
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -63,40 +42,34 @@ try {
         'image/gif'  => 'gif',
     ];
     if (!isset($allowed[$mime ?? ''])) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Unsupported image format']);
-        exit;
+        send_json_error(400, 'Unsupported image format');
     }
 
-    $apiRoot      = dirname(__DIR__);          // /api
-    $projectRoot  = dirname($apiRoot);         // project root
-    $envDir       = getenv('DATA_IMAGES_DIR');
-    $envBase      = getenv('DATA_IMAGES_URL_BASE');
-    $imageDirFs   = rtrim($envDir !== false && $envDir !== '' ? $envDir : ($projectRoot . '/images'), '/') . '/';
-    $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/images', '/');
+    $apiRoot = dirname(__DIR__);
+    $projectRoot = dirname($apiRoot);
+    $envDir = get_env_var('DATA_IMAGES_DIR');
+    $envBase = get_env_var('DATA_IMAGES_URL_BASE');
+    $imageDirFs = rtrim($envDir ?: ($projectRoot . '/images'), '/') . '/';
+    $imageBaseUrl = rtrim($envBase ?: '/images', '/');
 
     if (!is_dir($imageDirFs) && !@mkdir($imageDirFs, 0775, true) && !is_dir($imageDirFs)) {
-        throw new RuntimeException('Unable to create images directory');
+        send_json_error(500, 'Unable to create images directory');
     }
 
-    $filename   = sprintf('profile_%d_%s.%s', $userId, bin2hex(random_bytes(8)), $allowed[$mime]);
-    $destPath   = $imageDirFs . $filename;
+    $filename = sprintf('profile_%d_%s.%s', $userId, bin2hex(random_bytes(8)), $allowed[$mime]);
+    $destPath = $imageDirFs . $filename;
     $publicPath = $imageBaseUrl . '/' . $filename;
 
     if (!@move_uploaded_file($file['tmp_name'], $destPath)) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Could not save uploaded photo']);
-        exit;
+        send_json_error(500, 'Could not save uploaded photo');
     }
 
-    echo json_encode([
-        'success'   => true,
+    send_json_success([
         'image_url' => $publicPath,
     ]);
 } catch (Throwable $e) {
     error_log('upload_profile_photo.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Server error');
 }
 
 function extract_upload(): ?array

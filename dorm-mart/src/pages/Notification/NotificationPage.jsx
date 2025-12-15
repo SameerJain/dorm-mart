@@ -2,8 +2,7 @@
 import React, { useContext, useMemo, useState, useEffect } from "react";
 import { ChatContext } from "../../context/ChatContext";
 import { useNavigate } from "react-router-dom";
-
-const BASE = process.env.REACT_APP_API_BASE || "api";
+import { getApiBase, apiPost } from "../../utils/api";
 
 export default function NotificationPage() {
   const ctx = useContext(ChatContext);
@@ -49,19 +48,7 @@ export default function NotificationPage() {
 
   async function handleMarkAllRead() {
     try {
-      const res = await fetch(`${BASE}/wishlist/mark_all_items_read.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({}),
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      await apiPost('wishlist/mark_all_items_read.php', {});
 
       // Optimistic local UI update
       setLocalItems([]);
@@ -78,19 +65,7 @@ export default function NotificationPage() {
 
   async function handleMarkRead(productId) {
     try {
-      const res = await fetch(`${BASE}/wishlist/mark_item_read.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ product_id: productId }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      await apiPost('wishlist/mark_item_read.php', { product_id: productId });
 
       // Optimistic local UI update
       setLocalItems((prev) =>
@@ -153,7 +128,7 @@ export default function NotificationPage() {
             {localItems.map(({ productId, title, count, image_url }) => {
               const rawImg = image_url || null;
               const proxied = rawImg
-                ? `${BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+                ? `${getApiBase()}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
                 : null;
 
               return (

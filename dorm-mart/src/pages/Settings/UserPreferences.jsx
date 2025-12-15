@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import { useTheme } from "../../hooks/useTheme";
+import { getApiBase, apiGet, apiPost } from "../../utils/api";
 
 const NAV_BLUE = "#2563EB";
 
@@ -15,7 +16,7 @@ function UserPreferences() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+  const API_BASE = getApiBase();
 
   const [availableCategories, setAvailableCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -28,9 +29,7 @@ function UserPreferences() {
       try {
         setCategoriesLoading(true);
         setCategoriesError(null);
-        const res = await fetch(`${API_BASE}/utility/get_categories.php`);
-        if (!res.ok) throw new Error('Failed to load categories');
-        const data = await res.json();
+        const data = await apiGet('utility/get_categories.php');
         if (!Array.isArray(data)) throw new Error('Invalid categories format');
         if (!cancelled) setAvailableCategories(data);
       } catch (e) {
@@ -104,9 +103,7 @@ function UserPreferences() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/userPreferences.php`, { method: 'GET', credentials: 'include' });
-        if (!res.ok) return;
-        const json = await res.json();
+        const json = await apiGet('user/preferences.php');
         if (!json || json.ok !== true || !json.data) return;
         const { promoEmails, revealContact, interests, theme } = json.data;
         if (cancelled) return;
@@ -137,13 +134,7 @@ function UserPreferences() {
           interests: selectedInterests,
           theme: theme,
         };
-        await fetch(`${API_BASE}/userPreferences.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
+        await apiPost('user/preferences.php', body, { signal: controller.signal });
       } catch (e) {
         if (e.name !== 'AbortError') console.warn('UserPreferences: POST failed', e);
       } finally {

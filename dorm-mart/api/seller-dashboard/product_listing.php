@@ -1,49 +1,20 @@
 <?php
 declare(strict_types=1);
 
-// --- Optional debug: .../productListing.php?debug=1 ---
-$DEBUG = true;
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_connect.php';
 
-// Always return JSON
-header('Content-Type: application/json; charset=utf-8');
+// Bootstrap API with POST method and authentication
+// Note: This endpoint uses multipart/form-data for file uploads, so we handle $_POST/$_FILES directly
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-  // Resolve API root (this file: /api/seller-dashboard/productListing.php)
-  $API_ROOT = dirname(__DIR__); // => /api
-
-  // Security
-  require $API_ROOT . '/security/security.php';
-  initSecurity();
-
-  // CORS / method
-  if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
-  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']);
-    exit;
-  }
-
-  // Auth + DB
-  require $API_ROOT . '/auth/auth_handle.php';
-  require $API_ROOT . '/database/db_connect.php';
-
-  auth_boot_session();
-  $userId = require_login();
-
-  /* Conditional CSRF validation - only validate if token is provided */
   $token = $_POST['csrf_token'] ?? null;
   if ($token !== null && !validate_csrf_token($token)) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
-    exit;
+    send_json_error(403, 'CSRF token validation failed');
   }
-
-  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-  $conn = db();
-  $conn->set_charset('utf8mb4');
 
   // --- Read FormData ---
   $mode   = isset($_POST['mode']) ? trim((string)$_POST['mode']) : 'create';   // 'create' | 'update'
@@ -66,24 +37,14 @@ try {
 
   $descriptionRaw = (($t = $_POST['description'] ?? '') !== '') ? trim((string)$t) : null;
 
-  // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
-  // Note: SQL injection prevented by prepared statements
   if ($titleRaw !== '' && containsXSSPattern($titleRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid characters in title']);
-    exit;
+    send_json_error(400, 'Invalid characters in title');
   }
-  // XSS PROTECTION: Filtering (Layer 1)
   if ($descriptionRaw !== null && $descriptionRaw !== '' && containsXSSPattern($descriptionRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid characters in description']);
-    exit;
+    send_json_error(400, 'Invalid characters in description');
   }
-  // XSS PROTECTION: Filtering (Layer 1)
   if ($itemLocationRaw !== null && $itemLocationRaw !== '' && containsXSSPattern($itemLocationRaw)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid characters in location']);
-    exit;
+    send_json_error(400, 'Invalid characters in location');
   }
 
   $title = $titleRaw;
@@ -115,17 +76,16 @@ try {
   }
 
   if (!empty($errors)) {
-    http_response_code(400);
-    echo json_encode(['ok'=>false, 'error'=>'Validation failed', 'errors'=>$errors]);
-    exit;
+    send_json_error(400, 'Validation failed', ['errors' => $errors]);
   }
 
   // --- Save images (no finfo) ---
-  // Configurable via env so deployments under subpaths (e.g., Aptitude) work
-  $envDir  = getenv('DATA_IMAGES_DIR');
-  $envBase = getenv('DATA_IMAGES_URL_BASE');
-  $imageDirFs   = rtrim($envDir !== false && $envDir !== '' ? $envDir : (dirname($API_ROOT) . '/images'), '/') . '/';
-  $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/images', '/');
+  require_once __DIR__ . '/../utility/env_config.php';
+  $API_ROOT = dirname(__DIR__);
+  $envDir = get_env_var('DATA_IMAGES_DIR');
+  $envBase = get_env_var('DATA_IMAGES_URL_BASE');
+  $imageDirFs = rtrim($envDir ?: (dirname($API_ROOT) . '/images'), '/') . '/';
+  $imageBaseUrl = rtrim($envBase ?: '/images', '/');
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
 
   // Handle existing photos for edit mode
@@ -184,22 +144,10 @@ try {
 
   // --- Create / Update ---
   if ($mode === 'update') {
-    // Validate that a valid product ID was provided for update
     if ($itemId <= 0) {
-      http_response_code(400);
-      echo json_encode([
-        'ok' => false,
-        'error' => 'Invalid product ID. A valid product ID is required for updates.'
-      ]);
-      exit;
+      send_json_error(400, 'Invalid product ID. A valid product ID is required for updates.');
     }
-    // ============================================================================
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // All user input (title, description, itemLocation, etc.) is bound as parameters.
-    // The '?' placeholders ensure user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious SQL code is in any field.
-    // ============================================================================
+    
     $sql = "UPDATE INVENTORY
                SET title=?,
                    categories=?,
@@ -212,94 +160,88 @@ try {
                    price_nego=?
              WHERE product_id=? AND seller_id=?";
     $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+      send_json_error(500, 'Database error');
+    }
     $stmt->bind_param(
       'ssssssdiiii',
-      $title,            // safely bound as string parameter
-      $categoriesJson,   // safely bound as string parameter
-      $itemLocation,     // safely bound as string parameter
-      $itemCondition,    // safely bound as string parameter
-      $description,      // safely bound as string parameter
-      $photosJson,       // safely bound as string parameter
-      $price,            // safely bound as double parameter
-      $trades,           // safely bound as integer parameter
-      $priceNego,        // safely bound as integer parameter
-      $itemId,           // safely bound as integer parameter
-      $userId            // safely bound as integer parameter
+      $title,
+      $categoriesJson,
+      $itemLocation,
+      $itemCondition,
+      $description,
+      $photosJson,
+      $price,
+      $trades,
+      $priceNego,
+      $itemId,
+      $userId
     );
-    $stmt->execute();
-
-    // Check if any rows were actually updated
-    if ($stmt->affected_rows === 0) {
-      http_response_code(404);
-      echo json_encode([
-        'ok' => false,
-        'error' => 'Product not found or you do not have permission to edit this product.'
-      ]);
-      exit;
+    if (!$stmt->execute()) {
+      $stmt->close();
+      send_json_error(500, 'Database error');
     }
 
-    echo json_encode([
-      'ok'         => true,
+    if ($stmt->affected_rows === 0) {
+      $stmt->close();
+      send_json_error(404, 'Product not found or you do not have permission to edit this product.');
+    }
+    $stmt->close();
+
+    send_json_success([
       'prod_id' => $itemId,
       'image_urls' => $imageUrls
     ]);
-    exit;
   }
 
-  // INSERT
-  // ============================================================================
-  // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-  // ============================================================================
-  // All user input is inserted using prepared statement with parameter binding.
-  // The '?' placeholders ensure user input is treated as data, not executable SQL.
-  // This prevents SQL injection attacks even if malicious SQL code is in any field.
-  // ============================================================================
   $sql = "INSERT INTO INVENTORY
             (title, categories, item_location, item_condition, description, photos, listing_price, item_status, trades, price_nego, seller_id)
           VALUES
             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
   $stmt = $conn->prepare($sql);
+  if (!$stmt) {
+    send_json_error(500, 'Database error');
+  }
   $status = 'Active';
   $stmt->bind_param(
     'ssssssdsiii',
-    $title,            // safely bound as string parameter
-    $categoriesJson,   // safely bound as string parameter
-    $itemLocation,     // safely bound as string parameter
-    $itemCondition,   // safely bound as string parameter
-    $description,      // safely bound as string parameter
-    $photosJson,       // safely bound as string parameter
-    $price,            // safely bound as double parameter
-    $status,           // hardcoded value (safe)
-    $trades,           // safely bound as integer parameter
-    $priceNego,        // safely bound as integer parameter
-    $userId            // safely bound as integer parameter
+    $title,
+    $categoriesJson,
+    $itemLocation,
+    $itemCondition,
+    $description,
+    $photosJson,
+    $price,
+    $status,
+    $trades,
+    $priceNego,
+    $userId
   );
-  $stmt->execute();
+  if (!$stmt->execute()) {
+    $stmt->close();
+    send_json_error(500, 'Database error');
+  }
 
-  // Create wishlist_notification row for this new listing
   $newProductId = (int)$conn->insert_id;
-  $firstImageUrl = !empty($imageUrls) ? $imageUrls[0] : null;  // first image or null
+  $firstImageUrl = !empty($imageUrls) ? $imageUrls[0] : null;
   $wnSql = "INSERT INTO wishlist_notification (seller_id, product_id, title, image_url, unread_count)
             VALUES (?, ?, ?, ?, 0)";
   $wnStmt = $conn->prepare($wnSql);
-  $wnStmt->bind_param('iiss', $userId, $newProductId, $title, $firstImageUrl);
-  $wnStmt->execute();
+  if ($wnStmt) {
+    $wnStmt->bind_param('iiss', $userId, $newProductId, $title, $firstImageUrl);
+    if ($wnStmt->execute()) {
+      // Wishlist notification created
+    }
+    $wnStmt->close();
+  }
+  $stmt->close();
 
-  echo json_encode([
-    'ok'         => true,
-    'product_id' => $conn->insert_id,
+  send_json_success([
+    'product_id' => $newProductId,
     'image_urls' => $imageUrls
   ]);
 
 } catch (Throwable $e) {
   error_log('[productListing] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-  http_response_code(500);
-  // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
-  // SECURITY: In production, consider removing detailed error fields to prevent information disclosure
-  echo json_encode([
-    'ok'    => false,
-    'error' => $DEBUG ? escapeHtml($e->getMessage()) : 'Internal Server Error',
-    'type'  => $DEBUG ? escapeHtml(get_class($e)) : null,
-    'trace' => $DEBUG ? escapeHtml($e->getTraceAsString()) : null,
-  ]);
+  send_json_error(500, 'Server error');
 }

@@ -116,15 +116,31 @@
         </div>
 
         <?php
-        // Detect environment and set correct links
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $loginLink = '/serve/dorm-mart/#/login';
-        $forgotLink = '/serve/dorm-mart/#/forgot-password';
-
-        if (strpos($host, 'aptitude.cse.buffalo.edu') !== false || strpos($host, 'cattle.cse.buffalo.edu') !== false) {
-            $loginLink = '/CSE442/2025-Fall/cse-442j/#/login';
-            $forgotLink = '/CSE442/2025-Fall/cse-442j/#/forgot-password';
+        // Use environment configuration for frontend URLs
+        require_once __DIR__ . '/../utility/env_config.php';
+        
+        $frontendBaseUrl = get_frontend_base_url();
+        
+        // Extract path from full URL if needed, or use as-is if relative
+        if (strpos($frontendBaseUrl, 'http://') === 0 || strpos($frontendBaseUrl, 'https://') === 0) {
+            // Parse URL to get path
+            $parsed = parse_url($frontendBaseUrl);
+            $basePath = $parsed['path'] ?? '';
+        } else {
+            // Already a path
+            $basePath = $frontendBaseUrl;
         }
+        
+        // Ensure basePath starts with /
+        if ($basePath === '' || $basePath[0] !== '/') {
+            $basePath = '/' . $basePath;
+        }
+        
+        // Remove trailing slash
+        $basePath = rtrim($basePath, '/');
+        
+        $loginLink = $basePath . '/#/login';
+        $forgotLink = $basePath . '/#/forgot-password';
         ?>
 
         <a href="<?php echo $loginLink; ?>" class="btn">Go to Login</a>

@@ -1,34 +1,19 @@
 <?php
 
-// Set JSON response header early
-header('Content-Type: application/json');
+declare(strict_types=1);
 
-// Include security utilities
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
+require_once __DIR__ . '/../bootstrap.php';
 
-// __DIR__ points to api/
-require __DIR__ . '/../database/db_connect.php';
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+$input = get_request_data();
+$year = isset($input['year']) ? (int)$input['year'] : null;
 
-$conn = db();
-
-$input = json_decode(file_get_contents('php://input'), true); // read raw request body and decode JSON
-$year  = isset($input['year']) ? intval($input['year']) : null; // coerce to integer if provided
-
-if ($year === null || $year < 2016 || $year > 2025) { // adjust bounds as needed
-    http_response_code(400);                          // bad request
-    echo json_encode([
-        'success' => false,                           // preserve response shape
-        'error'   => 'Invalid or missing year'
-    ]);
-    exit;                                             // stop execution on validation failure
+if ($year === null || $year < 2016 || $year > 2025) {
+    send_json_error(400, 'Invalid or missing year');
 }
 
 $start = sprintf('%04d-01-01 00:00:00', $year);       // start of the year (inclusive)
@@ -39,20 +24,20 @@ $sql = "SELECT item_id, title, sold_by, transacted_at, image_url
         WHERE transacted_at >= ? AND transacted_at < ?
         ORDER BY transacted_at DESC";
 
-$stmt = $conn->prepare($sql);                         // prepare statement to avoid SQL injection
+$stmt = $conn->prepare($sql);
 if (!$stmt) {
-    http_response_code(500);                          // server error if prepare fails
-    echo json_encode(['success' => false, 'error' => 'Failed to prepare query']);
-    exit;
+    send_json_error(500, 'Failed to prepare query');
 }
 
-$stmt->bind_param('ss', $start, $end);                // bind date range params as strings
-$stmt->execute();                                     // run the query
-$res = $stmt->get_result();                           // fetch mysqli_result
+$stmt->bind_param('ss', $start, $end);
+if (!$stmt->execute()) {
+    $stmt->close();
+    send_json_error(500, 'Failed to execute query');
+}
+$res = $stmt->get_result();
 
 $rows = [];
 while ($row = $res->fetch_assoc()) {
-    // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
     $rows[] = [
         'item_id' => (int)$row['item_id'],
         'title' => $row['title'],
@@ -62,4 +47,6 @@ while ($row = $res->fetch_assoc()) {
     ];
 }
 
-echo json_encode(['success' => true, 'data' => $rows]);
+$stmt->close();
+
+send_json_success(['data' => $rows]);

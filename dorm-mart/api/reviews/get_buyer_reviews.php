@@ -2,36 +2,18 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
-require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
 require_once __DIR__ . '/../profile/profile_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with GET method and authentication
+$result = api_bootstrap('GET', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    auth_boot_session();
-    $userId = require_login();
-
     // Always use logged-in user's ID for privacy - users can only view their own buyer reviews
     $buyerId = $userId;
-
-    $conn = db();
-    $conn->set_charset('utf8mb4');
 
     // Get all buyer reviews for this user
     $sql = <<<SQL
@@ -65,8 +47,14 @@ SQL;
 
     $reviews = [];
     while ($row = $result->fetch_assoc()) {
-        $sellerName = trim(trim((string)$row['seller_first']) . ' ' . trim((string)$row['seller_last']));
-        if ($sellerName === '') {
+        // Adapt row structure for build_seller_name helper
+        $sellerRow = [
+            'first_name' => $row['seller_first'] ?? '',
+            'last_name' => $row['seller_last'] ?? '',
+            'email' => $row['seller_email'] ?? ''
+        ];
+        $sellerName = build_seller_name($sellerRow);
+        if ($sellerName === 'Unknown Seller') {
             $sellerName = derive_username((string)($row['seller_email'] ?? '')) ?: 'Seller #' . (int)$row['seller_user_id'];
         }
 
@@ -89,15 +77,13 @@ SQL;
     $stmt->close();
     $conn->close();
 
-    echo json_encode([
-        'success' => true,
+    send_json_success([
         'reviews' => $reviews,
         'count' => count($reviews)
     ]);
 
 } catch (Throwable $e) {
     error_log('get_buyer_reviews.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Internal server error');
 }
 

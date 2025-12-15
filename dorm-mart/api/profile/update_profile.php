@@ -1,41 +1,21 @@
 <?php
 declare(strict_types=1);
 
-/**
- * POST /api/profile/update_profile.php
- * Persists editable profile fields such as bio, instagram URL, and profile photo reference.
- */
-
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/profile_helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $userId = require_login();
-    $raw = file_get_contents('php://input');
-    $data = json_decode($raw, true);
+    $data = get_request_data();
 
     if (!is_array($data)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
+        send_json_error(400, 'Invalid JSON payload');
     }
 
     $setClauses = [];
@@ -83,21 +63,18 @@ try {
     }
 
     if (empty($setClauses)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'No updatable fields were provided']);
-        exit;
+        send_json_error(400, 'No updatable fields were provided');
     }
 
-    $conn = db();
     $conn->set_charset('utf8mb4');
 
     $sql = 'UPDATE user_accounts SET ' . implode(', ', $setClauses) . ' WHERE user_id = ? LIMIT 1';
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
-        throw new RuntimeException('Failed to prepare profile update');
+        send_json_error(500, 'Database error');
     }
 
-    $types   .= 'i';
+    $types .= 'i';
     $params[] = $userId;
 
     $bindValues = [$types];
@@ -107,20 +84,22 @@ try {
     }
     call_user_func_array([$stmt, 'bind_param'], $bindValues);
 
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        $stmt->close();
+        send_json_error(500, 'Database error');
+    }
     $stmt->close();
 
     $updatedProfile = fetch_updated_fields($conn, $userId);
-    $conn->close();
 
-    echo json_encode([
-        'success' => true,
+    send_json_success([
         'profile' => $updatedProfile,
     ]);
+} catch (InvalidArgumentException $e) {
+    send_json_error(400, $e->getMessage());
 } catch (Throwable $e) {
     error_log('update_profile.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Server error');
 }
 
 function sanitize_bio_value($value): ?string
@@ -132,11 +111,8 @@ function sanitize_bio_value($value): ?string
     if ($bio === '') {
         return null;
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (containsXSSPattern($bio)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in bio']);
-        exit;
+        throw new InvalidArgumentException('Invalid characters in bio');
     }
     $bio = mb_substr($bio, 0, 200);
     return $bio;
@@ -152,15 +128,10 @@ function sanitize_link_value($value): ?string
         return null;
     }
     if (strlen($link) > 255) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Link is too long']);
-        exit;
+        throw new InvalidArgumentException('Link is too long');
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (containsXSSPattern($link)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in link']);
-        exit;
+        throw new InvalidArgumentException('Invalid characters in link');
     }
     return $link;
 }
@@ -175,15 +146,10 @@ function sanitize_profile_photo_value($value): ?string
         return null;
     }
     if (strlen($url) > 255) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo URL is too long']);
-        exit;
+        throw new InvalidArgumentException('Profile photo URL is too long');
     }
-    // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if (containsXSSPattern($url)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in profile photo URL']);
-        exit;
+        throw new InvalidArgumentException('Invalid characters in profile photo URL');
     }
 
     $allowedSchemes = ['http://', 'https://', '/media/', '/images/'];
@@ -195,9 +161,7 @@ function sanitize_profile_photo_value($value): ?string
         }
     }
     if (!$isAllowed) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Profile photo must reference an allowed path']);
-        exit;
+        throw new InvalidArgumentException('Profile photo must reference an allowed path');
     }
 
     return $url;
@@ -210,7 +174,10 @@ function fetch_updated_fields(mysqli $conn, int $userId): array
         throw new RuntimeException('Failed to load updated profile');
     }
     $stmt->bind_param('i', $userId);
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        $stmt->close();
+        throw new RuntimeException('Failed to execute profile fetch');
+    }
     $result = $stmt->get_result();
     $row = $result ? $result->fetch_assoc() : null;
     $stmt->close();

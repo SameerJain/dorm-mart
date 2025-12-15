@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import StarRating from "./StarRating";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { getApiBase, apiPost } from "../../utils/api";
 
 /**
  * ReviewModal Component
@@ -185,7 +184,8 @@ function ReviewModal({
         const formData = new FormData();
         formData.append('image', file);
 
-        const response = await fetch(`${API_BASE}/reviews/upload_review_image.php`, {
+        // Use fetch directly for FormData (apiPost uses JSON.stringify)
+        const response = await fetch(`${getApiBase()}/reviews/upload_review_image.php`, {
           method: 'POST',
           credentials: 'include',
           body: formData,
@@ -227,7 +227,7 @@ function ReviewModal({
 
   const handleDownloadImage = async (imageUrl, filename) => {
     try {
-      const response = await fetch(`${API_BASE}/image.php?url=${encodeURIComponent(imageUrl)}`, {
+      const response = await fetch(`${getApiBase()}/media/image.php?url=${encodeURIComponent(imageUrl)}`, {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch image');
@@ -307,36 +307,13 @@ function ReviewModal({
         image3_url: uploadedImages[2]?.uploadedUrl || null,
       };
 
-      const response = await fetch(`${API_BASE}/reviews/submit_review.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          product_id: productId,
-          rating: rating,
-          product_rating: productRating,
-          review_text: reviewText.trim(),
-          ...imageUrls,
-        }),
+      const result = await apiPost('reviews/submit_review.php', {
+        product_id: productId,
+        rating: rating,
+        product_rating: productRating,
+        review_text: reviewText.trim(),
+        ...imageUrls,
       });
-
-      // Check if response is ok before parsing JSON
-      if (!response.ok) {
-        let errorMessage = "Failed to submit review";
-        try {
-          const errorResult = await response.json();
-          errorMessage = errorResult.error || errorMessage;
-        } catch (e) {
-          // If JSON parsing fails, use status text
-          errorMessage = `Server error: ${response.status} ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
 
       if (!result.success) {
         throw new Error(result.error || "Failed to submit review");
@@ -626,7 +603,7 @@ function ReviewModal({
                     overflow: 'hidden'
                   }}
                 >
-                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
                     {reviewText}
                   </p>
                 </div>
@@ -644,7 +621,7 @@ function ReviewModal({
                       {existingReview.image1_url && (
                         <div className="relative group">
                           <img
-                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                            src={`${getApiBase()}/media/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
                             alt="Review image 1"
                             onClick={() => setSelectedImage(existingReview.image1_url)}
                             className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
@@ -663,7 +640,7 @@ function ReviewModal({
                       {existingReview.image2_url && (
                         <div className="relative group">
                           <img
-                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                            src={`${getApiBase()}/media/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
                             alt="Review image 2"
                             onClick={() => setSelectedImage(existingReview.image2_url)}
                             className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
@@ -682,7 +659,7 @@ function ReviewModal({
                       {existingReview.image3_url && (
                         <div className="relative group">
                           <img
-                            src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                            src={`${getApiBase()}/media/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
                             alt="Review image 3"
                             onClick={() => setSelectedImage(existingReview.image3_url)}
                             className="w-full max-h-96 object-contain rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90 transition-opacity"
@@ -704,21 +681,21 @@ function ReviewModal({
                     <div className="grid grid-cols-3 gap-3">
                       {existingReview.image1_url && (
                         <img
-                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
+                          src={`${getApiBase()}/media/image.php?url=${encodeURIComponent(existingReview.image1_url)}`}
                           alt="Review image 1"
                           className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
                         />
                       )}
                       {existingReview.image2_url && (
                         <img
-                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
+                          src={`${getApiBase()}/media/image.php?url=${encodeURIComponent(existingReview.image2_url)}`}
                           alt="Review image 2"
                           className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
                         />
                       )}
                       {existingReview.image3_url && (
                         <img
-                          src={`${API_BASE}/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
+                          src={`${getApiBase()}/media/image.php?url=${encodeURIComponent(existingReview.image3_url)}`}
                           alt="Review image 3"
                           className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer hover:opacity-90"
                         />
@@ -736,7 +713,7 @@ function ReviewModal({
                 >
                   <div className="relative max-w-7xl max-h-full">
                     <img
-                      src={`${API_BASE}/image.php?url=${encodeURIComponent(selectedImage)}`}
+                      src={`${getApiBase()}/media/image.php?url=${encodeURIComponent(selectedImage)}`}
                       alt="Full size review image"
                       className="max-w-full max-h-[90vh] object-contain rounded-lg"
                       onClick={(e) => e.stopPropagation()}

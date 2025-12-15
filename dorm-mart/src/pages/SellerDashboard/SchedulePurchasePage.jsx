@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MEET_LOCATION_OPTIONS, MEET_LOCATION_OTHER_VALUE } from '../../constants/meetLocations';
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { getApiBase, apiPost } from "../../utils/api";
+import { useModal } from "../../hooks/useModal";
 
 // Price limits - max matches ProductListingPage exactly
 const PRICE_LIMITS = {
@@ -42,35 +42,16 @@ function SchedulePurchasePage() {
     const [description, setDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
-    
-    // Prevent body scroll when close confirmation modal is open
+    const { isOpen: isCloseConfirmModalOpen, open: openCloseConfirmModal, close: closeCloseConfirmModal } = useModal(false);
+
+    // Sync close confirmation modal state
     useEffect(() => {
         if (closeConfirmOpen) {
-            const scrollY = window.scrollY;
-            document.documentElement.style.overflow = 'hidden';
-            document.body.style.overflow = 'hidden';
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${scrollY}px`;
-            document.body.style.width = '100%';
+            openCloseConfirmModal();
         } else {
-            const scrollY = document.body.style.top;
-            document.documentElement.style.overflow = '';
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            if (scrollY) {
-                window.scrollTo(0, parseInt(scrollY || '0') * -1);
-            }
+            closeCloseConfirmModal();
         }
-        return () => {
-            document.documentElement.style.overflow = '';
-            document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-        };
-    }, [closeConfirmOpen]);
+    }, [closeConfirmOpen, openCloseConfirmModal, closeCloseConfirmModal]);
     
     // New fields for price negotiation and trades
     const [negotiatedPrice, setNegotiatedPrice] = useState('');
@@ -83,20 +64,7 @@ function SchedulePurchasePage() {
         async function loadListings() {
             setError('');
             try {
-                const res = await fetch(`${API_BASE}/seller-dashboard/manage_seller_listings.php`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
-                    credentials: 'include',
-                    signal: abort.signal,
-                    body: JSON.stringify({}),
-                });
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
-                const data = await res.json();
+                const data = await apiPost('seller-dashboard/manage_seller_listings.php', {}, { signal: abort.signal });
                 if (!data.success) {
                     throw new Error(data.error || 'Failed to load listings');
                 }
@@ -461,31 +429,18 @@ function SchedulePurchasePage() {
                 }
             }
 
-            const res = await fetch(`${API_BASE}/scheduled-purchases/create.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    inventory_product_id: Number(finalListingId),
-                    conversation_id: Number(finalConversationId),
-                    meet_location: finalMeetLocation,
-                    meet_location_choice: meetLocationChoice,
-                    custom_meet_location: meetLocationChoice === MEET_LOCATION_OTHER_VALUE ? trimmedCustomLocation : null,
-                    meeting_at: meetingDateTimeISO,
-                    description: description.trim() || null,
-                    negotiated_price: negotiatedPriceValue,
-                    is_trade: isTrade,
-                    trade_item_description: isTrade ? tradeItemDescription.trim() : null,
-                }),
+            const payload = await apiPost('scheduled-purchases/create.php', {
+                inventory_product_id: Number(finalListingId),
+                conversation_id: Number(finalConversationId),
+                meet_location: finalMeetLocation,
+                meet_location_choice: meetLocationChoice,
+                custom_meet_location: meetLocationChoice === MEET_LOCATION_OTHER_VALUE ? trimmedCustomLocation : null,
+                meeting_at: meetingDateTimeISO,
+                description: description.trim() || null,
+                negotiated_price: negotiatedPriceValue,
+                is_trade: isTrade,
+                trade_item_description: isTrade ? tradeItemDescription.trim() : null,
             });
-
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-            const payload = await res.json();
             if (!payload.success) {
                 throw new Error(payload.error || 'Failed to create schedule');
             }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { apiGet } from "../../../utils/api";
 
 function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
   const navigate = useNavigate();
@@ -17,19 +16,9 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
 
     const fetchRatingStatus = async () => {
       try {
-        const response = await fetch(
-          `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.has_rating) {
-            setHasRating(true);
-          }
+        const result = await apiGet(`reviews/get_buyer_rating.php?product_id=${productId}`);
+        if (result.success && result.has_rating) {
+          setHasRating(true);
         }
       } catch (error) {
         console.error("Error fetching buyer rating status:", error);

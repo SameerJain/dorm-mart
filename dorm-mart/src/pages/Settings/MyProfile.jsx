@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
+import { getApiBase, apiGet, apiPost } from "../../utils/api";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
 const NAV_BLUE = "#2563EB";
 
 // File type restrictions (same as product listing and chat)
@@ -21,19 +21,10 @@ function isAllowedType(f) {
   return ext;
 }
 
-async function fetchSettingsProfile(apiBase = API_BASE) {
-  const response = await fetch(`${apiBase}/profile/my_profile.php`, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  let data = null;
-  try {
-    data = await response.json();
-  } catch (error) {
-    data = null;
-  }
-  if (!response.ok || !data?.success) {
+async function fetchSettingsProfile() {
+  const data = await apiGet('profile/my_profile.php');
+  
+  if (!data?.success) {
     throw new Error(data?.error || "Unable to load profile information.");
   }
 
@@ -53,35 +44,22 @@ async function fetchSettingsProfile(apiBase = API_BASE) {
   };
 }
 
-async function saveProfileFields(payload, apiBase = API_BASE) {
-  const response = await fetch(`${apiBase}/profile/update_profile.php`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-
-  let data = null;
-  try {
-    data = await response.json();
-  } catch (error) {
-    data = null;
-  }
-
-  if (!response.ok || !data?.success) {
+async function saveProfileFields(payload) {
+  const data = await apiPost('profile/update_profile.php', payload);
+  
+  if (!data?.success) {
     throw new Error(data?.error || "Unable to update profile.");
   }
 
   return data.profile ?? {};
 }
 
-async function uploadProfilePhoto(file, apiBase = API_BASE) {
+async function uploadProfilePhoto(file) {
   const formData = new FormData();
   formData.append("photo", file);
 
-  const response = await fetch(`${apiBase}/profile/upload_profile_photo.php`, {
+  // Use fetch directly for FormData (apiPost uses JSON.stringify)
+  const response = await fetch(`${getApiBase()}/profile/upload_profile_photo.php`, {
     method: "POST",
     body: formData,
     credentials: "include",

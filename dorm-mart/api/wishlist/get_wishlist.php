@@ -1,41 +1,17 @@
 <?php
 declare(strict_types=1);
 
-// JSON response
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
+require_once __DIR__ . '/../helpers/data_parsers.php';
+require_once __DIR__ . '/../profile/profile_helpers.php';
 
-require_once __DIR__ . '/../security/security.php';
-setSecurityHeaders();
-setSecureCORS();
-
-// Handle preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
-
-require __DIR__ . '/../auth/auth_handle.php';
-require __DIR__ . '/../database/db_connect.php';
+// Bootstrap API with GET method and authentication
+$result = api_bootstrap('GET', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $userId = require_login();
-    
-    $conn = db();
-    $conn->set_charset('utf8mb4');
-
-    // ============================================================================
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // User ID is bound as parameter using bind_param().
-    // The '?' placeholder ensures user input is treated as data, not executable SQL.
-    // This prevents SQL injection attacks even if malicious values are provided.
-    // ============================================================================
     $sql = "SELECT 
                 w.wishlist_id,
                 w.product_id,
@@ -66,44 +42,18 @@ try {
         throw new RuntimeException('Failed to prepare query');
     }
     $stmt->bind_param('i', $userId);
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        $stmt->close();
+        send_json_error(500, 'Database error');
+    }
     $result = $stmt->get_result();
 
     $items = [];
     while ($row = $result->fetch_assoc()) {
-        // Parse categories JSON
-        $categories = [];
-        if (!empty($row['categories'])) {
-            $decoded = json_decode($row['categories'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $categories = array_values(array_filter($decoded, fn($v) => is_string($v) && $v !== ''));
-            }
-        }
-
-        // Parse photos JSON
-        $photos = [];
-        if (!empty($row['photos'])) {
-            $decodedPhotos = json_decode($row['photos'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedPhotos)) {
-                $photos = $decodedPhotos;
-            }
-        }
-
-        // Get first image URL
-        $imageUrl = null;
-        if (!empty($photos) && is_array($photos)) {
-            $imageUrl = $photos[0] ?? null;
-        }
-
-        // Build seller name
-        $sellerName = 'Unknown Seller';
-        $firstName = trim((string)($row['first_name'] ?? ''));
-        $lastName = trim((string)($row['last_name'] ?? ''));
-        if ($firstName !== '' || $lastName !== '') {
-            $sellerName = trim($firstName . ' ' . $lastName);
-        } elseif (!empty($row['email'])) {
-            $sellerName = (string)$row['email'];
-        }
+        // Parse categories and photos using helpers
+        $categories = parse_categories_json($row['categories'] ?? null);
+        $imageUrl = get_first_photo($row['photos'] ?? null);
+        $sellerName = build_seller_name($row);
 
         // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
         $items[] = [
@@ -125,10 +75,9 @@ try {
     }
     $stmt->close();
 
-    echo json_encode(['success' => true, 'data' => $items]);
+    send_json_success($items);
 } catch (Throwable $e) {
     error_log('get_wishlist error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Internal server error');
 }
 

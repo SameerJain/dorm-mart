@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { getApiBase } from "../../utils/api";
 
 function OngoingPurchasesPage() {
     const navigate = useNavigate();
@@ -25,14 +25,17 @@ function OngoingPurchasesPage() {
             document.body.style.top = `-${scrollY}px`;
             document.body.style.width = '100%';
         } else {
-            const scrollY = document.body.style.top;
+            const savedScrollY = document.body.style.top;
             document.documentElement.style.overflow = '';
             document.body.style.overflow = '';
             document.body.style.position = '';
             document.body.style.top = '';
             document.body.style.width = '';
-            if (scrollY) {
-                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+            if (savedScrollY) {
+                const scrollValue = parseInt(savedScrollY.replace('px', ''), 10);
+                if (!isNaN(scrollValue)) {
+                    window.scrollTo(0, scrollValue * -1);
+                }
             }
         }
         return () => {
@@ -52,13 +55,13 @@ function OngoingPurchasesPage() {
             try {
                 // Load both buyer and seller requests
                 const [buyerRes, sellerRes] = await Promise.all([
-                    fetch(`${API_BASE}/scheduled-purchases/list_buyer.php`, {
+                    fetch(`${getApiBase()}/scheduled-purchases/list_buyer.php`, {
                         method: 'GET',
                         headers: { 'Accept': 'application/json' },
                         credentials: 'include',
                         signal: abort.signal,
                     }),
-                    fetch(`${API_BASE}/scheduled-purchases/list_seller.php`, {
+                    fetch(`${getApiBase()}/scheduled-purchases/list_seller.php`, {
                         method: 'GET',
                         headers: { 'Accept': 'application/json' },
                         credentials: 'include',
@@ -97,12 +100,12 @@ function OngoingPurchasesPage() {
         setError('');
         try {
             const [buyerRes, sellerRes] = await Promise.all([
-                fetch(`${API_BASE}/scheduled-purchases/list_buyer.php`, {
+                fetch(`${getApiBase()}/scheduled-purchases/list_buyer.php`, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' },
                     credentials: 'include',
                 }),
-                fetch(`${API_BASE}/scheduled-purchases/list_seller.php`, {
+                fetch(`${getApiBase()}/scheduled-purchases/list_seller.php`, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' },
                     credentials: 'include',
@@ -134,7 +137,7 @@ function OngoingPurchasesPage() {
         setActionMessage('');
         setActionError('');
         try {
-            const res = await fetch(`${API_BASE}/scheduled-purchases/respond.php`, {
+            const res = await fetch(`${getApiBase()}/scheduled-purchases/respond.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -170,7 +173,7 @@ function OngoingPurchasesPage() {
                 };
             }));
             // Also refresh seller requests to get updated status
-            const sellerRes = await fetch(`${API_BASE}/scheduled-purchases/list_seller.php`, {
+            const sellerRes = await fetch(`${getApiBase()}/scheduled-purchases/list_seller.php`, {
                 method: 'GET',
                 headers: { 'Accept': 'application/json' },
                 credentials: 'include',
@@ -188,16 +191,6 @@ function OngoingPurchasesPage() {
             setBusyRequestId(0);
         }
     }
-
-    // Helper function to determine if a purchase is active or past
-    const isActivePurchase = (req) => {
-        const now = new Date();
-        const meetingDate = req.meeting_at ? new Date(req.meeting_at) : null;
-        const isPastDate = meetingDate && meetingDate < now;
-        const isTerminalStatus = ['declined', 'cancelled'].includes(req.status);
-        const isCompleted = req.has_completed_confirm === true;
-        return !isPastDate && !isTerminalStatus && !isCompleted;
-    };
 
     // Group all purchases by item (inventory_product_id)
     const groupedByItem = useMemo(() => {
@@ -377,7 +370,6 @@ function OngoingPurchasesPage() {
         const isDeclined = req.status === 'declined';
         const isCompleted = req.has_completed_confirm === true;
         const isInactive = isCancelled || isDeclined || isCompleted;
-        const isAccepted = req.status === 'accepted';
         const canCancel = (req.status === 'pending' || req.status === 'accepted') && !isInactive;
         // const canUseActionButtons = isAccepted && !isCompleted; // Only enabled for accepted status and not completed - Commented out: Report an Issue feature not fully implemented yet
 
@@ -579,7 +571,7 @@ function OngoingPurchasesPage() {
         if (!itemGroup || itemGroup.purchases.length === 0) return null;
         
         return (
-            <div key={itemGroup.productId} className="mb-6 min-w-0">
+            <div className="mb-6 min-w-0">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 break-words overflow-wrap-anywhere">
                     {itemGroup.item.title || 'Unknown Item'}
                 </h3>
@@ -619,7 +611,11 @@ function OngoingPurchasesPage() {
                     <div className="text-gray-600 dark:text-gray-400">You have no scheduled purchases yet.</div>
                 ) : (
                     <div className="space-y-6">
-                        {groupedByItem.map(itemGroup => renderItemGroup(itemGroup))}
+                        {groupedByItem.map((itemGroup) => (
+                            <div key={itemGroup.productId}>
+                                {renderItemGroup(itemGroup)}
+                            </div>
+                        ))}
                     </div>
                 )}
 
@@ -662,7 +658,7 @@ function OngoingPurchasesPage() {
                                             setBusyRequestId(pendingCancelRequestId);
                                             setActionError('');
                                             try {
-                                                const res = await fetch(`${API_BASE}/scheduled-purchases/cancel.php`, {
+                                                const res = await fetch(`${getApiBase()}/scheduled-purchases/cancel.php`, {
                                                     method: 'POST',
                                                     headers: {
                                                         'Content-Type': 'application/json',

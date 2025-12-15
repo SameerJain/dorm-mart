@@ -2,8 +2,7 @@ import { Link } from "react-router-dom";
 import { withFallbackImage } from "../../utils/imageFallback";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { apiGet } from "../../utils/api";
 
 function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false }) {
   const productIdParam = id !== undefined && id !== null ? encodeURIComponent(id) : "";
@@ -23,20 +22,10 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
 
     const fetchReviewStatus = async () => {
       try {
-        const response = await fetch(
-          `${API_BASE}/reviews/get_review.php?product_id=${id}`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.has_review) {
-            setHasReview(true);
-            setExistingReview(result.review);
-          }
+        const result = await apiGet(`reviews/get_review.php?product_id=${id}`);
+        if (result.success && result.has_review) {
+          setHasReview(true);
+          setExistingReview(result.review);
         }
       } catch (error) {
         console.error("Error fetching review status:", error);
@@ -68,19 +57,9 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
 
   const fetchReviewAfterSubmit = async () => {
     try {
-      const response = await fetch(
-        `${API_BASE}/reviews/get_review.php?product_id=${id}`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.has_review) {
-          setExistingReview(result.review);
-        }
+      const result = await apiGet(`reviews/get_review.php?product_id=${id}`);
+      if (result.success && result.has_review) {
+        setExistingReview(result.review);
       }
     } catch (error) {
       console.error("Error fetching review after submit:", error);

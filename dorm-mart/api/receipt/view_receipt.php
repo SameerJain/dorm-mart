@@ -2,31 +2,16 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../confirm-purchases/helpers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with GET method and authentication
+$result = api_bootstrap('GET', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    auth_boot_session();
-    $userId = require_login();
-
     $productParam = trim((string)($_GET['product_id'] ?? $_GET['id'] ?? ''));
     $confirmParam = trim((string)($_GET['confirm_request_id'] ?? $_GET['confirm_id'] ?? ''));
 
@@ -34,41 +19,33 @@ try {
     $confirmRequestId = $confirmParam !== '' && ctype_digit($confirmParam) ? (int)$confirmParam : 0;
 
     if ($productId <= 0 && $confirmRequestId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'product_id or confirm_request_id is required','product_id' => $productId, 'confirm_request_id' => $confirmRequestId]);
-        exit;
+        send_json_error(400, 'product_id or confirm_request_id is required', [
+            'product_id' => $productId,
+            'confirm_request_id' => $confirmRequestId
+        ]);
     }
-
-    $conn = db();
-    $conn->set_charset('utf8mb4');
 
     [$confirmRow, $resolvedProductId, $isAuthorized] = fetchConfirmRow($conn, $userId, $productId, $confirmRequestId);
     if (!$confirmRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Receipt not found for this listing','product_id' => $productId, 'confirm_request_id' => $confirmRequestId]);
-        exit;
+        send_json_error(404, 'Receipt not found for this listing', [
+            'product_id' => $productId,
+            'confirm_request_id' => $confirmRequestId
+        ]);
     }
     if (!$isAuthorized) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You are not part of this transaction']);
-        exit;
+        send_json_error(403, 'You are not part of this transaction');
     }
 
-    // Auto finalize if the request expired without a response.
     $confirmRow = auto_finalize_confirm_request($conn, $confirmRow) ?? $confirmRow;
 
     $scheduledRow = fetchScheduledRequest($conn, (int)$confirmRow['scheduled_request_id']);
     if (!$scheduledRow) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Scheduled purchase details not found']);
-        exit;
+        send_json_error(500, 'Scheduled purchase details not found');
     }
 
     $productPayload = fetchProductPayload($conn, $resolvedProductId);
     if (!$productPayload) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Product not found for this receipt']);
-        exit;
+        send_json_error(404, 'Product not found for this receipt');
     }
 
     $snapshot = get_confirm_snapshot($confirmRow);
@@ -79,17 +56,13 @@ try {
 
     $receiptPayload = buildReceiptPayload($confirmRow, $scheduledRow, $snapshot, $finalPrice);
 
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'product' => $productPayload,
-            'receipt' => $receiptPayload,
-        ],
-    ], JSON_UNESCAPED_SLASHES);
+    send_json_success([
+        'product' => $productPayload,
+        'receipt' => $receiptPayload,
+    ]);
 } catch (Throwable $e) {
     error_log('view_receipt error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Server error');
 }
 
 /**

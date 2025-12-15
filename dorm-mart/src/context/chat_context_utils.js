@@ -1,49 +1,21 @@
-const BASE =  process.env.REACT_APP_API_BASE || "/api";
+import { getApiBase, apiGet, apiPost } from '../utils/api';
 
 export async function fetch_me(signal) {
-  const r = await fetch(`${BASE}/auth/me.php`, {
-    method: 'GET',
-    credentials: 'include', // send cookies (PHP session) with the request
-    headers: { 'Accept': 'application/json' },
-    signal // allows aborting the request if the component unmounts
-  });
-  if (!r.ok) throw new Error(`not authenticated`);
-  return r.json();
+  return await apiGet('auth/me.php', { signal });
 }
 
 export async function fetch_conversations(signal) {
   // returns: { success: true, conversations: [{ conv_id, user_1, user_2, ... }] }
-  const r = await fetch(`${BASE}/chat/fetch_conversations.php`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include",
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return await apiGet('chat/fetch_conversations.php', { signal });
 }
 
 export async function fetch_conversation(convId, signal) {
   // returns: { success: true, messages: [{ message_id, sender_id, content, created_at, ... }] }
-  const r = await fetch(`${BASE}/chat/fetch_conversation.php?conv_id=${convId}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return await apiGet(`chat/fetch_conversation.php?conv_id=${convId}`, { signal });
 }
 
 export async function fetch_new_messages(activeConvId, ts, signal) {
-  const r = await fetch(`${BASE}/chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return await apiGet(`chat/fetch_new_messages.php?conv_id=${activeConvId}&ts=${ts}`, { signal });
 }
 
 export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, signal) {
@@ -94,14 +66,7 @@ export async function tick_fetch_new_messages(activeConvId, myId, sinceSec, sign
 }
 
 export async function fetch_unread_messages(signal) {
-  const r = await fetch(`${BASE}/chat/fetch_unread_messages.php`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return await apiGet('chat/fetch_unread_messages.php', { signal });
 }
 
 export async function tick_fetch_unread_messages(signal) {
@@ -123,14 +88,7 @@ export async function tick_fetch_unread_messages(signal) {
 }
 
 export async function fetch_unread_notifications(signal) {
-    const r = await fetch(`${BASE}/wishlist/fetch_unread_notifications.php`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    credentials: "include", // session-based auth
-    signal,
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  return await apiGet('wishlist/fetch_unread_notifications.php', { signal });
 }
 
 export async function tick_fetch_unread_notifications(signal) {
@@ -165,18 +123,7 @@ export async function create_message({ receiverId, convId, content, signal }) {
   if (convId) {
     body.conv_id = convId;
   }
-  const r = await fetch(`${BASE}/chat/create_message.php`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json", // tells PHP we're sending JSON
-      "Accept": "application/json"
-    },
-    credentials: "include",               // sends PHP session cookie if your server uses it
-    body: JSON.stringify(body),
-    signal                                // lets you cancel if needed
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();                        // expect JSON back from PHP
+  return await apiPost('chat/create_message.php', body, { signal });
 }
 
 // Image-message endpoint (multipart/form-data)
@@ -187,7 +134,8 @@ export async function create_image_message({ receiverId, convId, content, image,
   form.append("content", content ?? "");             // optional caption
   form.append("image", image, image.name);           // PHP: $_FILES['image']
 
-  const r = await fetch(`${BASE}/chat/create_image_message.php`, {
+  // Use fetch directly for FormData (apiPost uses JSON.stringify)
+  const r = await fetch(`${getApiBase()}/chat/create_image_message.php`, {
     method: "POST",
     body: form,                                      // DO NOT set Content-Type manually
     credentials: "include",

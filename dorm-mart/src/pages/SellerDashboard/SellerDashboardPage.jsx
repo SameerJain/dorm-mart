@@ -5,8 +5,7 @@ import ReviewModal from '../Reviews/ReviewModal';
 import StarRating from '../Reviews/StarRating';
 import BuyerRatingModal from './BuyerRatingModal';
 
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { getApiBase, apiPost, getPublicBase } from "../../utils/api";
 
 /** Truncate product title to max length (default 50 characters) */
 function truncateProductTitle(title, maxLength = 50) {
@@ -114,31 +113,7 @@ function SellerDashboardPage() {
     const fetchListings = useCallback(async () => {
         setLoading(true);
         try {
-            const BASE = (process.env.REACT_APP_API_BASE || "api");
-            // TODO: Create manage_seller_listings.php endpoint similar to fetch-transacted-items.php
-            // This will query transacted_items WHERE seller_user_id = current_user_id
-            const response = await fetch(`${BASE}/seller-dashboard/manage_seller_listings.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({}) // May need user_id or session token
-            });
-
-            if (!response.ok) {
-                // Try to parse error response
-                let errorResult;
-                try {
-                    errorResult = await response.json();
-                } catch (e) {
-                    errorResult = { error: `HTTP ${response.status}` };
-                }
-                console.error('API Error Response:', errorResult);
-                throw new Error(errorResult.error || `HTTP ${response.status}`);
-            }
-            const result = await response.json();
+            const result = await apiPost('seller-dashboard/manage_seller_listings.php', {});
 
             if (result.success) {
                 // Ensure result.data is an array
@@ -148,7 +123,7 @@ function SellerDashboardPage() {
                 const transformedListings = dataArray.map(item => {
                     const rawImg = item.image_url || item.image || null;
                     const proxied = rawImg
-                        ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+                        ? `${getApiBase()}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
                         : null;
                     return {
                         id: item.id,
@@ -209,7 +184,7 @@ function SellerDashboardPage() {
             for (const listing of soldListings) {
                 try {
                     const response = await fetch(
-                        `${API_BASE}/reviews/get_product_reviews.php?product_id=${listing.id}`,
+                        `${getApiBase()}/reviews/get_product_reviews.php?product_id=${listing.id}`,
                         {
                             method: 'GET',
                             credentials: 'include',
@@ -248,7 +223,7 @@ function SellerDashboardPage() {
             for (const listing of soldListings) {
                 try {
                     const response = await fetch(
-                        `${API_BASE}/reviews/get_buyer_rating.php?product_id=${listing.id}`,
+                        `${getApiBase()}/reviews/get_buyer_rating.php?product_id=${listing.id}`,
                         {
                             method: 'GET',
                             credentials: 'include',
@@ -306,8 +281,7 @@ function SellerDashboardPage() {
 
     const handleDelete = async (id) => {
         try {
-            const BASE = (process.env.REACT_APP_API_BASE || "api");
-            const res = await fetch(`${BASE}/seller-dashboard/delete_listing.php`, {
+            const res = await fetch(`${getApiBase()}/seller-dashboard/delete_listing.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

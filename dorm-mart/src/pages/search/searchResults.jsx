@@ -1,9 +1,7 @@
 // src/pages/search/searchResults.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
-const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+import { getApiBase, getPublicBase } from "../../utils/api";
 
 function useQuery() {
   const { search } = useLocation();
@@ -90,7 +88,7 @@ export default function SearchResults() {
       try {
         setLoading(true);
         setError(null);
-        const r = await fetch(`${API_BASE}/search/getSearchItems.php`, {
+        const r = await fetch(`${getApiBase()}/search/getSearchItems.php`, {
           method: "POST",
           signal: controller.signal,
           headers: {
@@ -113,7 +111,7 @@ export default function SearchResults() {
 
           const rawImg = d.image || d.image_url || d.photo || null;
           const img = rawImg
-            ? `${API_BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+            ? `${getApiBase()}/media/image.php?url=${encodeURIComponent(String(rawImg))}`
             : null;
 
           const seller = d.seller || d.seller_name || d.sold_by || (d.seller_id != null ? `Seller #${d.seller_id}` : "Unknown Seller");
@@ -369,11 +367,9 @@ function FiltersSidebar({
 
   // Fetch categories once
   useEffect(() => {
-    const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-    const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_active_categories.php`);
+        const r = await fetch(`${getApiBase()}/utility/get_active_categories.php`);
         if (r.ok) {
           const json = await r.json();
           if (Array.isArray(json)) setCategories(json);

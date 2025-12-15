@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-
-const API_BASE = (process.env.REACT_APP_API_BASE || 'api').replace(/\/?$/, '');
+import { apiPost } from "../../../utils/api";
 
 function ScheduleMessageCard({ message, isMine, onRespond }) {
   const metadata = message.metadata || {};
@@ -28,23 +27,11 @@ function ScheduleMessageCard({ message, isMine, onRespond }) {
     if (!requestId || isResponding || localResponseStatus !== null) return;
     setIsResponding(true);
     try {
-      const res = await fetch(`${API_BASE}/scheduled-purchases/respond.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          request_id: requestId,
-          action: action,
-        }),
+      const result = await apiPost('scheduled-purchases/respond.php', {
+        request_id: requestId,
+        action: action,
       });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to ${action} request`);
-      }
-      const result = await res.json();
+      
       if (result.success) {
         // Update local state immediately to reflect response
         setLocalResponseStatus(action === 'accept' ? 'accepted' : 'declined');

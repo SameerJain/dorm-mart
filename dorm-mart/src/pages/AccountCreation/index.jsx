@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react';
 import termsPdf from '../../assets/pdfs/terms&conditions.pdf';
 import privacyPdf from '../../assets/pdfs/privacy.pdf';
 import { fetch_me } from '../../utils/handle_auth.js';
+import { apiPost } from '../../utils/api';
 import PreLoginBranding from '../../components/PreLoginBranding';
+import { useModal } from '../../hooks/useModal';
 
 function CreateAccountPage() {
   const navigate = useNavigate();
@@ -19,61 +21,46 @@ function CreateAccountPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
+  const { isOpen: isModalOpen, open, close } = useModal(false);
 
-  // Check if user is already authenticated on mount
+  // Sync modal state with showNotice
+  useEffect(() => {
+    if (showNotice) {
+      open();
+    } else {
+      close();
+    }
+  }, [showNotice, open, close]);
+
+  // Redirect authenticated users - they must sign in again
   useEffect(() => {
     const controller = new AbortController();
     
     const checkAuth = async () => {
       try {
         await fetch_me(controller.signal);
-        // User is authenticated, redirect to app
-        navigate("/app", { replace: true });
+        // User is authenticated - call logout API then redirect to login
+        try {
+          await apiPost('auth/logout.php', {});
+        } catch (e) {
+          // Ignore logout errors, just redirect
+        }
+        navigate("/login", { replace: true });
       } catch (error) {
-        // AbortError means component unmounted, don't navigate
+        // Not authenticated - stay on create account page
         if (error.name === 'AbortError') {
           return;
         }
-        // User is not authenticated, stay on create account page
       }
     };
 
     checkAuth();
     
-    // Cleanup: abort fetch if component unmounts
     return () => {
       controller.abort();
     };
   }, [navigate]);
 
-  // Prevent body scroll when email notice modal is open
-  useEffect(() => {
-    if (showNotice) {
-      const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
-    } else {
-      const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
-    }
-    return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-    };
-  }, [showNotice]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

@@ -5,34 +5,20 @@ declare(strict_types=1);
 // Suppress any output that might interfere with headers
 ob_start();
 
-require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
-require_once __DIR__ . '/../database/db_connect.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
+require_once __DIR__ . '/../profile/profile_helpers.php';
+require_once __DIR__ . '/../helpers/data_parsers.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    $userId = require_login();
-
-    $payload = json_decode(file_get_contents('php://input'), true);
+    $payload = get_request_data();
     if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
+        send_json_error(400, 'Invalid JSON payload');
     }
 
     // Get filter parameters (with defaults for backward compatibility)
@@ -143,13 +129,103 @@ try {
             break;
     }
 
-    ob_end_clean(); // Clear output buffer before sending response
-    echo json_encode(['success' => true, 'data' => $rows]);
+    ob_end_clean();
+    send_json_success(['data' => $rows]);
 } catch (Throwable $e) {
-    ob_end_clean(); // Clear any output buffer
+    ob_end_clean();
     error_log('purchase_history.php error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Internal server error');
+}
+
+/**
+ * Filter purchase history entries by date range
+ * 
+ * @param array $entries Purchase history entries
+ * @param ?DateTimeImmutable $start Start date (null = no start filter)
+ * @param DateTimeImmutable $end End date
+ * @return array Filtered entries with product_id and transacted_at
+ */
+function filter_purchase_history_by_date(array $entries, ?DateTimeImmutable $start, DateTimeImmutable $end): array
+{
+    $startTs = $start !== null ? $start->getTimestamp() : 0;
+    $endTs = $end->getTimestamp();
+
+    $filtered = [];
+    foreach ($entries as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $productId = isset($entry['product_id']) ? (int)$entry['product_id'] : 0;
+        if ($productId <= 0) {
+            continue;
+        }
+        $recordedAt = isset($entry['recorded_at']) ? (string)$entry['recorded_at'] : '';
+        $recordedTs = strtotime($recordedAt);
+        if ($recordedTs === false) {
+            continue;
+        }
+        // Apply date filter only if start is specified
+        if ($start !== null && ($recordedTs < $startTs || $recordedTs >= $endTs)) {
+            continue;
+        }
+
+        $filtered[] = [
+            'product_id' => $productId,
+            'transacted_at' => gmdate('Y-m-d H:i:s', $recordedTs),
+        ];
+    }
+
+    return $filtered;
+}
+
+/**
+ * Extract product IDs from filtered purchase history entries
+ * 
+ * @param array $filtered Filtered purchase history entries
+ * @return array<int> Array of product IDs
+ */
+function extract_product_ids(array $filtered): array
+{
+    $productIds = [];
+    foreach ($filtered as $entry) {
+        $productId = $entry['product_id'] ?? 0;
+        if ($productId > 0) {
+            $productIds[$productId] = $productId;
+        }
+    }
+    return array_values($productIds);
+}
+
+/**
+ * Merge metadata with purchase history items
+ * 
+ * @param array $filtered Filtered purchase history entries
+ * @param array $metadata Metadata indexed by product_id
+ * @return array Merged items with metadata
+ */
+function merge_metadata_with_items(array $filtered, array $metadata): array
+{
+    $rows = [];
+    foreach ($filtered as $entry) {
+        $productId = $entry['product_id'];
+        $meta = $metadata[$productId] ?? [];
+
+        $title = $meta['title'] ?? ('Item #' . $productId);
+        $sellerName = $meta['seller_name'] ?? 'Unknown seller';
+
+        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
+        $rows[] = [
+            'item_id' => $productId,
+            'title' => $title,
+            'sold_by' => $sellerName,
+            'transacted_at' => $entry['transacted_at'],
+            'image_url' => format_purchase_history_image_url($meta['image_url'] ?? ''),
+            'categories' => $meta['categories'] ?? [],
+            'price' => $meta['price'] ?? null,
+        ];
+    }
+
+    return $rows;
 }
 
 /**
@@ -176,71 +252,24 @@ function load_purchase_history_items(mysqli $conn, int $userId, ?DateTimeImmutab
         return [];
     }
 
-    $startTs = $start !== null ? $start->getTimestamp() : 0;
-    $endTs = $end->getTimestamp();
-
-    $filtered = [];
-    $productIds = [];
-    foreach ($decoded as $entry) {
-        if (!is_array($entry)) {
-            continue;
-        }
-        $productId = isset($entry['product_id']) ? (int)$entry['product_id'] : 0;
-        if ($productId <= 0) {
-            continue;
-        }
-        $recordedAt = isset($entry['recorded_at']) ? (string)$entry['recorded_at'] : '';
-        $recordedTs = strtotime($recordedAt);
-        if ($recordedTs === false) {
-            continue;
-        }
-        // Apply date filter only if start is specified
-        if ($start !== null && ($recordedTs < $startTs || $recordedTs >= $endTs)) {
-            continue;
-        }
-
-        $filtered[] = [
-            'product_id' => $productId,
-            'transacted_at' => gmdate('Y-m-d H:i:s', $recordedTs),
-        ];
-        $productIds[$productId] = $productId;
-    }
-
+    // Filter entries by date
+    $filtered = filter_purchase_history_by_date($decoded, $start, $end);
     if (empty($filtered)) {
         return [];
     }
 
-    // Load metadata with error handling
+    // Extract product IDs and load metadata
+    $productIds = extract_product_ids($filtered);
     $metadata = [];
     try {
-        $metadata = load_inventory_metadata($conn, array_values($productIds));
+        $metadata = load_inventory_metadata($conn, $productIds);
     } catch (Throwable $metaError) {
         error_log('Failed to load metadata for purchase history: ' . $metaError->getMessage());
         // Continue without metadata - use fallback values
     }
 
-    $rows = [];
-    foreach ($filtered as $entry) {
-        $productId = $entry['product_id'];
-        $meta = $metadata[$productId] ?? [];
-
-        $title = $meta['title'] ?? ('Item #' . $productId);
-        $sellerName = $meta['seller_name'] ?? 'Unknown seller';
-        $imageUrl = $meta['image_url'] ?? '';
-
-        // Note: No HTML encoding needed for JSON responses - React handles XSS protection automatically
-        $rows[] = [
-            'item_id' => $productId,
-            'title' => $title,
-            'sold_by' => $sellerName,
-            'transacted_at' => $entry['transacted_at'],
-            'image_url' => format_purchase_history_image_url($meta['image_url'] ?? ''),
-            'categories' => $meta['categories'] ?? [],
-            'price' => $meta['price'] ?? null,
-        ];
-    }
-
-    return $rows;
+    // Merge metadata with filtered items
+    return merge_metadata_with_items($filtered, $metadata);
 }
 
 /**
@@ -284,13 +313,11 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
         $stmt->close();
         throw new RuntimeException('Failed to get result from inventory metadata query: ' . $conn->error);
     }
-
+    
     $map = [];
     while ($row = $res->fetch_assoc()) {
-        $sellerFirst = $row['first_name'] ?? '';
-        $sellerLast = $row['last_name'] ?? '';
-        $sellerName = trim($sellerFirst . ' ' . $sellerLast);
-        if ($sellerName === '') {
+        $sellerName = build_seller_name($row);
+        if ($sellerName === 'Unknown Seller') {
             $sellerId = isset($row['seller_id']) ? (int)$row['seller_id'] : 0;
             $sellerName = $sellerId > 0 ? 'Seller #' . $sellerId : 'Unknown seller';
         }
@@ -304,7 +331,7 @@ function load_inventory_metadata(mysqli $conn, array $productIds): array
         $map[(int)$row['product_id']] = [
             'title' => $row['title'] ?? '',
             'seller_name' => $sellerName,
-            'image_url' => resolve_primary_photo($row['photos'] ?? null),
+            'image_url' => format_purchase_history_image_url(get_first_photo($row['photos'] ?? null) ?? ''),
             'categories' => [], // Categories not needed for purchase history
             'price' => $price,
         ];
@@ -378,24 +405,8 @@ function load_legacy_purchased_items(mysqli $conn, int $userId, string $start, s
 
 function resolve_primary_photo($photos): string
 {
-    if (is_string($photos) && trim($photos) !== '') {
-        $decoded = json_decode($photos, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            $photos = $decoded;
-        }
-    }
-
-    if (is_array($photos)) {
-        foreach ($photos as $photo) {
-            if (is_string($photo) && trim($photo) !== '') {
-                return format_purchase_history_image_url($photo);
-            }
-        }
-    } elseif (is_string($photos) && trim($photos) !== '') {
-        return format_purchase_history_image_url($photos);
-    }
-
-    return '';
+    $firstPhoto = get_first_photo(is_string($photos) ? $photos : null);
+    return $firstPhoto ? format_purchase_history_image_url($firstPhoto) : '';
 }
 
 function format_purchase_history_image_url($value): string
@@ -415,21 +426,26 @@ function format_purchase_history_image_url($value): string
         return qualify_purchase_history_url(rewrite_api_relative_path($trimmed));
     }
 
-    if (strpos($trimmed, '/data/images/') === 0 || strpos($trimmed, '/images/') === 0) {
-        return qualify_purchase_history_url(build_image_proxy_path($trimmed));
+    require_once __DIR__ . '/../helpers/image_helpers.php';
+    
+    // Normalize image path first
+    $normalized = normalize_image_path($trimmed);
+    
+    if ($normalized && strpos($normalized, '/images/') === 0) {
+        return qualify_purchase_history_url(build_image_proxy_path($normalized));
     }
 
     if ($trimmed[0] === '/') {
         return qualify_purchase_history_url($trimmed);
     }
 
-    return qualify_purchase_history_url(build_image_proxy_path('/data/images/' . ltrim($trimmed, '/')));
+    return qualify_purchase_history_url(build_image_proxy_path('/images/' . ltrim($trimmed, '/')));
 }
 
 function build_image_proxy_path(string $source): string
 {
     $apiBase = get_api_base_path();
-    return rtrim($apiBase, '/') . '/image.php?url=' . rawurlencode($source);
+    return rtrim($apiBase, '/') . '/media/image.php?url=' . rawurlencode($source);
 }
 
 function rewrite_api_relative_path(string $path): string

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { fetch_me } from "../utils/handle_auth.js";
+import { apiPost } from "../utils/api";
 import PreLoginBranding from "../components/PreLoginBranding";
 
 function ForgotPasswordPage() {
@@ -10,42 +11,37 @@ function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const BACKDOOR_KEYWORD = "testflow"; // typing this as the email triggers the confirmation page for testing
 
-  // Check if user is already authenticated on mount
+  // Redirect authenticated users - they must sign in again
   useEffect(() => {
     const controller = new AbortController();
     
     const checkAuth = async () => {
       try {
         await fetch_me(controller.signal);
-        // User is authenticated, redirect to app
-        navigate("/app", { replace: true });
+        // User is authenticated - call logout API then redirect to login
+        try {
+          await apiPost('auth/logout.php', {});
+        } catch (e) {
+          // Ignore logout errors, just redirect
+        }
+        navigate("/login", { replace: true });
       } catch (error) {
-        // AbortError means component unmounted, don't navigate
+        // Not authenticated - stay on forgot password page
         if (error.name === 'AbortError') {
           return;
         }
-        // User is not authenticated, stay on forgot password page
       }
     };
 
     checkAuth();
     
-    // Cleanup: abort fetch if component unmounts
     return () => {
       controller.abort();
     };
   }, [navigate]);
 
   async function sendForgotPasswordRequest(email, signal) {
-    const BASE = process.env.REACT_APP_API_BASE || "/api";
-    const r = await fetch(`${BASE}/auth/forgot-password.php`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-      signal,
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
+    return await apiPost('auth/forgot-password.php', { email }, { signal });
   }
 
   const handleForgotPasswordRequest = async (e) => {

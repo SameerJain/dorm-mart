@@ -2,84 +2,43 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../database/db_helpers.php';
 require_once __DIR__ . '/../security/security.php';
-require_once __DIR__ . '/../auth/auth_handle.php';
-require_once __DIR__ . '/../database/db_connect.php';
 
-setSecurityHeaders();
-setSecureCORS();
-
-header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method Not Allowed']);
-    exit;
-}
+// Bootstrap API with POST method and authentication
+$result = api_bootstrap('POST', true);
+$userId = $result['userId'];
+$conn = $result['conn'];
 
 try {
-    auth_boot_session();
-    $userId = require_login();
-
-    $payload = json_decode(file_get_contents('php://input'), true);
+    $payload = get_request_data();
     if (!is_array($payload)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
-        exit;
+        send_json_error(400, 'Invalid JSON payload');
     }
 
     // Validate product_id
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
-    if ($productId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid product_id']);
-        exit;
-    }
+    $productId = validate_product_id($payload);
 
     // Validate buyer_user_id
     $buyerId = isset($payload['buyer_user_id']) ? (int)$payload['buyer_user_id'] : 0;
     if ($buyerId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid buyer_user_id']);
-        exit;
+        send_json_error(400, 'Invalid buyer_user_id');
     }
 
     // Validate rating (0-5 in 0.5 increments)
-    $rating = isset($payload['rating']) ? (float)$payload['rating'] : -1;
-    if ($rating < 0 || $rating > 5) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Rating must be between 0 and 5']);
-        exit;
-    }
-    // Check for 0.5 increments
-    if (fmod($rating * 2, 1) !== 0.0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Rating must be in 0.5 increments']);
-        exit;
-    }
+    $rating = validate_rating($payload, 'rating', 0, 5, true);
 
     // Validate review_text (optional, max 250 chars if provided)
     $reviewText = isset($payload['review_text']) ? trim((string)$payload['review_text']) : '';
     if (strlen($reviewText) > 250) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Review text must be 250 characters or less']);
-        exit;
+        send_json_error(400, 'Review text must be 250 characters or less');
     }
     
     // XSS PROTECTION: Filtering (Layer 1) - blocks patterns before DB storage
     if ($reviewText !== '' && containsXSSPattern($reviewText)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid characters in review text']);
-        exit;
+        send_json_error(400, 'Invalid characters in review text');
     }
-
-    $conn = db();
-    $conn->set_charset('utf8mb4');
 
     // Check if the product exists and get seller_id
     $stmt = $conn->prepare('SELECT seller_id FROM INVENTORY WHERE product_id = ? LIMIT 1');
@@ -93,18 +52,14 @@ try {
     $stmt->close();
 
     if (!$productRow) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Product not found']);
-        exit;
+        send_json_error(404, 'Product not found');
     }
 
     $sellerId = (int)$productRow['seller_id'];
 
     // Verify that the current user is the seller
     if ($sellerId !== $userId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'You can only rate buyers for your own products']);
-        exit;
+        send_json_error(403, 'You can only rate buyers for your own products');
     }
 
     // Verify that the product is sold to this buyer
@@ -122,9 +77,7 @@ try {
     $soldToBuyer = $soldRow && isset($soldRow['sold_to']) && (int)$soldRow['sold_to'] === $buyerId;
 
     if (!$isSold || !$soldToBuyer) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Product must be sold to this buyer']);
-        exit;
+        send_json_error(403, 'Product must be sold to this buyer');
     }
 
     // Check if user has already rated this buyer for this product
@@ -139,9 +92,7 @@ try {
     $stmt->close();
 
     if ($existingRating) {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'You have already rated this buyer for this product']);
-        exit;
+        send_json_error(409, 'You have already rated this buyer for this product');
     }
 
     // Insert the buyer rating
@@ -186,11 +137,9 @@ try {
     $result = $stmt->get_result();
     $ratingData = $result ? $result->fetch_assoc() : null;
     $stmt->close();
-    $conn->close();
 
     // XSS PROTECTION: Escape user-generated content before returning in JSON
-    echo json_encode([
-        'success' => true,
+    send_json_success([
         'rating_id' => $ratingId,
         'rating' => [
             'rating_id' => (int)$ratingData['rating_id'],
@@ -207,7 +156,6 @@ try {
 
 } catch (Throwable $e) {
     error_log('submit_buyer_rating.php error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+    send_json_error(500, 'Internal server error');
 }
 
