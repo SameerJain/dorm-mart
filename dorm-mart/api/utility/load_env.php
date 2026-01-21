@@ -1,6 +1,14 @@
 <?php
 
 function load_env(): void {
+    // Check if we're on Railway (or similar platform) where env vars are set directly
+    // Railway sets RAILWAY_ENVIRONMENT variable, and env vars are already available via getenv()
+    if (getenv('RAILWAY_ENVIRONMENT') !== false || getenv('DB_HOST') !== false) {
+        // Environment variables are already set by Railway/platform
+        // No need to load from .env file
+        return;
+    }
+    
     // dorm-mart/
     $root = dirname(__DIR__, 2);
     // load whichever exists
