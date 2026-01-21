@@ -79,7 +79,8 @@ For detailed setup instructions, deployment guides, and production build steps, 
 
 # For users without a UB account for demoing:
 **Username:** testuser@buffalo.edu
-**Password: **1234!
+
+**Password:** 1234!
 
 # Development Team
 
