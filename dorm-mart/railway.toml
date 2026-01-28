@@ -1,14 +1,3 @@
 [build]
 builder = "RAILPACK"
 buildCommand = "PUBLIC_URL=/ REACT_APP_API_BASE=/api npm run build"
-
-[deploy]
-runtime = "V2"
-numReplicas = 1
-sleepApplication = false
-useLegacyStacker = false
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
-
-[deploy.multiRegionConfig.us-west2]
-numReplicas = 1
