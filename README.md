@@ -5,7 +5,7 @@ This repository contains the "Dorm Mart" web application, built with a React fro
 _Created for CSE-442: Software Engineering Concepts, The University at Buffalo._
 
 ## IMPORTANT: For users without a UB account wanting to demo the site:
-**Username:** testuser@buffalo.edu
+**Username:** `testuser@buffalo.edu`
 
 **Password:** 1234!
 
