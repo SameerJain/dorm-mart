@@ -81,6 +81,10 @@ For local setup and deployment details, see `README.project_setup.md`.
 
 For detailed setup instructions, deployment guides, and production build steps, see `README.project_setup.md`.
 
+# For users without a UB account for demoing:
+**Username:** testuser@buffalo.edu
+
+**Password:** 1234!
 
 # Development Team
 
