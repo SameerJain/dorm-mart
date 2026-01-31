@@ -78,6 +78,12 @@ function setSecureCORS() {
         $host === 'cattle.cse.buffalo.edu'
     );
     
+    // Check if this is a Railway deployment
+    $isRailway = (
+        strpos($host, '.up.railway.app') !== false ||
+        strpos($host, '.railway.app') !== false
+    );
+    
     // Check if origin is explicitly allowed
     $isAllowedOrigin = in_array($origin, $allowedOrigins);
     
@@ -92,6 +98,18 @@ function setSecureCORS() {
             header("Access-Control-Allow-Origin: http://localhost:3000");
             header('Access-Control-Allow-Credentials: true');
         }
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+        header('Access-Control-Max-Age: 86400');
+    } elseif ($isRailway) {
+        // Railway deployment - allow same domain requests
+        if ($origin && (strpos($origin, '.up.railway.app') !== false || strpos($origin, '.railway.app') !== false)) {
+            header("Access-Control-Allow-Origin: $origin");
+        } else {
+            // Allow same domain requests
+            header("Access-Control-Allow-Origin: https://$host");
+        }
+        header('Access-Control-Allow-Credentials: true');
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
         header('Access-Control-Max-Age: 86400');

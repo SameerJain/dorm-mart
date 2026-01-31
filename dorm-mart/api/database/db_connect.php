@@ -14,10 +14,35 @@ function db(): mysqli
     $username   = getenv('DB_USERNAME');
     $password   = getenv('DB_PASSWORD');
 
+    // Debug: Check if DB_NAME is empty or invalid
+    if (empty($dbname) || $dbname === false) {
+        die(json_encode([
+            "success" => false, 
+            "message" => "DB_NAME environment variable is not set or empty",
+            "debug" => [
+                "DB_HOST" => $servername ? "set" : "not set",
+                "DB_NAME" => $dbname ?: "empty/false",
+                "DB_USERNAME" => $username ? "set" : "not set",
+                "DB_PASSWORD" => $password ? "set" : "not set"
+            ]
+        ]));
+    }
+
+    // Trim whitespace
+    $dbname = trim($dbname);
+
     // SQL INJECTION PROTECTION: Validate database name format (alphanumeric, underscore, hyphen only)
     // Database names from environment should be safe, but we validate to be extra cautious
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $dbname)) {
-        die(json_encode(["success" => false, "message" => "Invalid database name format"]));
+        die(json_encode([
+            "success" => false, 
+            "message" => "Invalid database name format",
+            "debug" => [
+                "dbname_value" => $dbname,
+                "dbname_length" => strlen($dbname),
+                "dbname_hex" => bin2hex($dbname)
+            ]
+        ]));
     }
 
     // db connection
