@@ -1,13 +1,28 @@
 <?php
+// Enable error reporting for debugging (remove in production)
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
+
 header('Content-Type: application/json');
 
-// Include security utilities for escapeHtml function
-require_once __DIR__ . '/../security/security.php';
+try {
+    // Include security utilities for escapeHtml function
+    require_once __DIR__ . '/../security/security.php';
 
-// reuse your existing env loader + $conn creation
-require __DIR__ . '/db_connect.php'; // or paste your env+mysqli code here
+    // reuse your existing env loader + $conn creation
+    require __DIR__ . '/db_connect.php'; // or paste your env+mysqli code here
 
-$conn = db();
+    $conn = db();
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        "success" => false,
+        "message" => "Failed to initialize: " . $e->getMessage(),
+        "file" => $e->getFile(),
+        "line" => $e->getLine()
+    ]);
+    exit;
+}
 
 // create a table that records which migration files have been applied
 $conn->query("
