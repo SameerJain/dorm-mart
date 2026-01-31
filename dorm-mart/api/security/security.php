@@ -62,7 +62,9 @@ function setSecureCORS() {
         'http://localhost:8080',      // PHP dev server  
         'http://localhost',           // Apache local setup
         'https://aptitude.cse.buffalo.edu',  // Test server
-        'https://cattle.cse.buffalo.edu'    // Production server
+        'https://cattle.cse.buffalo.edu',    // Production server
+        'https://dormmart.me',                // Custom domain
+        'https://www.dormmart.me'             // Custom domain www
     ];
     
     // Check if this is a localhost request
@@ -78,10 +80,12 @@ function setSecureCORS() {
         $host === 'cattle.cse.buffalo.edu'
     );
     
-    // Check if this is a Railway deployment
+    // Check if this is a Railway deployment (including custom domains)
     $isRailway = (
         strpos($host, '.up.railway.app') !== false ||
-        strpos($host, '.railway.app') !== false
+        strpos($host, '.railway.app') !== false ||
+        $host === 'dormmart.me' ||
+        $host === 'www.dormmart.me'
     );
     
     // Check if origin is explicitly allowed
@@ -102,8 +106,13 @@ function setSecureCORS() {
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
         header('Access-Control-Max-Age: 86400');
     } elseif ($isRailway) {
-        // Railway deployment - allow same domain requests
-        if ($origin && (strpos($origin, '.up.railway.app') !== false || strpos($origin, '.railway.app') !== false)) {
+        // Railway deployment - allow same domain requests and custom domains
+        if ($origin && (
+            strpos($origin, '.up.railway.app') !== false || 
+            strpos($origin, '.railway.app') !== false ||
+            strpos($origin, 'dormmart.me') !== false ||
+            $isAllowedOrigin
+        )) {
             header("Access-Control-Allow-Origin: $origin");
         } else {
             // Allow same domain requests

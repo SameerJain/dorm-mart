@@ -133,6 +133,22 @@ function LoginPage() {
         }
       );
 
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        // Try to get error message from response
+        let errorMessage = "Network error. Please try again.";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          // Response isn't JSON, use status text
+          errorMessage = `Server error (${response.status}): ${response.statusText}`;
+        }
+        setError(errorMessage);
+        setLoading(false);
+        return;
+      }
+
       const data = await response.json();
 
       if (data.ok) {
@@ -187,7 +203,8 @@ function LoginPage() {
       }
     } catch (error) {
       // Handle network or other errors
-      setError("Network error. Please try again.");
+      console.error("Login error:", error);
+      setError(`Network error: ${error.message || "Please try again."}`);
     } finally {
       setLoading(false);
     }

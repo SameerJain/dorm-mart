@@ -17,7 +17,22 @@ $isLocalhost = (
     strpos($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1') === 0
 );
 
-if (!$isLocalhost && (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'on')) {
+// Check if Railway (Railway sets X-Forwarded-Proto header)
+$isRailway = (
+    strpos($_SERVER['HTTP_HOST'] ?? '', '.up.railway.app') !== false ||
+    strpos($_SERVER['HTTP_HOST'] ?? '', '.railway.app') !== false
+);
+
+// Check if request is HTTPS (check both direct HTTPS and proxy headers)
+$isHttps = (
+    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+    (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+    (!empty($_SERVER['X-Forwarded-Proto']) && $_SERVER['X-Forwarded-Proto'] === 'https')
+);
+
+// Skip HTTPS redirect for Railway (Railway handles HTTPS at the proxy level)
+// Also skip for localhost
+if (!$isLocalhost && !$isRailway && !$isHttps) {
     $httpsUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');
     header("Location: $httpsUrl", true, 301);
     exit;
