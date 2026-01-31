@@ -7,7 +7,7 @@ _Created for CSE-442: Software Engineering Concepts, The University at Buffalo._
 ## IMPORTANT: For users without a UB account wanting to demo the site:
 **Username:** `testuser@buffalo.edu`
 
-**Password:** 1234!
+**Password:** `1234!`
 
 # Dorm Mart: The Complete Student Marketplace
 
