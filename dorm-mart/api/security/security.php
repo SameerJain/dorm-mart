@@ -62,7 +62,9 @@ function setSecureCORS() {
         'http://localhost:8080',      // PHP dev server  
         'http://localhost',           // Apache local setup
         'https://aptitude.cse.buffalo.edu',  // Test server
-        'https://cattle.cse.buffalo.edu'    // Production server
+        'https://cattle.cse.buffalo.edu',    // Production server
+        'https://dormmart.me',                // Custom domain
+        'https://www.dormmart.me'             // Custom domain www
     ];
     
     // Check if this is a localhost request
